@@ -1,0 +1,100 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Ruff check
+        run: uv run ruff check .
+      - name: Ruff format check
+        run: uv run ruff format --check .
+
+  typecheck:
+    name: Typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Mypy
+        run: uv run mypy
+
+  test:
+    name: Test (Python 3.12)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Pytest (unit + integration, CPU only)
+        run: uv run pytest -m "not gpu and not paid and not slow" --cov --cov-report=xml --cov-report=term
+      - uses: codecov/codecov-action@v4
+        if: success()
+        with:
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  security:
+    name: Security scans
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Gitleaks
+        uses: gitleaks/gitleaks-action@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  license-check:
+    name: License compliance
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Reject GPL / AGPL / SSPL dependencies
+        run: |
+          uv run pip-licenses --format=json --output-file=licenses.json
+          uv run python - <<'PY'
+          import json, sys
+          forbidden = {"GPL-3.0", "AGPL-3.0", "SSPL", "GPL-2.0", "AGPL-2.0"}
+          with open("licenses.json") as f:
+              licenses = json.load(f)
+          violations = [pkg for pkg in licenses if pkg["License"] in forbidden]
+          if violations:
+              for v in violations:
+                  print(f"::error::Forbidden license {v['License']} in {v['Name']}=={v['Version']}")
+              sys.exit(1)
+          print(f"Scanned {len(licenses)} packages, no forbidden licenses found.")
+          PY

@@ -1,0 +1,14 @@
+# Default owner for everything
+*                                       @abishekvr
+
+# High-trust areas — always require @abishekvr review
+/envelope/                              @abishekvr
+/cli/                                   @abishekvr
+/harness/                               @abishekvr
+/LICENSE                                @abishekvr
+/NOTICE                                 @abishekvr
+/SECURITY.md                            @abishekvr
+/CODE_OF_CONDUCT.md                     @abishekvr
+/HUMAN_REVIEW_GATES.md                  @abishekvr
+/memory/adr/                            @abishekvr
+/.github/workflows/                     @abishekvr

@@ -1,0 +1,38 @@
+name: Nightly
+
+on:
+  schedule:
+    # Daily at 02:00 UTC (07:30 IST) — after most US-East work hours, before EU mornings.
+    - cron: "0 2 * * *"
+  workflow_dispatch:  # allow manual trigger
+
+permissions:
+  contents: read
+
+concurrency:
+  group: nightly-${{ github.workflow }}
+  cancel-in-progress: false
+
+jobs:
+  slow-tests:
+    name: Slow + integration tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Pytest (slow + integration, CPU)
+        run: uv run pytest -m "slow or integration" -v
+
+  gpu-tests:
+    name: GPU tests on TestBM
+    runs-on: self-hosted   # configured to dispatch to TestBM via SSH at first run
+    timeout-minutes: 120
+    # Phase 1 placeholder: this job is skipped until a self-hosted runner is wired to TestBM.
+    if: false
+    steps:
+      - uses: actions/checkout@v4
+      - run: echo "TODO ticket 0024: wire self-hosted runner to TestBM and enable this job"

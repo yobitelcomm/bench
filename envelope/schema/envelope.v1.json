@@ -1,0 +1,125 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yobitelcomm.github.io/bench/schema/envelope.v1.json",
+  "title": "InferenceBench Envelope v1",
+  "description": "Canonical Sigstore-signed result envelope for one benchmark run.",
+  "type": "object",
+  "required": [
+    "envelope_version",
+    "suite_id",
+    "suite_version",
+    "run_id",
+    "timestamp",
+    "model",
+    "engine",
+    "hardware_fingerprint",
+    "software_provenance",
+    "dataset",
+    "seed",
+    "metrics"
+  ],
+  "properties": {
+    "envelope_version": { "const": "v1" },
+    "suite_id": { "type": "string", "minLength": 1 },
+    "suite_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+(-[\\w.]+)?$" },
+    "run_id": { "type": "string", "format": "uuid" },
+    "timestamp": { "type": "string", "format": "date-time" },
+    "model": {
+      "type": "object",
+      "required": ["id", "revision", "provider", "endpoint_hash"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "revision": { "type": "string", "minLength": 7, "maxLength": 40 },
+        "provider": { "type": "string", "minLength": 1 },
+        "endpoint_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "engine": {
+      "type": "object",
+      "required": ["name", "version", "config_hash"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "version": { "type": "string", "minLength": 1 },
+        "config_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "image_digest": { "type": "string" }
+      }
+    },
+    "quantization": {
+      "type": ["object", "null"],
+      "properties": {
+        "format": { "type": "string" },
+        "method": { "type": "string" }
+      }
+    },
+    "hardware_fingerprint": {
+      "type": "object",
+      "required": ["fingerprint_sha256", "dmi_uuid", "cpu", "memory", "bios", "driver", "cuda"],
+      "properties": {
+        "fingerprint_sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "dmi_uuid": { "type": "string", "minLength": 1 },
+        "gpus": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["model", "pci_id", "serial", "vbios"],
+            "properties": {
+              "model": { "type": "string" },
+              "pci_id": { "type": "string" },
+              "serial": { "type": "string" },
+              "vbios": { "type": "string" }
+            }
+          }
+        },
+        "cpu": { "type": "object" },
+        "memory": { "type": "object" },
+        "bios": { "type": "object" },
+        "numa": { "type": "object" },
+        "driver": { "type": "string" },
+        "cuda": { "type": "string" },
+        "nccl": { "type": "string" }
+      }
+    },
+    "software_provenance": {
+      "type": "object",
+      "required": ["pip_freeze_hash", "git_commit"],
+      "properties": {
+        "image_digest": { "type": "string" },
+        "pip_freeze_hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "git_commit": { "type": "string", "minLength": 7, "maxLength": 40 },
+        "nvidia_smi_q_hash": { "type": "string" }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "required": ["id", "hash"],
+      "properties": {
+        "id": { "type": "string", "minLength": 1 },
+        "hash": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+      }
+    },
+    "seed": { "type": "integer" },
+    "driver_options": { "type": "object" },
+    "metrics": {
+      "type": "object",
+      "minProperties": 1,
+      "additionalProperties": {
+        "oneOf": [
+          { "type": "number" },
+          { "type": "null" }
+        ]
+      }
+    },
+    "distributions": { "type": "object" },
+    "slo_template": { "type": "string" },
+    "warnings": { "type": "array", "items": { "type": "string" } },
+    "signature": {
+      "type": ["object", "null"],
+      "properties": {
+        "method": { "enum": ["sigstore-cosign", "dev-key"] },
+        "certificate": { "type": "string" },
+        "rekor_log_index": { "type": "integer" },
+        "bundle": { "type": "string" }
+      }
+    }
+  }
+}

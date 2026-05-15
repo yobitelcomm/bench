@@ -1,0 +1,115 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# uv / virtualenv
+.venv/
+venv/
+env/
+ENV/
+uv.lock.tmp
+.python-version
+
+# Testing / coverage
+.tox/
+.nox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.hypothesis/
+.pytest_cache/
+cover/
+htmlcov/
+
+# Type checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+.pyre/
+.pytype/
+
+# Ruff
+.ruff_cache/
+
+# IDE / editor
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# OS
+Thumbs.db
+desktop.ini
+
+# Secrets / env
+.env
+.env.*
+!.env.example
+.envrc
+
+# Bench-specific local caches
+~/.cache/inferencebench/
+.cache/inferencebench/
+.inferencebench/
+
+# Sigstore dev keys (never commit)
+cosign.key
+*.pem
+!tests/fixtures/**/*.pem
+
+# Model weights / datasets (use Git LFS or S3)
+*.bin
+*.safetensors
+*.pt
+*.pth
+*.gguf
+*.onnx
+*.parquet
+!tests/fixtures/**/*.parquet
+
+# Logs
+*.log
+logs/
+
+# Documentation build
+docs/_build/
+site/
+
+# Internal-only files (Claude Code context + planning) — kept locally, not pushed
+/CLAUDE.md
+/INDEX.md
+/PROJECT_PLAN.md
+/CONVENTIONS.md
+/HUMAN_REVIEW_GATES.md
+**/CLAUDE.md
+memory/
+skills/
+agents/
+.claude/
+TICKETS/

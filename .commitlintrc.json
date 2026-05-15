@@ -1,0 +1,41 @@
+{
+  "extends": ["@commitlint/config-conventional"],
+  "rules": {
+    "subject-case": [2, "always", "sentence-case"],
+    "subject-full-stop": [2, "never", "."],
+    "subject-max-length": [2, "always", 72],
+    "type-enum": [
+      2,
+      "always",
+      ["feat", "fix", "chore", "docs", "refactor", "perf", "test", "build", "ci", "revert"]
+    ],
+    "scope-enum": [
+      1,
+      "always",
+      [
+        "repo",
+        "cli",
+        "harness",
+        "envelope",
+        "plugin-llm",
+        "plugin-voice",
+        "plugin-embedding",
+        "plugin-agent",
+        "plugin-image",
+        "plugin-video",
+        "plugin-3d",
+        "plugin-robotics",
+        "plugin-chip",
+        "integrations-hf",
+        "integrations-github-actions",
+        "services-api",
+        "services-orchestrator",
+        "services-studio-web",
+        "services-enterprise",
+        "docs",
+        "infra",
+        "deps"
+      ]
+    ]
+  }
+}
