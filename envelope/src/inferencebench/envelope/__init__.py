@@ -8,13 +8,15 @@ Public API:
     from inferencebench.envelope import Envelope, EnvelopeBuilder
     from inferencebench.envelope import HardwareFingerprint, Signature
     from inferencebench.envelope import SCHEMA_VERSION
+    from inferencebench.envelope import sign_envelope, verify_envelope, SigningMode
 
     builder = EnvelopeBuilder(...)
-    envelope = builder.build()           # unsigned
-    h = envelope.content_hash()          # SHA-256 of canonical body
-    # signing is ticket 0005
-
-See `skills/envelope-signing/SKILL.md` for the full signing/verification flow.
+    envelope = builder.build()                                          # unsigned
+    signed = sign_envelope(envelope, mode=SigningMode.DEV,
+                           dev_key_path=Path("./cosign.key"))           # signed
+    result = verify_envelope(signed,
+                             dev_public_key_path=Path("./cosign.pub"))  # verified
+    assert result.ok
 """
 
 from inferencebench.envelope.models import (
@@ -33,6 +35,14 @@ from inferencebench.envelope.models import (
     Signature,
     SoftwareProvenance,
 )
+from inferencebench.envelope.signing import (
+    EnvelopeAlreadySignedError,
+    SigningError,
+    SigningMode,
+    generate_dev_keypair,
+    sign_envelope,
+)
+from inferencebench.envelope.verify import VerificationResult, verify_envelope
 
 __all__ = [
     "BIOS",
@@ -42,11 +52,18 @@ __all__ = [
     "DatasetSpec",
     "EngineConfig",
     "Envelope",
+    "EnvelopeAlreadySignedError",
     "EnvelopeBuilder",
     "HardwareFingerprint",
     "Memory",
     "ModelConfig",
     "Quantization",
     "Signature",
+    "SigningError",
+    "SigningMode",
     "SoftwareProvenance",
+    "VerificationResult",
+    "generate_dev_keypair",
+    "sign_envelope",
+    "verify_envelope",
 ]

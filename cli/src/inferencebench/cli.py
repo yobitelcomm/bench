@@ -1,7 +1,8 @@
 """Typer application root for the ``bench`` CLI.
 
-Subcommands live in ``inferencebench.commands``. Plugin discovery via
-``importlib.metadata.entry_points`` group ``inferencebench.plugins``.
+Single-action subcommands live in ``inferencebench.commands.*`` as plain
+functions and get registered on the root ``app``. The ``plugin`` command,
+which has multiple sub-subcommands, stays as a sub-Typer.
 """
 
 from __future__ import annotations
@@ -41,7 +42,7 @@ app = typer.Typer(
 def _version_callback(value: bool) -> None:
     if value:
         console.print(f"[bold]bench[/bold] {__version__}")
-        raise typer.Exit()
+        raise typer.Exit
 
 
 @app.callback()
@@ -64,24 +65,27 @@ def main(
     configure_logging("DEBUG" if verbose else "INFO")
 
 
-# Register subcommands. Each module exports an `app: typer.Typer`.
-app.add_typer(run.app, name="run", help="Run a benchmark and produce a signed envelope.")
-app.add_typer(compare.app, name="compare", help="Compare benchmark runs (Pareto frontier).")
-app.add_typer(publish.app, name="publish", help="Publish a signed envelope (HF Hub, local).")
-app.add_typer(verify.app, name="verify", help="Verify a signed envelope's signature + content.")
-app.add_typer(leaderboard.app, name="leaderboard", help="Browse public leaderboards.")
-app.add_typer(doctor.app, name="doctor", help="Diagnose hardware health before benchmarking.")
-app.add_typer(cost.app, name="cost", help="Compare model cost across providers.")
+# Single-action subcommands — registered directly so option/positional parsing
+# behaves correctly (sub-Typer with invoke_without_command=True has a parsing
+# quirk that breaks positional-then-option args).
+app.command(name="run", help="Run a benchmark and produce a signed envelope.")(run.run)
+app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
+app.command(name="publish", help="Publish a signed envelope (HF Hub, local).")(publish.publish)
+app.command(name="verify", help="Verify a signed envelope's signature + content.")(verify.verify)
+app.command(name="leaderboard", help="Browse public leaderboards.")(leaderboard.leaderboard)
+app.command(name="doctor", help="Diagnose hardware health before benchmarking.")(doctor.doctor)
+app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
+
+# `plugin` has subcommands (list/init/install/info) → sub-Typer
 app.add_typer(plugin.app, name="plugin", help="Manage benchmark plugins.")
 
 
-@app.command("plugins")
+@app.command("plugins", help="List installed plugins (shorthand for ``bench plugin list``).")
 def list_plugins() -> None:
-    """List installed plugins (shorthand for ``bench plugin list``)."""
+    """List installed plugins (shorthand)."""
     try:
         eps = metadata.entry_points(group="inferencebench.plugins")
     except TypeError:
-        # Older Python compat — shouldn't trigger on 3.12 but be safe
         eps = metadata.entry_points().get("inferencebench.plugins", [])  # type: ignore[attr-defined]
 
     if not eps:

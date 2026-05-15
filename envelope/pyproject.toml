@@ -27,6 +27,7 @@ dependencies = [
     "pydantic~=2.9",
     "uuid7~=0.1",
     "sigstore~=3.5",
+    "cryptography~=44.0",
 ]
 
 [project.urls]

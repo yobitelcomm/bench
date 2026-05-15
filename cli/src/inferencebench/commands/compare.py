@@ -10,11 +10,9 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-app = typer.Typer(no_args_is_help=True)
 err_console = Console(stderr=True)
 
 
-@app.callback(invoke_without_command=True)
 def compare(
     run_ids: Annotated[
         list[str], typer.Argument(help="One or more run IDs / envelope paths to compare.")

@@ -10,11 +10,9 @@ from typing import Annotated
 import typer
 from rich.console import Console
 
-app = typer.Typer(no_args_is_help=True)
 err_console = Console(stderr=True)
 
 
-@app.callback(invoke_without_command=True)
 def run(
     suite_id: Annotated[str, typer.Argument(help="Suite identifier, e.g. 'llm.inference'.")],
     model: Annotated[str, typer.Option("--model", help="Model id (provider-prefixed).")] = "",
@@ -52,8 +50,7 @@ def run(
 ) -> None:
     """Run a benchmark from the named suite.
 
-    Phase 1 stub — emits a "[stub]" message and exits 0. Real implementation in ticket 0025
-    will wire this to the harness, plugin discovery, and envelope builder.
+    Phase 1 stub — emits a "[stub]" message and exits 0. Ticket 0025 wires the harness.
     """
     err_console.print(
         f"[yellow][stub][/yellow] bench run [bold]{suite_id}[/bold] "
