@@ -31,6 +31,7 @@ dependencies = [
     "structlog~=24.4",
     "nvidia-ml-py~=12.560",  # NVML bindings
     "litellm~=1.50",
+    "tiktoken~=0.8",   # token counting fallback when providers don't return usage
 ]
 
 [project.urls]

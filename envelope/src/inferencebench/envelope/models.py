@@ -99,8 +99,8 @@ class HardwareFingerprint(_Base):
     memory: Memory
     bios: BIOS
     numa: dict[str, Any] = Field(default_factory=dict, description="NUMA topology.")
-    driver: Annotated[str, Field(min_length=1, description="GPU driver version.")]
-    cuda: Annotated[str, Field(min_length=1, description="CUDA toolkit version.")]
+    driver: str = Field(default="", description="GPU driver version (empty on CPU-only).")
+    cuda: str = Field(default="", description="CUDA toolkit version (empty on non-CUDA).")
     nccl: str = Field(default="", description="NCCL version (empty if not applicable).")
 
     @model_validator(mode="after")

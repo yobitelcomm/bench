@@ -90,6 +90,12 @@ ignore = [
 "**/conftest.py" = ["S", "ANN", "D"]
 "cli/src/inferencebench/commands/*.py" = ["ARG001"]   # Typer needs CLI args in the signature even when stubbed
 "cli/src/inferencebench/cli.py" = ["ARG001"]            # `version` callback arg is consumed by Typer
+"harness/src/inferencebench/harness/doctor.py" = ["S105", "ANN401"]  # PASS/WARN/FAIL enum + opaque NVML handles
+"harness/src/inferencebench/harness/fingerprint/gpu.py" = ["ANN401"]   # opaque NVML handles
+"harness/src/inferencebench/harness/client.py" = ["ANN401", "S110", "S310"]   # LiteLLM is dynamically typed; tiktoken fallback intentionally silent; controlled HTTP healthcheck
+"harness/src/inferencebench/harness/drivers/*.py" = ["ANN401"]   # workload items are caller-defined
+"harness/src/inferencebench/harness/telemetry/base.py" = ["B027"]   # _setup / _teardown are optional override hooks
+"harness/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501", "B018"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -129,6 +135,11 @@ files = ["cli/src", "envelope/src", "harness/src", "tests"]
 [[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_defs = false
+
+[[tool.mypy.overrides]]
+# pynvml ships without type stubs
+module = ["pynvml"]
+ignore_missing_imports = true
 
 # --- Pytest ---
 [tool.pytest.ini_options]

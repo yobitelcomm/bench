@@ -895,6 +895,7 @@ dependencies = [
     { name = "pydantic" },
     { name = "scipy" },
     { name = "structlog" },
+    { name = "tiktoken" },
 ]
 
 [package.metadata]
@@ -905,6 +906,7 @@ requires-dist = [
     { name = "pydantic", specifier = "~=2.9" },
     { name = "scipy", specifier = "~=1.14" },
     { name = "structlog", specifier = "~=24.4" },
+    { name = "tiktoken", specifier = "~=0.8" },
 ]
 
 [[package]]
