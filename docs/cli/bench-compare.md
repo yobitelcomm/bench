@@ -1,55 +1,62 @@
 # bench compare
 
-Compare two or more benchmark runs. Default output is a Pareto frontier across throughput, latency, cost, and energy.
+Pareto-frontier comparison across two or more signed envelopes. Computes frontiers for the canonical metric pairs (quality-vs-cost, throughput-vs-latency, throughput-vs-energy) and renders the result as a Rich table, JSON, or a Pareto-only filtered table.
+
+## Synopsis
 
 ```bash
-bench compare <run-id-or-envelope-path>... [--report pareto|table|json]
+bench compare <envelope-path>... [--report table|pareto|json] [--verify]
 ```
 
-## Example
+At least two local envelope paths are required. Remote URIs (`hf://`, `https://`) are not loaded directly — use [`bench fetch`](bench-fetch.md) first.
+
+## Example: compare two sweep points
 
 ```bash
 bench compare \
-  ~/.cache/inferencebench/runs/01J7Q5C6.../envelope.json \
-  ~/.cache/inferencebench/runs/01J7Q6XY.../envelope.json \
-  --report pareto
+  ./results/c1-814953250c16.json \
+  ./results/c16-60be8efd6d21.json \
+  --report table
 ```
 
 Expected output:
 
 ```
-Pareto frontier: 2 runs, 8 points
-  *  Llama-4-Maverick fp8     ttft_p50=142.0ms  tput=1842 tok/s  $0.18/Mtok
-     Llama-4-Maverick fp16    ttft_p50=168.4ms  tput=1340 tok/s  $0.31/Mtok
-Pareto-dominant (1):
-  - fp8 dominates fp16 on (latency, throughput, cost)
+                        Benchmark comparison
+ Suite                    Model                          Engine       Throughput tok/s  TTFT p99 ms  J/tok  Pareto?
+ llm.inference.chatbot... meta-llama/Llama-3.1-8B-Inst.  vllm 0.21.0  1,384.2           64.71        0.70   yes
+ llm.inference.chatbot... meta-llama/Llama-3.1-8B-Inst.  vllm 0.21.0  122.17            14.95        7.24   yes
 ```
 
-## Arguments
+Both points land on the frontier — the conc=1 envelope wins on TTFT, the conc=16 envelope wins on throughput and energy.
 
-| Argument | Required | Description |
+## Flags
+
+| Flag | Default | Description |
 |---|---|---|
-| `run-ids` | yes (one or more) | Run IDs, envelope paths, or `hf://datasets/...` URIs. |
-
-## Options
-
-| Option | Default | Description |
-|---|---|---|
-| `--report` | `pareto` | Report format: `pareto`, `table`, `json`. |
+| `--report` | `table` | Output format: `table`, `pareto` (Pareto-only rows), or `json`. |
+| `--verify` | off | Verify each envelope's signature before comparing; exits 1 on signature failure. |
 
 ## Report formats
 
 | Format | What you get |
 |---|---|
-| `pareto` | A frontier across throughput, latency, cost, and energy. Marks dominated runs. |
-| `table` | A side-by-side metrics table. |
-| `json` | The canonical JSON, suitable for piping into another tool. |
+| `table` | All envelopes, sorted by throughput desc, with a `Pareto?` column. Frontier rows are bolded. |
+| `pareto` | Same table but only rows that are on the frontier of at least one metric pair. |
+| `json` | One JSON object per envelope plus a `pareto` index by metric pair. Pipe into jq. |
 
-## Phase 1 status
+## Pareto pairs
 
-`bench compare` is a stub in v0.0.0. The full Pareto renderer wires in during the v0.1 release.
+| Label | x (maximise) | y (minimise) |
+|---|---|---|
+| quality_vs_cost | `goodput_at_slo` (falls back to `req_per_s_passing`) | `cost_usd_per_million_tokens` |
+| throughput_vs_latency | `throughput_tok_per_s` | `ttft_p99_ms` |
+| throughput_vs_energy | `throughput_tok_per_s` | `joules_per_token` |
+
+A run is "on the Pareto frontier" if there is no other run that dominates it on both axes of at least one pair.
 
 ## See also
 
 - [Pareto frontiers](../concepts/pareto.md)
-- [bench run](bench-run.md)
+- [bench diff](bench-diff.md) — for the focused two-envelope regression check
+- [Recipes: cross-model corpus](../recipes/cross-model.md)

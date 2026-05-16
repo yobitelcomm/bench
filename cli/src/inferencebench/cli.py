@@ -19,13 +19,16 @@ from inferencebench.commands import (
     cost,
     diff,
     doctor,
+    export,
     fetch,
+    history,
     leaderboard,
     list_cmd,
     plugin,
     publish,
     replay,
     run,
+    schema_cmd,
     summary,
     verify,
 )
@@ -76,8 +79,16 @@ def main(
 app.command(name="run", help="Run a benchmark and produce a signed envelope.")(run.run)
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
+app.command(
+    name="history",
+    help="Time-series view of one metric across runs.",
+)(history.history)
 app.command(name="publish", help="Publish a signed envelope (HF Hub, local).")(publish.publish)
 app.command(name="replay", help="Replay a benchmark from an existing envelope.")(replay.replay)
+app.command(
+    name="schema",
+    help="Emit JSON Schema for envelopes / benchmark specs / mirror index.",
+)(schema_cmd.schema)
 app.command(name="verify", help="Verify a signed envelope's signature + content.")(verify.verify)
 app.command(name="leaderboard", help="Browse public leaderboards.")(leaderboard.leaderboard)
 app.command(
@@ -85,6 +96,10 @@ app.command(
     help="List every benchmark across every installed plugin.",
 )(list_cmd.list_benchmarks)
 app.command(name="doctor", help="Diagnose hardware health before benchmarking.")(doctor.doctor)
+app.command(
+    name="export",
+    help="Export an envelope as markdown / CSV / Slack snippet.",
+)(export.export)
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
 app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
 app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)

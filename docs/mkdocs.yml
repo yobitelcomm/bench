@@ -42,14 +42,27 @@ nav:
   - Home: index.md
   - Install: install.md
   - Quickstart: quickstart.md
-  - CLI:
+  - CLI reference:
       - Overview: cli/overview.md
-      - bench run: cli/bench-run.md
       - bench compare: cli/bench-compare.md
-      - bench publish: cli/bench-publish.md
-      - bench verify: cli/bench-verify.md
+      - bench cost: cli/bench-cost.md
+      - bench diff: cli/bench-diff.md
       - bench doctor: cli/bench-doctor.md
+      - bench export: cli/bench-export.md
+      - bench fetch: cli/bench-fetch.md
+      - bench leaderboard: cli/bench-leaderboard.md
+      - bench list: cli/bench-list.md
       - bench plugin: cli/bench-plugin.md
+      - bench publish: cli/bench-publish.md
+      - bench replay: cli/bench-replay.md
+      - bench run: cli/bench-run.md
+      - bench summary: cli/bench-summary.md
+      - bench verify: cli/bench-verify.md
+  - Recipes:
+      - Concurrency sweep: recipes/concurrency-sweep.md
+      - Regression check: recipes/regression-check.md
+      - Verify and replay: recipes/reproducibility.md
+      - Cross-model comparison: recipes/cross-model.md
   - Concepts:
       - Signed envelope: concepts/envelope.md
       - Hardware fingerprinting: concepts/fingerprinting.md

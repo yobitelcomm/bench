@@ -1,90 +1,95 @@
 # bench run
 
-Run a benchmark suite and produce a signed envelope.
+Execute a benchmark and produce a signed envelope. Supports single-point runs, closed-loop concurrency sweeps (`--sweep`), open-loop RPS sweeps (`--rps-sweep`), and a "run every benchmark this plugin ships" mode (`--all-benchmarks`).
+
+## Synopsis
 
 ```bash
 bench run <suite-id> [OPTIONS]
 ```
 
-## Example
+`<suite-id>` is either a plugin id (`llm.inference`) or a fully-qualified benchmark id (`llm.inference.sharegpt-v3`). When a plugin id is given without `--all-benchmarks`, the plugin's first registered spec is used.
+
+## Example: concurrency sweep on Llama-3.1-8B
 
 ```bash
-bench run llm.inference \
-  --model meta-llama/Llama-4-Maverick \
+bench run llm.inference.chatbot-short \
+  --model meta-llama/Llama-3.1-8B-Instruct \
   --engine vllm \
   --hardware h100 \
-  --quant fp8 \
-  --concurrency 1,4,16,64 \
-  --duration 300 \
-  --slo-template llm.standard \
-  --seed 42
+  --quant fp16 \
+  --sweep 1,4,16,64 \
+  --base-url http://localhost:8000/v1 \
+  --output ./results
 ```
 
-Expected output:
+Expected output (Rich table, abridged):
 
 ```
-Run id:    01J7Q5C6...
-Model:     meta-llama/Llama-4-Maverick @ fp8 on H100-SXM5-80GB
-Engine:    vllm 0.7.2
-Metrics:
-  ttft_p50_ms          142.0
-  ttft_p99_ms          280.3
-  tpot_p50_ms           18.5
-  throughput_tok_s    1842.1
-  goodput_at_slo       142.3 req/s
-Envelope: ~/.cache/inferencebench/runs/01J7Q5C6.../envelope.json
-Signed:   sigstore-cosign (rekor log index 12345)
+                       Sweep results (concurrency)
+ conc  throughput_tok_per_s  ttft_p50_ms  tpot_p50_ms  ok_rate  J/tok  envelope
+ 1     122.2                 13.98        6.48         1.000    7.239  c1-814953250c16.json
+ 4     580.3                 22.75        6.59         1.000    1.631  c4-4a7ac8857dbf.json
+ 16    1384                  41.69        10.94        1.000    0.700  c16-60be8efd6d21.json
+ 64    1312                  86.92        46.91        1.000    0.691  c64-fed81eb00398.json
 ```
 
-## Arguments
+One signed envelope JSON is written per sweep point under `--output`.
 
-| Argument | Required | Description |
+## Flags
+
+| Flag | Default | Description |
 |---|---|---|
-| `suite-id` | yes | Suite identifier, e.g. `llm.inference`. |
-
-## Options
-
-| Option | Default | Description |
-|---|---|---|
-| `--model` | `""` | Provider-prefixed model id, e.g. `meta-llama/Llama-4-Maverick`. |
-| `--engine` | `vllm` | Inference engine. Phase 1 ships vLLM only. |
-| `--hardware` | `h100` | Hardware class for documentation purposes. |
+| `--model` | `""` | Provider-prefixed model id (e.g. `meta-llama/Llama-3.1-8B-Instruct`). |
+| `--engine` | `vllm` | Inference engine. vLLM ships; SGLang skeleton present. |
+| `--hardware` | `h100` | Hardware class string recorded on the envelope. |
 | `--quant` | `fp16` | Quantization format: `fp16`, `fp8`, `nvfp4`, `awq-int4`, etc. |
-| `--concurrency` | `1` | Comma-separated concurrency levels (e.g. `1,4,16,64`). |
-| `--dataset` | `""` | Dataset id (defaults to suite default). |
-| `--duration` | `300` | Measurement duration in seconds, per concurrency. |
+| `--concurrency` | `1` | Comma-separated levels (single-point uses the first; sweeps use `--sweep`). |
+| `--rps` | `0.0` | Open-loop arrival rate (req/s); switches to open-loop driver. |
+| `--sweep` | `""` | Closed-loop concurrency points, one envelope per point. Mutually exclusive with `--concurrency` and `--rps-sweep`. |
+| `--rps-sweep` | `""` | Open-loop RPS points, one envelope per point. Mutually exclusive with `--rps` and `--sweep`. |
+| `--all-benchmarks` | off | Run every spec the plugin exposes. Mutually exclusive with `--list`, `--sweep`, `--rps-sweep`. |
+| `--list` | off | Print this plugin's bundled benchmark ids and exit. |
+| `--dataset` | `""` | Dataset id override (falls back to the spec default). |
+| `--duration` | `300` | Measurement duration in seconds. |
 | `--slo-template` | `llm.standard` | SLO template id. |
-| `--seed` | `42` | Random seed for reproducibility. |
-| `--output` | auto | Output path for the signed envelope. |
+| `--seed` | `42` | Random seed. |
+| `--base-url` | `""` | Engine base URL (e.g. `http://localhost:8000/v1`). |
+| `--output` | `./results` | Directory for the signed envelope(s). |
+| `--signing-mode` | `dev` | `dev` (local cosign key) or `keyless` (Sigstore OIDC). |
+| `--dev-key` | `cosign.key` | Path to local cosign signing key when `--signing-mode=dev`. |
+| `--strict` | off | Treat `plugin.validate()` warnings as fatal. |
+
+## Sweep semantics
+
+`--sweep` produces N envelopes — one per concurrency. The sweep table at the end is a quick readout; the canonical record is the per-point JSON. Sweep exit code is `0` only if every point landed `ok_rate >= 0.95`.
+
+See [Recipes: concurrency sweep](../recipes/concurrency-sweep.md) for the end-to-end workflow on real H100 numbers.
 
 ## What the harness does
 
-1. Validates the plugin and the dataset hash.
-2. Runs three warm-up iterations and discards them.
-3. Enforces the convergence gate (coefficient of variation < 5% across the last 30 requests).
-4. Drives traffic with an open-loop Poisson driver at each concurrency.
-5. Samples NVML (50 ms) and RAPL (100 ms) telemetry the entire run.
-6. Collects the hardware fingerprint, software provenance, dataset hash, seed.
-7. Builds an envelope and signs it.
+1. Resolves the plugin via the `inferencebench.plugins` entry-point group.
+2. Validates the spec against the run context.
+3. Drives traffic at each requested concurrency / RPS.
+4. Samples NVML and (when available) RAPL telemetry the entire run.
+5. Collects the hardware fingerprint, software provenance, dataset hash, seed.
+6. Builds an envelope and signs it (dev key by default).
 
-## Where results land
+## Output
 
 ```
-~/.cache/inferencebench/runs/<run-id>/
-  envelope.json
-  traces.parquet
-  doctor-report.json
-  logs/
+./results/
+  c1-<hash>.json
+  c4-<hash>.json
+  c16-<hash>.json
+  c64-<hash>.json
 ```
 
-The path can be overridden with `--output`.
-
-## Phase 1 status
-
-`bench run` is a stub in v0.0.0. The harness wires in during the v0.1 release. The current stub prints the parsed arguments and exits 0.
+The first 12 hex of the envelope's `content_hash` prefixes each filename.
 
 ## See also
 
 - [bench doctor](bench-doctor.md) — run before `bench run` to catch unsafe hardware state
+- [bench summary](bench-summary.md) — tabulate a directory of envelopes
+- [Recipes: concurrency sweep](../recipes/concurrency-sweep.md)
 - [Reproducibility](../concepts/reproducibility.md)
-- [llm.inference plugin reference](../plugins/llm-inference.md)

@@ -1,76 +1,59 @@
 # bench doctor
 
-Diagnose hardware health before benchmarking. Refuses to continue if the system is in a state that would produce unreliable numbers.
+Diagnose hardware health before benchmarking. Refuses (exit `1`) when the system is in a state that would produce unreliable numbers — thermal throttling, ECC errors, driver drift, persistence disabled, etc.
+
+## Synopsis
 
 ```bash
 bench doctor [--strict]
 ```
 
-## Example
+## Example: healthy 8×H100 node
 
 ```bash
 bench doctor
 ```
 
-Expected output (healthy node):
+Expected output:
 
 ```
-Hardware diagnostic
-Check                Status   Detail
-NVML available       PASS     12 GPUs visible
-Driver version       PASS     560.35.03
-ECC enabled          PASS     enabled on all GPUs
-Persistence mode     PASS     enabled
-Thermal headroom     PASS     all GPUs < 75 degC
-Clock state          PASS     no throttling flags
+                    Hardware diagnostic
+ Check                Status  Detail
+ NVML available       PASS    8 GPUs visible
+ Driver version       PASS    560.35.03
+ ECC enabled          PASS    enabled on all GPUs
+ Persistence mode     PASS    enabled
+ Thermal headroom     PASS    all GPUs < 75 degC
+ Clock state          PASS    no throttling flags
 OK — all checks passed.
 ```
 
-Expected output (refusal):
+Refusal example:
 
 ```
-Hardware diagnostic
-Check                Status   Detail
-NVML available       PASS     12 GPUs visible
-Thermal headroom     FAIL     GPU 4 at 87 degC, throttling
-Clock state          FAIL     SW_THERMAL_SLOWDOWN active on GPU 4
+ Thermal headroom     FAIL    GPU 4 at 87 degC, throttling
+ Clock state          FAIL    SW_THERMAL_SLOWDOWN active on GPU 4
 REFUSED — 2 FAIL. Resolve hardware issues before benchmarking.
 ```
 
-Exit code is `0` if all checks pass, `1` otherwise.
+Exit code is `0` if all checks pass, `1` otherwise. On a CPU-only host, all checks are skipped and the command exits `0` with `No checks ran (no NVIDIA GPUs detected).`
 
-## Options
+## Flags
 
-| Option | Default | Description |
+| Flag | Default | Description |
 |---|---|---|
-| `--strict` | off | Treat `WARN` as failure. By default, `bench doctor` only fails on `FAIL`. |
+| `--strict` | off | Treat `WARN` as failure. Default only fails on `FAIL`. |
 
-## Refusal modes
+## Checks
 
-`bench doctor` refuses (exit 1) when any of the following are true:
-
-- Thermal throttling flags are set
-- ECC errors are present (correctable or uncorrectable)
-- Driver version is below the minimum supported
-- Persistence mode is disabled (clock ramp-up adds noise)
-- GPU clock state is not at expected base/boost levels
-
-With `--strict`, the diagnostic also refuses on warnings such as elevated idle temperatures or a non-stable BIOS configuration.
-
-## What the diagnostic checks
-
-| Check | What it verifies |
+| Check | Verifies |
 |---|---|
-| NVML available | The NVIDIA Management Library is loadable and at least one GPU is visible. |
+| NVML available | NVML is loadable and at least one GPU is visible. |
 | Driver version | Driver is at or above the supported floor. |
 | ECC enabled | ECC is on for every GPU we will measure. |
-| Persistence mode | `nvidia-persistenced` is running. |
+| Persistence mode | `nvidia-persistenced` is running (clock-ramp noise off). |
 | Thermal headroom | All GPUs are below the throttle temperature. |
 | Clock state | No throttling flags (`SW_THERMAL_SLOWDOWN`, `HW_SLOWDOWN`, etc.). |
-
-## When the diagnostic skips checks
-
-On a CPU-only node, `bench doctor` exits 0 without running any check and prints `No checks ran (no NVIDIA GPUs detected).` Plugins that require a GPU will themselves refuse to run.
 
 ## See also
 

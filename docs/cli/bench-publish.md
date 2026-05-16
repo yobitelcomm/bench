@@ -1,59 +1,77 @@
 # bench publish
 
-Mirror a signed envelope to Hugging Face Hub or a local archive.
+Publish a signed envelope to Hugging Face Hub or a local filesystem mirror. The local mirror writes a self-describing `index.json` so a directory of envelopes is replayable as a static catalogue.
+
+## Synopsis
 
 ```bash
-bench publish <run-id-or-path> [--to hf|local] [--tag <tag>]
+bench publish <envelope.json> [--to hf|local] [--tag TAG] [--org ORG] [--dry-run]
 ```
 
-## Example
+## Example: publish to HF Hub
 
 ```bash
 export HF_TOKEN=hf_xxx
-bench publish ~/.cache/inferencebench/runs/latest --to hf --tag fp8-baseline
+bench publish ./results/c16-60be8efd6d21.json \
+  --to hf \
+  --org yobitel-bench-results \
+  --tag llama-3.1-8b-conc16
 ```
 
 Expected output:
 
 ```
-Verifying envelope... OK
-Creating dataset repo... yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6
-Uploading envelope.json... done
-Uploading traces.parquet... done
-Rendering README.md... done
-Published: https://huggingface.co/datasets/yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6
+OK published llm.inference.chatbot-short run to https://huggingface.co/datasets/yobitel-bench-results/...
+  tag:           llama-3.1-8b-conc16
+  repo_id:       yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+  files:         3
+  verified:      True
 ```
 
-## Arguments
+## Example: local mirror with index
 
-| Argument | Required | Description |
+```bash
+bench publish ./results/c16-60be8efd6d21.json --to local --workspace ./bench-mirror
+```
+
+Writes:
+
+```
+./bench-mirror/
+  llm-inference-chatbot-short/
+    60be8efd6d21.json
+  index.json
+```
+
+The `index.json` carries one entry per published envelope (suite, model, content hash, signed flag, optional tag, timestamp), sorted by timestamp desc.
+
+## Flags
+
+| Flag | Default | Description |
 |---|---|---|
-| `run_id` | yes | Run ID or envelope path. |
+| `--to` | `hf` | `hf` (Hugging Face Hub) or `local` (filesystem mirror). `studio` is Phase 2+ and exits with a hint. |
+| `--workspace` | `""` | Local mirror root (`--to local`). Defaults to `./bench-mirror`. |
+| `--tag` | `""` | Optional tag recorded with the publish. |
+| `--org` | `yobitel-bench-results` | HF organisation namespace (`--to hf`). |
+| `--dry-run` / `--no-dry-run` | off | Plan the publish without touching the network or filesystem. |
+| `--raw-traces` | none | Path to an optional parquet of per-request traces uploaded alongside. |
+| `--update-model-card` | off | Best-effort append a backlink entry to the source model card. |
 
-## Options
+## Auth (Hugging Face)
 
-| Option | Default | Description |
-|---|---|---|
-| `--to` | `hf` | Target: `hf` (Hugging Face Hub), `local` (a `.bench` archive), or `studio` (Phase 2). |
-| `--workspace` | `""` | Workspace id (Studio only, Phase 2). |
-| `--tag` | `""` | Optional tag attached to the publish. |
+`--to hf` requires `HF_TOKEN` (or `HUGGINGFACE_HUB_TOKEN`) in the environment, or a prior `huggingface-cli login`. Without one, the command exits `2` unless `--dry-run` is set.
 
-## Auth
+## Failure modes
 
-`bench publish --to hf` requires the `HF_TOKEN` environment variable. The token needs write access to the target organization (`yobitel-bench-results` for production; a personal user namespace also works).
-
-## What gets uploaded
-
-- `envelope.json` — the canonical signed envelope
-- `traces.parquet` — per-request raw traces, if present
-- `README.md` — auto-rendered metrics card with headline numbers and a Sigstore verification snippet
-- Dataset card metadata — YAML frontmatter with envelope fields for discoverability
-
-## Phase 1 status
-
-`bench publish` is a stub in v0.0.0. The Hugging Face publishing integration wires in during the v0.1 release.
+| Error | Exit |
+|---|---|
+| Repo collision (envelope's `run_id` already exists in the target org) | `1` |
+| HF rate-limit | `1` |
+| Token missing without `--dry-run` | `2` |
+| Envelope file not found / schema-invalid | `2` |
 
 ## See also
 
+- [bench verify](bench-verify.md) — verify before publishing
+- [bench fetch](bench-fetch.md) — round-trip a published envelope back to local
 - [Hugging Face Hub integration](../integrations/huggingface-hub.md)
-- [bench verify](bench-verify.md)
