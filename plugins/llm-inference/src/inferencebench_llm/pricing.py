@@ -158,6 +158,20 @@ def models_for(provider: str) -> list[str]:
     return sorted(m for p, m in _REGISTRY if p == provider.lower())
 
 
+def providers_for(model: str) -> list[ModelPricing]:
+    """List ``ModelPricing`` entries registered for one canonical model id, sorted by provider.
+
+    Used when we have a model id and want to know which providers serve it.
+    The model id is the canonical HF-style id (e.g. ``meta-llama/Llama-3.1-8B-Instruct``);
+    callers should strip routing prefixes like ``openai/`` before looking up.
+    """
+    key = model.strip()
+    return sorted(
+        (entry for (_, m), entry in _REGISTRY.items() if m == key),
+        key=lambda e: e.provider,
+    )
+
+
 def estimate_cost(
     provider: str,
     model: str,

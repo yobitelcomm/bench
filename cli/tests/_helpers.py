@@ -57,7 +57,7 @@ def _hardware_fp() -> HardwareFingerprint:
 def make_envelope(
     *,
     model_id: str,
-    metrics: dict[str, float | int | None],
+    metrics: dict[str, float | int | str | None],
     run_id: str = "01934567-89ab-7000-8000-000000000000",
     suite_id: str = "llm.inference",
 ) -> Envelope:

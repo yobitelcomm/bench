@@ -507,6 +507,234 @@ def _print_summary(envelope: Envelope, out_path: Path, content_hash: str) -> Non
         )
 
 
+def _resolve_engine_kind(ep: EntryPoint, engine: str) -> tuple[type[Any], Any]:
+    """Resolve (RunContext class, engine_kind value) from a plugin + CLI engine flag."""
+    try:
+        run_context_cls, engine_kind_cls = _resolve_plugin_schemas(ep)
+    except RuntimeError as exc:
+        err_console.print(f"[red]{exc}[/red]")
+        raise typer.Exit(code=1) from exc
+
+    try:
+        engine_kind = engine_kind_cls(engine)
+    except ValueError as exc:
+        err_console.print(f"[red]Unknown engine:[/red] {engine}")
+        raise typer.Exit(code=1) from exc
+    return run_context_cls, engine_kind
+
+
+def _validate_all_benchmarks_flags(
+    *,
+    suite_id: str,
+    full_id: str | None,
+    list_: bool,
+    sweep_points: list[int] | list[float] | None,
+) -> None:
+    """Raise typer.Exit if --all-benchmarks is combined with an incompatible flag."""
+    if list_:
+        err_console.print(
+            "[red]--all-benchmarks and --list are mutually exclusive.[/red]"
+        )
+        raise typer.Exit(code=1)
+    if sweep_points is not None:
+        err_console.print(
+            "[red]--all-benchmarks is mutually exclusive with --sweep and --rps-sweep.[/red]"
+        )
+        raise typer.Exit(code=1)
+    if full_id is not None:
+        err_console.print(
+            "[red]--all-benchmarks requires a plugin id (e.g. 'llm.inference'), "
+            f"not a fully-qualified benchmark id:[/red] {suite_id}"
+        )
+        raise typer.Exit(code=1)
+
+
+def _run_all_benchmarks(
+    *,
+    plugin: Any,  # noqa: ANN401
+    specs: list[Any],
+    run_context_cls: type[Any],
+    engine_kind: Any,  # noqa: ANN401
+    model: str,
+    base_url: str,
+    quant: str,
+    hardware: str,
+    output_dir: Path,
+    signing_extra: dict[str, str | int | float | bool],
+    concurrency: str,
+    duration_s: int,
+    rps: float,
+    strict: bool,
+) -> None:
+    """Run every benchmark spec the plugin exposes, one envelope per spec.
+
+    Per-benchmark failures are logged in yellow and the loop continues; exit
+    code is 0 iff at least one benchmark completed with ok_rate >= 0.95.
+    """
+    summary_rows: list[dict[str, Any]] = []
+    any_pass = False
+
+    for idx, spec in enumerate(specs):
+        extra: dict[str, str | int | float | bool] = dict(signing_extra)
+        _merge_driver_overrides(
+            extra, concurrency=concurrency, duration_s=duration_s, rps=rps
+        )
+
+        try:
+            ctx = run_context_cls(
+                model_id=model,
+                engine_kind=engine_kind,
+                base_url=base_url,
+                quantization_format=quant,
+                hardware_class=hardware,
+                output_dir=output_dir,
+                extra=extra,
+            )
+        except Exception as exc:
+            err_console.print(
+                f"[yellow]warning:[/yellow] invalid run context for "
+                f"{spec.benchmark_id}: {exc} — skipping."
+            )
+            summary_rows.append(
+                {
+                    "benchmark_id": spec.benchmark_id,
+                    "envelope_path": "-",
+                    "error": str(exc),
+                    "ok_rate": None,
+                    "metrics": {},
+                    "model_id": model or "-",
+                }
+            )
+            continue
+
+        warnings = list(plugin.validate(spec, ctx) or [])
+        for w in warnings:
+            err_console.print(f"[yellow]warning:[/yellow] {w}")
+        if warnings and strict:
+            err_console.print(
+                f"[yellow]warning:[/yellow] --strict — skipping {spec.benchmark_id}."
+            )
+            summary_rows.append(
+                {
+                    "benchmark_id": spec.benchmark_id,
+                    "envelope_path": "-",
+                    "error": "strict-mode validate warnings",
+                    "ok_rate": None,
+                    "metrics": {},
+                    "model_id": model or "-",
+                }
+            )
+            continue
+
+        status_label = (
+            f"[bold]Benchmark {idx + 1}/{len(specs)}[/bold] — "
+            f"{spec.benchmark_id}"
+        )
+        try:
+            with Status(status_label, console=err_console):
+                envelope = plugin.run(spec, ctx)
+        except Exception as exc:
+            err_console.print(
+                f"[yellow]warning:[/yellow] benchmark {spec.benchmark_id} failed: "
+                f"{exc} — continuing."
+            )
+            summary_rows.append(
+                {
+                    "benchmark_id": spec.benchmark_id,
+                    "envelope_path": "-",
+                    "error": str(exc),
+                    "ok_rate": None,
+                    "metrics": {},
+                    "model_id": model or "-",
+                }
+            )
+            continue
+
+        bench_slug = spec.benchmark_id.replace(".", "-")
+        out_path, _content_hash = _write_envelope(envelope, output_dir, prefix=bench_slug)
+        ok_rate = envelope.metrics.get("ok_rate")
+        throughput = envelope.metrics.get("throughput_tok_per_s")
+        tput_str = (
+            f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
+        )
+        ok_str = (
+            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
+        )
+        console.print(
+            f"[green]ok[/green] {spec.benchmark_id}  "
+            f"model={envelope.model.id}  "
+            f"throughput_tok_per_s={tput_str}  "
+            f"ok_rate={ok_str}  "
+            f"→ {out_path.name}"
+        )
+        if isinstance(ok_rate, int | float) and ok_rate >= 0.95:
+            any_pass = True
+        summary_rows.append(
+            {
+                "benchmark_id": spec.benchmark_id,
+                "envelope_path": str(out_path),
+                "error": None,
+                "ok_rate": ok_rate,
+                "metrics": dict(envelope.metrics),
+                "model_id": envelope.model.id,
+            }
+        )
+
+    _print_all_benchmarks_table(summary_rows)
+    if not any_pass:
+        raise typer.Exit(code=1)
+
+
+def _print_all_benchmarks_table(rows: list[dict[str, Any]]) -> None:
+    table = Table(title="All-benchmarks results")
+    table.add_column("benchmark_id", style="cyan", no_wrap=True)
+    table.add_column("throughput_tok_per_s", justify="right")
+    table.add_column("ttft_p50_ms", justify="right")
+    table.add_column("ttft_p99_ms", justify="right")
+    table.add_column("tpot_p50_ms", justify="right")
+    table.add_column("total_p50_ms", justify="right")
+    table.add_column("ok_rate", justify="right")
+    table.add_column("envelope", style="dim")
+
+    def _fmt(metrics: dict[str, Any], key: str) -> str:
+        v = metrics.get(key)
+        if isinstance(v, int | float):
+            return f"{v:.4g}"
+        return "-"
+
+    for row in rows:
+        if row["error"]:
+            table.add_row(
+                row["benchmark_id"],
+                "[red]ERROR[/red]",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                row["error"][:40],
+            )
+            continue
+        metrics = row["metrics"]
+        ok_rate = row["ok_rate"]
+        ok_cell = (
+            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
+        )
+        if isinstance(ok_rate, int | float) and ok_rate < 0.95:
+            ok_cell = f"[red]{ok_cell}[/red]"
+        table.add_row(
+            row["benchmark_id"],
+            _fmt(metrics, "throughput_tok_per_s"),
+            _fmt(metrics, "ttft_p50_ms"),
+            _fmt(metrics, "ttft_p99_ms"),
+            _fmt(metrics, "tpot_p50_ms"),
+            _fmt(metrics, "total_p50_ms"),
+            ok_cell,
+            Path(row["envelope_path"]).name if row["envelope_path"] != "-" else "-",
+        )
+    console.print(table)
+
+
 # --------------------------------------------------------------------------- #
 # CLI command                                                                 #
 # --------------------------------------------------------------------------- #
@@ -604,6 +832,17 @@ def run(
             ),
         ),
     ] = "",
+    all_benchmarks: Annotated[
+        bool,
+        typer.Option(
+            "--all-benchmarks",
+            help=(
+                "Run every benchmark exposed by the plugin (one envelope per "
+                "spec). Mutually exclusive with --list, --sweep, --rps-sweep, "
+                "and a fully-qualified suite_id."
+            ),
+        ),
+    ] = False,
 ) -> None:
     """Run a benchmark from the named suite and emit a signed envelope."""
     sweep_points, sweep_kind = _resolve_sweep_flags(
@@ -615,6 +854,15 @@ def run(
 
     eps = _entry_points()
     plugin_name, full_id = _split_suite_id(suite_id)
+
+    if all_benchmarks:
+        _validate_all_benchmarks_flags(
+            suite_id=suite_id,
+            full_id=full_id,
+            list_=list_,
+            sweep_points=sweep_points,
+        )
+
     ep = _find_entry_point(eps, plugin_name, suite_id)
 
     try:
@@ -635,17 +883,7 @@ def run(
 
     spec = _select_spec(specs, full_id, ep.name)
 
-    try:
-        run_context_cls, engine_kind_cls = _resolve_plugin_schemas(ep)
-    except RuntimeError as exc:
-        err_console.print(f"[red]{exc}[/red]")
-        raise typer.Exit(code=1) from exc
-
-    try:
-        engine_kind = engine_kind_cls(engine)
-    except ValueError as exc:
-        err_console.print(f"[red]Unknown engine:[/red] {engine}")
-        raise typer.Exit(code=1) from exc
+    run_context_cls, engine_kind = _resolve_engine_kind(ep, engine)
 
     output_dir = Path(output) if output else Path.cwd() / "results"
     signing_extra = _build_signing_extra(signing_mode, dev_key)
@@ -665,6 +903,25 @@ def run(
             duration_s=duration,
             sweep_kind=sweep_kind,
             points=sweep_points,
+            strict=strict,
+        )
+        return
+
+    if all_benchmarks:
+        _run_all_benchmarks(
+            plugin=plugin,
+            specs=specs,
+            run_context_cls=run_context_cls,
+            engine_kind=engine_kind,
+            model=model,
+            base_url=base_url,
+            quant=quant,
+            hardware=hardware,
+            output_dir=output_dir,
+            signing_extra=signing_extra,
+            concurrency=concurrency,
+            duration_s=duration,
+            rps=rps,
             strict=strict,
         )
         return

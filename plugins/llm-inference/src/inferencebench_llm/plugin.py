@@ -43,6 +43,7 @@ from inferencebench.harness.convergence import ConvergenceGate
 from inferencebench.harness.metrics import SLOPredicate, summarise_energy
 from inferencebench_llm.datasets import compute_dataset_hash, load_prompts
 from inferencebench_llm.engines import Engine, EngineUnavailableError, SGLangEngine, VLLMEngine
+from inferencebench_llm.pricing import providers_for
 from inferencebench_llm.schemas import BenchmarkSpec, EngineKind, RunContext
 
 if TYPE_CHECKING:
@@ -59,6 +60,49 @@ def _json_num(v: float) -> str:
 def _json_str(v: str | None) -> str:
     """JSON-safe string encoder."""
     return json.dumps(v if v is not None else "")
+
+
+# Blended input/output weighting for the reference-cost fallback. Matches
+# ``bench cost``'s default (3:1 input:output).
+_BLEND_INPUT_SHARE = 0.75
+_BLEND_OUTPUT_SHARE = 1.0 - _BLEND_INPUT_SHARE
+
+
+def _strip_routing_prefix(model_id: str) -> str:
+    """Strip LiteLLM-style routing prefixes (e.g. ``openai/``) from a model id.
+
+    The pricing registry stores canonical HF model ids; users who plumb in
+    ``openai/meta-llama/Llama-3.1-8B-Instruct`` should still hit the registry.
+    Mirrors ``lookup()``'s prefix tolerance in :mod:`inferencebench_llm.pricing`.
+    """
+    if model_id.startswith("openai/"):
+        return model_id[len("openai/") :]
+    return model_id
+
+
+def _registry_reference_cost(model_id: str) -> tuple[float, str] | None:
+    """Return ``(blended_rate_usd_per_million, cheapest_provider)`` for ``model_id``.
+
+    Returns ``None`` if no provider in the bundled registry offers this model —
+    callers should omit the cost metric entirely in that case rather than emit
+    a misleading zero.
+    """
+    canonical = _strip_routing_prefix(model_id)
+    entries = providers_for(canonical)
+    if not entries:
+        return None
+    best = min(
+        entries,
+        key=lambda e: (
+            _BLEND_INPUT_SHARE * e.input_per_million_usd
+            + _BLEND_OUTPUT_SHARE * e.output_per_million_usd
+        ),
+    )
+    blended = (
+        _BLEND_INPUT_SHARE * best.input_per_million_usd
+        + _BLEND_OUTPUT_SHARE * best.output_per_million_usd
+    )
+    return blended, best.provider
 
 
 # --------------------------------------------------------------------------- #
@@ -328,7 +372,7 @@ class LLMInferencePlugin:
             if ds_hash.startswith("sha256:"):
                 ds_hash = ds_hash[len("sha256:") :]
 
-        metrics: dict[str, float | int | None] = {}
+        metrics: dict[str, float | int | str | None] = {}
         if result.ttft_percentiles is not None:
             metrics["ttft_p50_ms"] = result.ttft_percentiles.p50
             metrics["ttft_p99_ms"] = result.ttft_percentiles.p99
@@ -351,9 +395,18 @@ class LLMInferencePlugin:
         cost_total = sum(s.cost_usd for s in result.samples if s.ok)
         # Only emit cost if the provider actually reported one. A 0.0 here is
         # not "free" — it's "no pricing data" and would be misleading on the
-        # leaderboard. Self-hosted vLLM never reports cost; that's expected.
+        # leaderboard. Self-hosted vLLM never reports cost; in that case we
+        # fall back to the bundled pricing registry's cheapest blended rate,
+        # tagging the source so consumers can tell measured from reference cost.
         if tokens_out_total and cost_total > 0:
             metrics["cost_usd_per_million_tokens"] = (cost_total / tokens_out_total) * 1e6
+            metrics["cost_source"] = "provider"
+        else:
+            registry_cost = _registry_reference_cost(context.model_id)
+            if registry_cost is not None:
+                rate, provider = registry_cost
+                metrics["cost_usd_per_million_tokens"] = rate
+                metrics["cost_source"] = f"registry:{provider}"
 
         # Energy / power summary from telemetry
         energy = summarise_energy(

@@ -108,9 +108,9 @@ def _group_by_suite(
 # Field accessors                                                             #
 # --------------------------------------------------------------------------- #
 def _metric(env: Envelope, key: str) -> float | None:
-    """Pull a metric out as a float, ``None`` if absent/null."""
+    """Pull a metric out as a float, ``None`` if absent/null/non-numeric."""
     value = env.metrics.get(key)
-    if value is None:
+    if value is None or isinstance(value, str):
         return None
     return float(value)
 

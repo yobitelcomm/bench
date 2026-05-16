@@ -245,9 +245,16 @@ class Envelope(_Base):
     dataset: DatasetSpec
     seed: int
     driver_options: dict[str, Any] = Field(default_factory=dict)
-    metrics: dict[str, float | int | None] = Field(
+    metrics: dict[str, float | int | str | None] = Field(
         default_factory=dict,
-        description="Per-suite metrics, free-form. Validated by plugin's render_leaderboard.",
+        description=(
+            "Per-suite metrics, free-form. Validated by plugin's render_leaderboard. "
+            "Values are usually numeric (the common case) but may be strings for "
+            "qualitative tags such as ``cost_source = 'provider' | 'registry:<provider>'``. "
+            "Backwards-compat is preserved: pre-string-aware consumers reading "
+            "the historical numeric keys are unaffected, and unknown keys are "
+            "simply ignored by older readers."
+        ),
     )
     distributions: dict[str, str] = Field(
         default_factory=dict,
@@ -307,7 +314,7 @@ class EnvelopeBuilder:
         hardware_fingerprint: HardwareFingerprint,
         software_provenance: SoftwareProvenance,
         dataset: DatasetSpec,
-        metrics: dict[str, float | int | None],
+        metrics: dict[str, float | int | str | None],
         seed: int,
         quantization: Quantization | None = None,
         slo_template: str = "",

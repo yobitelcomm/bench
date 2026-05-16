@@ -189,9 +189,16 @@ def _direction(metric: str) -> Literal["lower", "higher", "unknown"]:
     return "unknown"
 
 
-def _as_float(value: float | int | None) -> float | None:
-    """Coerce a metric to ``float`` or ``None`` for null / NaN values."""
+def _as_float(value: float | int | str | None) -> float | None:
+    """Coerce a metric to ``float`` or ``None`` for null / NaN / non-numeric values.
+
+    String-valued metrics (e.g. ``cost_source = "registry:groq"``) collapse to
+    ``None`` here so the numeric diff machinery skips them gracefully — the
+    row still appears in the table but is classified as ``unknown`` / no-delta.
+    """
     if value is None:
+        return None
+    if isinstance(value, str):
         return None
     f = float(value)
     if math.isnan(f):

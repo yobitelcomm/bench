@@ -187,9 +187,9 @@ def _load_envelope(uri: str) -> Envelope:
 
 
 def _metric(env: Envelope, key: str) -> float | None:
-    """Pull a metric out of an envelope as a float, or ``None`` if absent/null."""
+    """Pull a metric out of an envelope as a float, ``None`` if absent/null/non-numeric."""
     value = env.metrics.get(key)
-    if value is None:
+    if value is None or isinstance(value, str):
         return None
     return float(value)
 

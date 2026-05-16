@@ -42,10 +42,16 @@ def _humanise_metric(key: str) -> tuple[str, str]:
     return label, ""
 
 
-def _format_value(value: float | int | None) -> str:
-    """Format a numeric metric value for display in the README table."""
+def _format_value(value: float | int | str | None) -> str:
+    """Format a metric value for display in the README table.
+
+    Strings (qualitative tags like ``cost_source = "registry:groq"``) pass
+    through unchanged; numeric values get the original formatting.
+    """
     if value is None:
         return "—"
+    if isinstance(value, str):
+        return value
     if isinstance(value, int):
         return f"{value}"
     # Keep at most 4 significant fractional digits, drop trailing zeros.

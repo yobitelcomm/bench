@@ -106,10 +106,12 @@ def _entry_payload(loaded: LoadedEnvelope, pareto: bool) -> dict[str, Any]:
     }
 
 
-def _format_metric(value: float | int | None) -> str:
-    """Human-readable metric cell."""
+def _format_metric(value: float | int | str | None) -> str:
+    """Human-readable metric cell. Strings pass through unchanged."""
     if value is None:
         return "—"
+    if isinstance(value, str):
+        return value
     if isinstance(value, int):
         return f"{value:,}"
     if abs(value) >= 100:
@@ -323,7 +325,7 @@ def render_site(
     )
 
 
-def _safe_float(value: float | int | None) -> float | None:
+def _safe_float(value: float | int | str | None) -> float | None:
     if value is None:
         return None
     try:
