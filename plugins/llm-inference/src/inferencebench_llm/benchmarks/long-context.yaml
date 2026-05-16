@@ -1,0 +1,33 @@
+benchmark_id: llm.inference.long-context
+suite_version: 1.0.0
+description: |
+  Open-loop Poisson long-context benchmark: longer prompts, throughput-sensitive.
+  Sweeps RPS over [0.5, 1, 2]; uses the bundled fallback prompts.
+modality: llm
+kind: perf
+dataset:
+  id: builtin-long-context
+  uri: builtin://
+  hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  sampling:
+    n: 200
+    seed: 42
+driver:
+  type: open_loop
+  arrival: poisson
+  rps: [0.5, 1, 2]
+  duration_s: 300
+slo_template: llm.relaxed
+metrics:
+  - ttft_p50_ms
+  - ttft_p99_ms
+  - tpot_p50_ms
+  - throughput_tok_per_s
+  - goodput_at_slo
+  - power_avg_w
+  - joules_per_token
+  - cost_usd_per_million_tokens
+warmup:
+  discard_runs: 3
+  convergence_cov_threshold: 0.05
+  convergence_window: 30

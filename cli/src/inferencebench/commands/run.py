@@ -175,14 +175,290 @@ def _build_signing_extra(
     return extra
 
 
-def _write_envelope(envelope: Envelope, output_dir: Path) -> tuple[Path, str]:
+def _write_envelope(
+    envelope: Envelope, output_dir: Path, *, prefix: str = ""
+) -> tuple[Path, str]:
     output_dir.mkdir(parents=True, exist_ok=True)
     content_hash = envelope.content_hash()
-    out_path = output_dir / f"{content_hash[:12]}.json"
+    fname = f"{prefix}-{content_hash[:12]}.json" if prefix else f"{content_hash[:12]}.json"
+    out_path = output_dir / fname
     tmp_path = out_path.with_suffix(".json.tmp")
     tmp_path.write_text(envelope.model_dump_json(indent=2), encoding="utf-8")
     os.replace(tmp_path, out_path)
     return out_path, content_hash
+
+
+def _parse_sweep_ints(raw: str, flag: str) -> list[int]:
+    """Parse ``--sweep`` into a list of positive ints; raise typer.Exit on bad input."""
+    out: list[int] = []
+    for tok in (t.strip() for t in raw.split(",") if t.strip()):
+        try:
+            value = int(tok)
+        except ValueError as exc:
+            err_console.print(
+                f"[red]Invalid {flag} value:[/red] {tok!r} is not an integer."
+            )
+            raise typer.Exit(code=1) from exc
+        if value <= 0:
+            err_console.print(
+                f"[red]Invalid {flag} value:[/red] {value} must be > 0."
+            )
+            raise typer.Exit(code=1)
+        out.append(value)
+    if not out:
+        err_console.print(f"[red]{flag} was empty after parsing.[/red]")
+        raise typer.Exit(code=1)
+    return out
+
+
+def _parse_sweep_floats(raw: str, flag: str) -> list[float]:
+    """Parse ``--rps-sweep`` into a list of positive floats; raise typer.Exit on bad input."""
+    out: list[float] = []
+    for tok in (t.strip() for t in raw.split(",") if t.strip()):
+        try:
+            value = float(tok)
+        except ValueError as exc:
+            err_console.print(
+                f"[red]Invalid {flag} value:[/red] {tok!r} is not a number."
+            )
+            raise typer.Exit(code=1) from exc
+        if value <= 0:
+            err_console.print(
+                f"[red]Invalid {flag} value:[/red] {value} must be > 0."
+            )
+            raise typer.Exit(code=1)
+        out.append(value)
+    if not out:
+        err_console.print(f"[red]{flag} was empty after parsing.[/red]")
+        raise typer.Exit(code=1)
+    return out
+
+
+def _resolve_sweep_flags(
+    *,
+    sweep: str,
+    rps_sweep: str,
+    concurrency: str,
+    rps: float,
+) -> tuple[list[int] | list[float] | None, str | None]:
+    """Validate sweep flags and return (points, sweep_kind) — both ``None`` if single-point."""
+    sweep_set = bool(sweep)
+    rps_sweep_set = bool(rps_sweep)
+    if sweep_set and rps_sweep_set:
+        err_console.print(
+            "[red]--sweep and --rps-sweep are mutually exclusive[/red] "
+            "(a run is either closed-loop or open-loop)."
+        )
+        raise typer.Exit(code=1)
+    if sweep_set and concurrency != "1":
+        err_console.print(
+            "[red]--sweep and --concurrency are mutually exclusive[/red] "
+            "(use --sweep alone for a multi-point closed-loop run)."
+        )
+        raise typer.Exit(code=1)
+    if rps_sweep_set and rps > 0:
+        err_console.print(
+            "[red]--rps-sweep and --rps are mutually exclusive[/red] "
+            "(use --rps-sweep alone for a multi-point open-loop run)."
+        )
+        raise typer.Exit(code=1)
+    if sweep_set:
+        return _parse_sweep_ints(sweep, "--sweep"), "concurrency"
+    if rps_sweep_set:
+        return _parse_sweep_floats(rps_sweep, "--rps-sweep"), "rps"
+    return None, None
+
+
+def _format_rps_point(value: float) -> str:
+    """Render an RPS point compactly for filenames + table rows."""
+    if value == int(value):
+        return f"rps{int(value)}"
+    return f"rps{value:g}".replace(".", "p")
+
+
+def _run_sweep(
+    *,
+    plugin: Any,  # noqa: ANN401
+    spec: Any,  # noqa: ANN401
+    run_context_cls: type[Any],
+    engine_kind: Any,  # noqa: ANN401
+    model: str,
+    base_url: str,
+    quant: str,
+    hardware: str,
+    output_dir: Path,
+    signing_extra: dict[str, str | int | float | bool],
+    duration_s: int,
+    sweep_kind: str,
+    points: list[int] | list[float],
+    strict: bool,
+) -> None:
+    """Run a closed-loop or open-loop sweep, one envelope per point.
+
+    ``sweep_kind`` is ``"concurrency"`` (closed-loop) or ``"rps"`` (open-loop).
+    Exits 0 iff every point completed with ok_rate >= 0.95.
+    """
+    summary_rows: list[dict[str, Any]] = []
+    any_failure = False
+    validated = False
+
+    for idx, point in enumerate(points):
+        extra: dict[str, str | int | float | bool] = dict(signing_extra)
+        if duration_s:
+            extra["duration_s"] = int(duration_s)
+        if sweep_kind == "concurrency":
+            extra["concurrency"] = int(point)
+            extra["driver_type"] = "closed_loop"
+            point_label = str(int(point))
+            file_prefix = f"c{int(point)}"
+        else:
+            extra["rps"] = float(point)
+            extra["driver_type"] = "open_loop"
+            point_label = f"{float(point):g}"
+            file_prefix = _format_rps_point(float(point))
+
+        try:
+            ctx = run_context_cls(
+                model_id=model,
+                engine_kind=engine_kind,
+                base_url=base_url,
+                quantization_format=quant,
+                hardware_class=hardware,
+                output_dir=output_dir,
+                extra=extra,
+            )
+        except Exception as exc:
+            err_console.print(f"[red]Invalid run context for point {point_label}:[/red] {exc}")
+            raise typer.Exit(code=1) from exc
+
+        if not validated:
+            warnings = list(plugin.validate(spec, ctx) or [])
+            for w in warnings:
+                err_console.print(f"[yellow]warning:[/yellow] {w}")
+            if warnings and strict:
+                err_console.print("[red]Refusing to run: --strict was set.[/red]")
+                raise typer.Exit(code=1)
+            validated = True
+
+        status_label = (
+            f"[bold]Sweep {idx + 1}/{len(points)}[/bold] — "
+            f"{sweep_kind}={point_label}"
+        )
+        try:
+            with Status(status_label, console=err_console):
+                envelope = plugin.run(spec, ctx)
+        except Exception as exc:
+            err_console.print(
+                f"[red]Sweep point {point_label} failed:[/red] {exc}"
+            )
+            err_console.print("[red]" + traceback.format_exc() + "[/red]")
+            any_failure = True
+            summary_rows.append(
+                {
+                    "point": point_label,
+                    "envelope_path": "-",
+                    "error": str(exc),
+                    "ok_rate": None,
+                    "metrics": {},
+                    "model_id": model or "-",
+                }
+            )
+            continue
+
+        out_path, _content_hash = _write_envelope(envelope, output_dir, prefix=file_prefix)
+        ok_rate = envelope.metrics.get("ok_rate")
+        throughput = envelope.metrics.get("throughput_tok_per_s")
+        tput_str = (
+            f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
+        )
+        ok_str = (
+            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
+        )
+        console.print(
+            f"[green]ok[/green] {sweep_kind}={point_label}  "
+            f"model={envelope.model.id}  "
+            f"throughput_tok_per_s={tput_str}  "
+            f"ok_rate={ok_str}  "
+            f"→ {out_path.name}"
+        )
+        if not (isinstance(ok_rate, int | float) and ok_rate >= 0.95):
+            any_failure = True
+        summary_rows.append(
+            {
+                "point": point_label,
+                "envelope_path": str(out_path),
+                "error": None,
+                "ok_rate": ok_rate,
+                "metrics": dict(envelope.metrics),
+                "model_id": envelope.model.id,
+            }
+        )
+
+    _print_sweep_table(sweep_kind, summary_rows)
+    if any_failure:
+        raise typer.Exit(code=1)
+
+
+def _print_sweep_table(sweep_kind: str, rows: list[dict[str, Any]]) -> None:
+    point_col = "concurrency" if sweep_kind == "concurrency" else "rps"
+    table = Table(title=f"Sweep results ({sweep_kind})")
+    table.add_column(point_col, style="cyan", no_wrap=True)
+    table.add_column("throughput_tok_per_s", justify="right")
+    table.add_column("ttft_p50_ms", justify="right")
+    table.add_column("ttft_p99_ms", justify="right")
+    table.add_column("tpot_p50_ms", justify="right")
+    table.add_column("total_p50_ms", justify="right")
+    table.add_column("ok_rate", justify="right")
+    table.add_column("compliance_rate", justify="right")
+    table.add_column("power_avg_w", justify="right")
+    table.add_column("joules_per_token", justify="right")
+    table.add_column("envelope", style="dim")
+
+    def _fmt(metrics: dict[str, Any], key: str) -> str:
+        v = metrics.get(key)
+        if isinstance(v, int | float):
+            return f"{v:.4g}"
+        return "-"
+
+    for row in rows:
+        metrics = row["metrics"]
+        if row["error"]:
+            table.add_row(
+                row["point"],
+                "[red]ERROR[/red]",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                "-",
+                row["error"][:40],
+            )
+            continue
+        ok_rate = row["ok_rate"]
+        ok_cell = (
+            f"{ok_rate:.3f}"
+            if isinstance(ok_rate, int | float)
+            else "-"
+        )
+        if isinstance(ok_rate, int | float) and ok_rate < 0.95:
+            ok_cell = f"[red]{ok_cell}[/red]"
+        table.add_row(
+            row["point"],
+            _fmt(metrics, "throughput_tok_per_s"),
+            _fmt(metrics, "ttft_p50_ms"),
+            _fmt(metrics, "ttft_p99_ms"),
+            _fmt(metrics, "tpot_p50_ms"),
+            _fmt(metrics, "total_p50_ms"),
+            ok_cell,
+            _fmt(metrics, "compliance_rate"),
+            _fmt(metrics, "power_avg_w"),
+            _fmt(metrics, "joules_per_token"),
+            Path(row["envelope_path"]).name if row["envelope_path"] != "-" else "-",
+        )
+    console.print(table)
 
 
 def _print_summary(envelope: Envelope, out_path: Path, content_hash: str) -> None:
@@ -307,8 +583,36 @@ def run(
             help="List available benchmark_ids for the suite and exit.",
         ),
     ] = False,
+    sweep: Annotated[
+        str,
+        typer.Option(
+            "--sweep",
+            help=(
+                "Comma-separated closed-loop concurrency points (e.g. '1,4,16,64'). "
+                "One signed envelope per point. Mutually exclusive with --concurrency "
+                "and --rps-sweep."
+            ),
+        ),
+    ] = "",
+    rps_sweep: Annotated[
+        str,
+        typer.Option(
+            "--rps-sweep",
+            help=(
+                "Comma-separated open-loop RPS points (e.g. '1,4,16'). One signed "
+                "envelope per point. Mutually exclusive with --rps and --sweep."
+            ),
+        ),
+    ] = "",
 ) -> None:
     """Run a benchmark from the named suite and emit a signed envelope."""
+    sweep_points, sweep_kind = _resolve_sweep_flags(
+        sweep=sweep,
+        rps_sweep=rps_sweep,
+        concurrency=concurrency,
+        rps=rps,
+    )
+
     eps = _entry_points()
     plugin_name, full_id = _split_suite_id(suite_id)
     ep = _find_entry_point(eps, plugin_name, suite_id)
@@ -344,7 +648,28 @@ def run(
         raise typer.Exit(code=1) from exc
 
     output_dir = Path(output) if output else Path.cwd() / "results"
-    extra = _build_signing_extra(signing_mode, dev_key)
+    signing_extra = _build_signing_extra(signing_mode, dev_key)
+
+    if sweep_points is not None and sweep_kind is not None:
+        _run_sweep(
+            plugin=plugin,
+            spec=spec,
+            run_context_cls=run_context_cls,
+            engine_kind=engine_kind,
+            model=model,
+            base_url=base_url,
+            quant=quant,
+            hardware=hardware,
+            output_dir=output_dir,
+            signing_extra=signing_extra,
+            duration_s=duration,
+            sweep_kind=sweep_kind,
+            points=sweep_points,
+            strict=strict,
+        )
+        return
+
+    extra = dict(signing_extra)
     _merge_driver_overrides(extra, concurrency=concurrency, duration_s=duration, rps=rps)
 
     try:

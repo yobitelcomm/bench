@@ -18,10 +18,12 @@ from inferencebench.commands import (
     compare,
     cost,
     doctor,
+    fetch,
     leaderboard,
     plugin,
     publish,
     run,
+    summary,
     verify,
 )
 
@@ -70,11 +72,13 @@ def main(
 # quirk that breaks positional-then-option args).
 app.command(name="run", help="Run a benchmark and produce a signed envelope.")(run.run)
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
+app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
 app.command(name="publish", help="Publish a signed envelope (HF Hub, local).")(publish.publish)
 app.command(name="verify", help="Verify a signed envelope's signature + content.")(verify.verify)
 app.command(name="leaderboard", help="Browse public leaderboards.")(leaderboard.leaderboard)
 app.command(name="doctor", help="Diagnose hardware health before benchmarking.")(doctor.doctor)
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
+app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)
 
 # `plugin` has subcommands (list/init/install/info) → sub-Typer
 app.add_typer(plugin.app, name="plugin", help="Manage benchmark plugins.")

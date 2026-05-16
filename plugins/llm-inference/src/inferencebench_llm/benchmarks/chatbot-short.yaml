@@ -1,0 +1,33 @@
+benchmark_id: llm.inference.chatbot-short
+suite_version: 1.0.0
+description: |
+  Closed-loop chatbot benchmark: short turns, latency-sensitive.
+  Sweeps concurrency over [4, 16, 64]; uses the bundled fallback prompts.
+modality: llm
+kind: perf
+dataset:
+  id: builtin-chatbot-short
+  uri: builtin://
+  hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  sampling:
+    n: 200
+    seed: 42
+driver:
+  type: closed_loop
+  arrival: poisson
+  concurrency: [4, 16, 64]
+  duration_s: 120
+slo_template: llm.standard
+metrics:
+  - ttft_p50_ms
+  - ttft_p99_ms
+  - tpot_p50_ms
+  - throughput_tok_per_s
+  - goodput_at_slo
+  - power_avg_w
+  - joules_per_token
+  - cost_usd_per_million_tokens
+warmup:
+  discard_runs: 3
+  convergence_cov_threshold: 0.05
+  convergence_window: 30
