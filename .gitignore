@@ -80,8 +80,12 @@ desktop.ini
 
 # Sigstore dev keys (never commit)
 cosign.key
+cosign.pub
 *.pem
 !tests/fixtures/**/*.pem
+
+# Real-GPU validation artifacts (kept locally, never pushed)
+validation-runs/
 
 # Model weights / datasets (use Git LFS or S3)
 *.bin

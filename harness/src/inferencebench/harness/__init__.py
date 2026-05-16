@@ -1,21 +1,24 @@
 """Core measurement engine for InferenceBench.
 
-Public API (Phase 1 surface so far):
+Public API (Phase 1 surface):
 
     # Model invocation
     from inferencebench.harness import ModelClient, CompletionResult, ClientError
 
     # Drivers (request scheduling)
-    from inferencebench.harness.drivers import OpenLoopDriver, ClosedLoopDriver, Sample
+    from inferencebench.harness import OpenLoopDriver, ClosedLoopDriver, Sample
 
     # Telemetry (background samplers)
-    from inferencebench.harness.telemetry import NVMLSampler, RAPLSampler
+    from inferencebench.harness import NVMLSampler, RAPLSampler
 
     # Convergence / warmup gate
-    from inferencebench.harness.convergence import ConvergenceGate
+    from inferencebench.harness import ConvergenceGate
 
     # Metrics
-    from inferencebench.harness.metrics import Percentiles, BootstrapCI
+    from inferencebench.harness.metrics import Percentiles, BootstrapCI, GoodputAtSLO
+
+    # Top-level run
+    from inferencebench.harness import BenchmarkRun, RunResult
 
     # Health diagnostic
     from inferencebench.harness import run_diagnostic, DiagnosticReport
@@ -46,9 +49,11 @@ from inferencebench.harness.fingerprint import (
     collect_software_provenance,
 )
 from inferencebench.harness.metrics import BootstrapCI, Percentiles
+from inferencebench.harness.run import BenchmarkRun, RunResult
 from inferencebench.harness.telemetry import NVMLSampler, RAPLSampler
 
 __all__ = [
+    "BenchmarkRun",
     "BootstrapCI",
     "CheckResult",
     "CheckStatus",
@@ -63,6 +68,7 @@ __all__ = [
     "OpenLoopDriver",
     "Percentiles",
     "RAPLSampler",
+    "RunResult",
     "Sample",
     "collect_hardware_fingerprint",
     "collect_software_provenance",

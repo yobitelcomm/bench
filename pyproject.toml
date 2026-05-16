@@ -32,7 +32,14 @@ Issues = "https://github.com/yobitelcomm/bench/issues"
 Changelog = "https://github.com/yobitelcomm/bench/blob/main/CHANGELOG.md"
 
 [tool.uv.workspace]
-members = ["cli", "envelope", "harness"]
+members = [
+    "cli",
+    "envelope",
+    "harness",
+    "plugins/llm-inference",
+    "integrations/hf-publisher",
+    "tools/leaderboard",
+]
 
 [dependency-groups]
 dev = [
@@ -45,12 +52,25 @@ dev = [
     "pre-commit~=4.0",
     "syrupy~=4.7",
 ]
+docs = [
+    "mkdocs~=1.6",
+    "mkdocs-material~=9.5",
+    "pymdown-extensions~=10.7",
+]
 
 # --- Ruff: formatter + linter ---
 [tool.ruff]
 line-length = 100
 target-version = "py312"
-src = ["cli/src", "envelope/src", "harness/src", "tests"]
+src = [
+    "cli/src",
+    "envelope/src",
+    "harness/src",
+    "plugins/llm-inference/src",
+    "integrations/hf-publisher/src",
+    "tools/leaderboard/src",
+    "tests",
+]
 extend-exclude = [
     ".venv",
     "build",
@@ -78,7 +98,6 @@ select = [
 ]
 ignore = [
     "D100", "D101", "D102", "D103", "D104", "D105", "D107",  # missing-docstring (allow gradual adoption)
-    "ANN101", "ANN102",  # missing-self/cls type (deprecated in modern mypy)
     "S101",  # assert used (we use them in tests intentionally)
     "S603", "S607",  # subprocess calls — needed for engine launch
     "D203", "D213",  # incompatible docstring conventions
@@ -94,8 +113,17 @@ ignore = [
 "harness/src/inferencebench/harness/fingerprint/gpu.py" = ["ANN401"]   # opaque NVML handles
 "harness/src/inferencebench/harness/client.py" = ["ANN401", "S110", "S310"]   # LiteLLM is dynamically typed; tiktoken fallback intentionally silent; controlled HTTP healthcheck
 "harness/src/inferencebench/harness/drivers/*.py" = ["ANN401"]   # workload items are caller-defined
+"harness/src/inferencebench/harness/run.py" = ["ANN401"]   # workload items are caller-defined
 "harness/src/inferencebench/harness/telemetry/base.py" = ["B027"]   # _setup / _teardown are optional override hooks
 "harness/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501", "B018"]
+"plugins/llm-inference/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
+"plugins/llm-inference/src/inferencebench_llm/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; workload items are caller-defined; _build_envelope has many branches by design
+"plugins/llm-inference/src/inferencebench_llm/datasets.py" = ["S311"]   # random.shuffle is fine; we want determinism, not crypto
+"plugins/llm-inference/src/inferencebench_llm/pricing.py" = ["D205"]   # multi-paragraph module docstring
+"integrations/hf-publisher/tests/**/*" = ["S", "ANN", "D", "N", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"tools/leaderboard/tests/**/*" = ["S", "ANN", "D", "N", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"tools/leaderboard/src/inferencebench_leaderboard/cli.py" = ["ARG001", "B008"]   # Typer args used by framework; typer.Argument/Option is the canonical Typer pattern
 
 [tool.ruff.lint.pydocstyle]
 convention = "google"
@@ -114,7 +142,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -130,7 +158,15 @@ warn_unused_ignores = true
 warn_no_return = true
 warn_unreachable = true
 strict_equality = true
-files = ["cli/src", "envelope/src", "harness/src", "tests"]
+files = [
+    "cli/src",
+    "envelope/src",
+    "harness/src",
+    "plugins/llm-inference/src",
+    "integrations/hf-publisher/src",
+    "tools/leaderboard/src",
+    "tests",
+]
 
 [[tool.mypy.overrides]]
 module = ["tests.*"]
@@ -139,6 +175,11 @@ disallow_untyped_defs = false
 [[tool.mypy.overrides]]
 # pynvml ships without type stubs
 module = ["pynvml"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# third-party libs without type stubs
+module = ["huggingface_hub", "huggingface_hub.*", "jinja2", "jinja2.*", "yaml", "datasets"]
 ignore_missing_imports = true
 
 # --- Pytest ---
@@ -150,7 +191,15 @@ addopts = [
     "--strict-config",
     "--showlocals",
 ]
-testpaths = ["tests", "cli/tests", "envelope/tests", "harness/tests"]
+testpaths = [
+    "tests",
+    "cli/tests",
+    "envelope/tests",
+    "harness/tests",
+    "plugins/llm-inference/tests",
+    "integrations/hf-publisher/tests",
+    "tools/leaderboard/tests",
+]
 python_files = ["test_*.py"]
 python_classes = ["Test*"]
 python_functions = ["test_*"]
@@ -164,7 +213,14 @@ markers = [
 
 # --- Coverage ---
 [tool.coverage.run]
-source = ["cli/src", "envelope/src", "harness/src"]
+source = [
+    "cli/src",
+    "envelope/src",
+    "harness/src",
+    "plugins/llm-inference/src",
+    "integrations/hf-publisher/src",
+    "tools/leaderboard/src",
+]
 branch = true
 parallel = true
 

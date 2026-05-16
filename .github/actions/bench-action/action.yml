@@ -1,0 +1,173 @@
+name: "InferenceBench"
+description: "Run a bench in CI and post the signed envelope as an artifact"
+author: "Yobitel Communications"
+branding:
+  icon: "activity"
+  color: "purple"
+
+inputs:
+  model:
+    description: "Model identifier (e.g. 'meta-llama/Llama-3.1-8B-Instruct')."
+    required: true
+  engine:
+    description: "Inference engine to benchmark (Phase 1: 'vllm')."
+    required: true
+    default: "vllm"
+  hardware:
+    description: "Hardware profile tag (e.g. 'h100-80gb-sxm', 'a10g', 'cpu'). Used in the envelope fingerprint."
+    required: true
+  suite-id:
+    description: "Bench suite identifier (e.g. 'llm.inference.sharegpt-v1')."
+    required: true
+  dataset:
+    description: "Dataset slug or local path the suite should use."
+    required: false
+    default: ""
+  concurrency:
+    description: "Concurrent request count."
+    required: false
+    default: "1"
+  duration:
+    description: "Benchmark wall-clock duration (e.g. '60s', '5m'). Passed verbatim to `bench run --duration`."
+    required: false
+    default: "60s"
+  slo-template:
+    description: "SLO template name to evaluate the result against (e.g. 'interactive-chat', 'batch-throughput')."
+    required: false
+    default: ""
+  publish-to:
+    description: "Where to publish the signed envelope after a successful run. One of: artifact, hf, none."
+    required: false
+    default: "artifact"
+  cli-version:
+    description: "Version of `inferencebench` to install. Pin in production CI; defaults to latest stable."
+    required: false
+    default: ""
+  plugin-package:
+    description: "Plugin pip name to install alongside the CLI (Phase 1 default = the LLM plugin)."
+    required: false
+    default: "inferencebench-llm"
+  working-directory:
+    description: "Directory the bench commands run from."
+    required: false
+    default: "."
+
+outputs:
+  envelope-path:
+    description: "Path to the signed envelope JSON file produced by the run."
+    value: ${{ steps.run.outputs.envelope_path }}
+  signature-verified:
+    description: "'true' if `bench verify` succeeded against the produced envelope, 'false' otherwise."
+    value: ${{ steps.verify.outputs.signature_verified }}
+
+runs:
+  using: "composite"
+  steps:
+    - name: Set up uv
+      uses: astral-sh/setup-uv@v3
+      with:
+        enable-cache: true
+
+    - name: Install inferencebench + plugin
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if [ -n "${{ inputs.cli-version }}" ]; then
+          CLI_SPEC="inferencebench==${{ inputs.cli-version }}"
+        else
+          CLI_SPEC="inferencebench"
+        fi
+        uv tool install --with "${{ inputs.plugin-package }}" "${CLI_SPEC}"
+        bench --version
+
+    - name: Doctor (strict)
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        bench doctor --strict
+
+    - name: Run benchmark
+      id: run
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        OUT_DIR="${RUNNER_TEMP:-/tmp}/inferencebench-out"
+        mkdir -p "${OUT_DIR}"
+
+        ARGS=(
+          --suite "${{ inputs.suite-id }}"
+          --model "${{ inputs.model }}"
+          --engine "${{ inputs.engine }}"
+          --hardware "${{ inputs.hardware }}"
+          --concurrency "${{ inputs.concurrency }}"
+          --duration "${{ inputs.duration }}"
+          --output-dir "${OUT_DIR}"
+        )
+
+        if [ -n "${{ inputs.dataset }}" ]; then
+          ARGS+=(--dataset "${{ inputs.dataset }}")
+        fi
+        if [ -n "${{ inputs.slo-template }}" ]; then
+          ARGS+=(--slo-template "${{ inputs.slo-template }}")
+        fi
+
+        bench run "${ARGS[@]}"
+
+        # The CLI is expected to drop a deterministically named envelope file.
+        ENVELOPE_PATH="$(find "${OUT_DIR}" -name 'envelope*.json' -type f | head -n1)"
+        if [ -z "${ENVELOPE_PATH}" ]; then
+          echo "::error::No envelope produced by bench run"
+          exit 1
+        fi
+        echo "envelope_path=${ENVELOPE_PATH}" >> "${GITHUB_OUTPUT}"
+        echo "Envelope: ${ENVELOPE_PATH}"
+
+    - name: Verify envelope signature
+      id: verify
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        set -euo pipefail
+        if bench verify "${{ steps.run.outputs.envelope_path }}"; then
+          echo "signature_verified=true" >> "${GITHUB_OUTPUT}"
+        else
+          echo "signature_verified=false" >> "${GITHUB_OUTPUT}"
+          echo "::error::Envelope signature verification failed"
+          exit 1
+        fi
+
+    - name: Publish envelope
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      env:
+        PUBLISH_TO: ${{ inputs.publish-to }}
+        ENVELOPE_PATH: ${{ steps.run.outputs.envelope_path }}
+      run: |
+        set -euo pipefail
+        case "${PUBLISH_TO}" in
+          none)
+            echo "publish-to=none — skipping publish step"
+            ;;
+          artifact)
+            echo "publish-to=artifact — envelope will be uploaded as a workflow artifact in the next step"
+            ;;
+          hf)
+            bench publish --target hf "${ENVELOPE_PATH}"
+            ;;
+          *)
+            echo "::error::Unknown publish-to value: ${PUBLISH_TO}"
+            exit 1
+            ;;
+        esac
+
+    - name: Upload envelope as workflow artifact
+      if: ${{ inputs.publish-to == 'artifact' }}
+      uses: actions/upload-artifact@v4
+      with:
+        name: inferencebench-envelope
+        path: ${{ steps.run.outputs.envelope_path }}
+        if-no-files-found: error
+        retention-days: 30

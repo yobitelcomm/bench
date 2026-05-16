@@ -1,0 +1,101 @@
+# Example: integrating InferenceBench into your repo's CI.
+#
+# Drop this file in your own repository at `.github/workflows/bench.yml`,
+# update the inputs to match your model/engine/hardware, and you'll get a
+# signed-envelope benchmark on every PR plus on-demand manual runs.
+#
+# This is a top-level workflow that calls the bench-action composite action.
+
+name: Benchmark
+
+on:
+  pull_request:
+    paths:
+      - "models/**"
+      - "serving/**"
+      - ".github/workflows/bench.yml"
+  workflow_dispatch:
+    inputs:
+      model:
+        description: "Model to benchmark"
+        required: true
+        default: "meta-llama/Llama-3.1-8B-Instruct"
+      duration:
+        description: "Run duration (e.g. 60s, 5m)"
+        required: true
+        default: "2m"
+
+permissions:
+  contents: read
+  # `id-token: write` is required when publish-to=hf with OIDC,
+  # and for any Sigstore-keyless verification inside the action.
+  id-token: write
+
+concurrency:
+  group: bench-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  benchmark:
+    name: Run InferenceBench (llm.inference)
+    # Replace with your self-hosted GPU runner label for real GPU runs:
+    #   runs-on: [self-hosted, gpu, h100]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run bench
+        id: bench
+        uses: yobitelcomm/bench-action@v1
+        with:
+          model: ${{ inputs.model || 'meta-llama/Llama-3.1-8B-Instruct' }}
+          engine: vllm
+          # For self-hosted GPU runners, use the matching profile tag, e.g.
+          # 'h100-80gb-sxm' or 'a10g'. 'cpu' is for smoke tests only.
+          hardware: cpu
+          suite-id: llm.inference.sharegpt-v1
+          dataset: sharegpt-v1-1k
+          concurrency: "4"
+          duration: ${{ inputs.duration || '2m' }}
+          slo-template: interactive-chat
+          publish-to: artifact
+          # Pin the CLI for reproducibility. Bump intentionally.
+          cli-version: "0.1.0"
+
+      - name: Comment envelope metrics on PR
+        if: github.event_name == 'pull_request'
+        env:
+          ENVELOPE: ${{ steps.bench.outputs.envelope-path }}
+          VERIFIED: ${{ steps.bench.outputs.signature-verified }}
+        run: |
+          set -euo pipefail
+          echo "Envelope: ${ENVELOPE}"
+          echo "Signature verified: ${VERIFIED}"
+          # In a real integration you would jq out p50/p95/p99 and post a PR
+          # comment via `gh pr comment`. Kept minimal here to stay vendor-neutral.
+          jq '{
+            suite_id: .suite.id,
+            model: .target.model,
+            metrics: .metrics,
+            sig_verified: env.VERIFIED
+          }' "${ENVELOPE}"
+
+  # Optional: a second job that compares the new envelope vs the one stored
+  # on `main` and fails the PR if any p95 regresses by more than 10%.
+  regression-gate:
+    name: Regression gate (vs main)
+    needs: [benchmark]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          name: inferencebench-envelope
+          path: ./pr-envelope
+      - name: Compare against baseline
+        run: |
+          echo "TODO: download the baseline envelope from your envelope store"
+          echo "and run: bench compare ./baseline/envelope.json ./pr-envelope/envelope.json --threshold p95=+10%"

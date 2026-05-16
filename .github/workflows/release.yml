@@ -1,0 +1,263 @@
+name: Release
+
+# MANUAL TRIGGER ONLY.
+#
+# This workflow is intentionally gated behind workflow_dispatch. There are no
+# `on: push:` or `on: tag:` triggers. A human must explicitly invoke it from the
+# GitHub Actions UI and explicitly pass `dry_run: false` to publish to PyPI.
+#
+# See HUMAN_REVIEW_GATES.md item #3 (absolute prohibition: publishing to PyPI
+# under the `inferencebench` name without human-approved release.yml workflow).
+#
+# Release procedure: .github/RELEASING.md
+
+on:
+  workflow_dispatch:
+    inputs:
+      package:
+        description: "Which package to release"
+        required: true
+        type: choice
+        options:
+          - cli
+          - envelope
+          - harness
+          - llm
+      dry_run:
+        description: "Dry run (build + sign + show what WOULD publish, but don't upload to PyPI). Default true for safety."
+        required: true
+        type: boolean
+        default: true
+
+# Default to least-privilege at the workflow level. The `publish` job
+# additionally opts into `id-token: write` for OIDC (PyPI Trusted Publisher).
+permissions:
+  contents: read
+
+# Only one release workflow at a time across the whole repo.
+# `cancel-in-progress: false` — never cancel an in-flight release; queue instead.
+concurrency:
+  group: release-global
+  cancel-in-progress: false
+
+jobs:
+  resolve:
+    name: Resolve package metadata
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    outputs:
+      package_name: ${{ steps.resolve.outputs.package_name }}
+      package_dir: ${{ steps.resolve.outputs.package_dir }}
+      pypi_name: ${{ steps.resolve.outputs.pypi_name }}
+    steps:
+      - name: Map input to package metadata
+        id: resolve
+        run: |
+          case "${{ inputs.package }}" in
+            cli)
+              echo "package_name=inferencebench" >> "$GITHUB_OUTPUT"
+              echo "pypi_name=inferencebench" >> "$GITHUB_OUTPUT"
+              echo "package_dir=cli" >> "$GITHUB_OUTPUT"
+              ;;
+            envelope)
+              echo "package_name=inferencebench-envelope" >> "$GITHUB_OUTPUT"
+              echo "pypi_name=inferencebench-envelope" >> "$GITHUB_OUTPUT"
+              echo "package_dir=envelope" >> "$GITHUB_OUTPUT"
+              ;;
+            harness)
+              echo "package_name=inferencebench-harness" >> "$GITHUB_OUTPUT"
+              echo "pypi_name=inferencebench-harness" >> "$GITHUB_OUTPUT"
+              echo "package_dir=harness" >> "$GITHUB_OUTPUT"
+              ;;
+            llm)
+              echo "package_name=inferencebench-llm" >> "$GITHUB_OUTPUT"
+              echo "pypi_name=inferencebench-llm" >> "$GITHUB_OUTPUT"
+              echo "package_dir=plugins/llm-inference" >> "$GITHUB_OUTPUT"
+              ;;
+            *)
+              echo "::error::Unknown package: ${{ inputs.package }}"
+              exit 1
+              ;;
+          esac
+
+  test:
+    name: Test before release
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    needs: [resolve]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - run: uv sync --all-extras --dev
+      - name: Lint
+        run: uv run ruff check .
+      - name: Typecheck
+        run: uv run mypy
+      - name: Pytest (CPU, full PR set)
+        run: uv run pytest -m "not gpu and not paid and not slow"
+
+  build:
+    name: Build wheel + sdist
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [resolve, test]
+    outputs:
+      package_name: ${{ needs.resolve.outputs.package_name }}
+      pypi_name: ${{ needs.resolve.outputs.pypi_name }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+      - name: Build distribution for ${{ needs.resolve.outputs.package_name }}
+        run: |
+          rm -rf dist
+          uv build --package "${{ needs.resolve.outputs.package_name }}"
+          echo "Built artifacts:"
+          ls -la dist/
+      - name: Compute SHA-256 of artifacts
+        run: |
+          cd dist
+          sha256sum * > SHA256SUMS
+          cat SHA256SUMS
+      - name: Upload built artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: dist-${{ inputs.package }}
+          path: dist/
+          if-no-files-found: error
+          retention-days: 14
+
+  sign:
+    name: Sign artifacts with Sigstore
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [resolve, build]
+    # Sigstore keyless signing uses GitHub OIDC to mint a short-lived cert.
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: dist-${{ inputs.package }}
+          path: dist/
+      - name: Sigstore sign (keyless OIDC)
+        uses: sigstore/gh-action-sigstore-python@v3
+        with:
+          inputs: ./dist/*.tar.gz ./dist/*.whl
+          upload-signing-artifacts: true
+      - name: Upload signed bundle
+        uses: actions/upload-artifact@v4
+        with:
+          name: signed-dist-${{ inputs.package }}
+          path: |
+            dist/*.tar.gz
+            dist/*.whl
+            dist/*.sigstore
+            dist/*.sigstore.json
+            dist/SHA256SUMS
+          if-no-files-found: warn
+          retention-days: 30
+
+  dry-run-summary:
+    name: Dry-run summary (no PyPI upload)
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    if: ${{ inputs.dry_run == true }}
+    needs: [resolve, sign]
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-dist-${{ inputs.package }}
+          path: dist/
+      - name: Print dry-run report
+        run: |
+          {
+            echo "# Dry run — nothing was published"
+            echo ""
+            echo "**Package**: \`${{ needs.resolve.outputs.pypi_name }}\`"
+            echo "**Source dir**: \`${{ needs.resolve.outputs.package_dir }}\`"
+            echo "**Triggered by**: @${{ github.actor }}"
+            echo "**Commit**: \`${{ github.sha }}\`"
+            echo ""
+            echo "## Artifacts that WOULD be uploaded to PyPI"
+            echo ""
+            echo '```'
+            ls -la dist/
+            echo '```'
+            echo ""
+            echo "## Checksums"
+            echo ""
+            echo '```'
+            cat dist/SHA256SUMS 2>/dev/null || (cd dist && sha256sum *.whl *.tar.gz)
+            echo '```'
+            echo ""
+            echo "## To publish for real"
+            echo ""
+            echo "Re-invoke this workflow with \`dry_run: false\`. Requires:"
+            echo ""
+            echo "1. Human approver (abishekvr) review of artifacts above"
+            echo "2. PyPI Trusted Publisher configured for \`${{ needs.resolve.outputs.pypi_name }}\`"
+            echo "3. CHANGELOG + version bump already merged to main (see RELEASING.md)"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish to PyPI
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Refuses to publish unless dry_run is explicitly false.
+    if: ${{ inputs.dry_run == false }}
+    needs: [resolve, sign]
+    environment:
+      name: pypi
+      url: https://pypi.org/project/${{ needs.resolve.outputs.pypi_name }}/
+    # OIDC token is required for PyPI Trusted Publisher (no API token in secrets).
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Guard against accidental publish
+        run: |
+          if [ "${{ inputs.dry_run }}" != "false" ]; then
+            echo "::error::dry_run is not explicitly false — refusing to publish."
+            exit 1
+          fi
+          echo "Publishing ${{ needs.resolve.outputs.pypi_name }} as @${{ github.actor }}"
+      - uses: actions/download-artifact@v4
+        with:
+          name: signed-dist-${{ inputs.package }}
+          path: dist/
+      - name: Strip non-distribution files before upload
+        run: |
+          # gh-action-pypi-publish only expects wheels + sdists in the dir.
+          # Sigstore bundles + checksum file must be moved out.
+          mkdir -p upload sigstore-bundles
+          mv dist/*.whl dist/*.tar.gz upload/
+          mv dist/*.sigstore* sigstore-bundles/ 2>/dev/null || true
+          mv dist/SHA256SUMS sigstore-bundles/ 2>/dev/null || true
+          ls -la upload/
+      - name: Publish to PyPI via Trusted Publisher (OIDC)
+        uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: upload/
+          print-hash: true
+          verbose: true
+      - name: Post-publish summary
+        run: |
+          {
+            echo "# Published to PyPI"
+            echo ""
+            echo "**Package**: [\`${{ needs.resolve.outputs.pypi_name }}\`](https://pypi.org/project/${{ needs.resolve.outputs.pypi_name }}/)"
+            echo "**Triggered by**: @${{ github.actor }}"
+            echo "**Commit**: \`${{ github.sha }}\`"
+            echo ""
+            echo "Verify with:"
+            echo '```'
+            echo "pip install ${{ needs.resolve.outputs.pypi_name }}"
+            echo '```'
+            echo ""
+            echo "Sigstore verification: see .github/RELEASING.md"
+          } >> "$GITHUB_STEP_SUMMARY"

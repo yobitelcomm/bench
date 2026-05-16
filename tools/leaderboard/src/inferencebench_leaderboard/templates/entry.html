@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% block title %}{{ entry.model_id }} — {{ entry.suite_id }}{% endblock %}
+{% block content %}
+<nav class="ib-breadcrumb">
+  <a href="{{ base_url }}">Home</a> /
+  <a href="{{ base_url }}{{ entry.suite_id }}/">{{ entry.suite_id }}</a> /
+  <span>{{ entry.run_id }}</span>
+</nav>
+<h1>{{ entry.model_id }}</h1>
+<p class="ib-lede">
+  {{ entry.engine_name }} {{ entry.engine_version }} on {{ entry.hardware_class }}
+  {% if entry.quantization %}({{ entry.quantization }}){% endif %}
+  · seed {{ envelope.seed }} · run {{ entry.run_id }}
+  · {% if entry.signed %}<span class="ib-signed">signed</span>{% else %}<span class="ib-warn">unsigned</span>{% endif %}
+</p>
+
+<h2>Headline metrics</h2>
+<table class="ib-table">
+  <tbody>
+    {% for key in headline_keys %}
+    <tr>
+      <th>{{ headline_labels[key] }}</th>
+      <td class="ib-num">{{ entry.metrics[key]|fmt_metric }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>All metrics</h2>
+<table class="ib-table">
+  <tbody>
+    {% for key, value in entry.all_metrics.items()|sort %}
+    <tr>
+      <th>{{ key }}</th>
+      <td class="ib-num">{{ value|fmt_metric }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+
+<h2>Provenance</h2>
+<table class="ib-table">
+  <tbody>
+    <tr><th>Model revision</th><td><code>{{ entry.model_revision }}</code></td></tr>
+    <tr><th>Provider</th><td>{{ entry.model_provider }}</td></tr>
+    <tr><th>Hardware fingerprint</th><td><code>{{ envelope.hardware_fingerprint.fingerprint_sha256 }}</code></td></tr>
+    <tr><th>Dataset</th><td>{{ envelope.dataset.id }} · <code>{{ envelope.dataset.hash }}</code></td></tr>
+    <tr><th>Timestamp</th><td>{{ entry.timestamp }}</td></tr>
+    <tr><th>Envelope JSON</th><td><a href="{{ base_url }}envelopes/{{ entry.envelope_filename }}">{{ entry.envelope_filename }}</a></td></tr>
+  </tbody>
+</table>
+
+{% if entry.warnings %}
+<h2>Warnings</h2>
+<ul class="ib-warnings">
+  {% for w in entry.warnings %}<li>{{ w }}</li>{% endfor %}
+</ul>
+{% endif %}
+
+<h2>Verify this result</h2>
+<pre class="ib-verify"><code>{{ verify_snippet }}</code></pre>
+<p class="ib-meta">
+  <code>bench verify</code> re-downloads this envelope, recomputes the canonical
+  content hash, and validates the Sigstore signature against the embedded
+  certificate + Rekor entry.
+</p>
+{% endblock %}

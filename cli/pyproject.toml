@@ -29,7 +29,14 @@ dependencies = [
     "rich~=13.9",
     "structlog~=24.4",
     "pydantic~=2.9",
+    "inferencebench-envelope",
+    "inferencebench-harness",
 ]
+
+[project.optional-dependencies]
+publish = ["inferencebench-hf-publisher"]
+leaderboard = ["inferencebench-leaderboard"]
+all = ["inferencebench-hf-publisher", "inferencebench-leaderboard"]
 
 [project.scripts]
 bench = "inferencebench.cli:app"
@@ -38,6 +45,12 @@ inferencebench = "inferencebench.cli:app"
 [project.urls]
 Homepage = "https://github.com/yobitelcomm/bench"
 Documentation = "https://yobitelcomm.github.io/bench"
+
+[tool.uv.sources]
+inferencebench-envelope = { workspace = true }
+inferencebench-harness = { workspace = true }
+inferencebench-hf-publisher = { workspace = true }
+inferencebench-leaderboard = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inferencebench"]

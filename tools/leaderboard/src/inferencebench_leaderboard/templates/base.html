@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}InferenceBench Leaderboard{% endblock %}</title>
+<link rel="stylesheet" href="{{ base_url }}static/site.css">
+</head>
+<body>
+<header class="ib-header">
+  <a class="ib-brand" href="{{ base_url }}">InferenceBench</a>
+  <nav class="ib-nav">
+    <a href="https://github.com/yobitelcomm/bench">GitHub</a>
+    <a href="{{ base_url }}data/leaderboard.json">Raw JSON</a>
+  </nav>
+</header>
+<main class="ib-main">
+{% block content %}{% endblock %}
+</main>
+<footer class="ib-footer">
+  <p>Vendor-neutral, signed-envelope benchmarks. Apache 2.0.
+     Verify any result with <code>bench verify &lt;envelope-url&gt;</code>.</p>
+</footer>
+<script src="{{ base_url }}static/sort.js" defer></script>
+</body>
+</html>

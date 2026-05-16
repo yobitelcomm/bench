@@ -1,0 +1,30 @@
+{% extends "base.html" %}
+{% block title %}InferenceBench Leaderboard{% endblock %}
+{% block content %}
+<section class="ib-hero">
+  <h1>Benchmark categories</h1>
+  <p class="ib-lede">
+    {{ total_envelopes }} signed envelope{% if total_envelopes != 1 %}s{% endif %}
+    across {{ categories|length }} categor{% if categories|length == 1 %}y{% else %}ies{% endif %}.
+    {% if total_skipped %}<span class="ib-warn">{{ total_skipped }} input file{% if total_skipped != 1 %}s{% endif %} skipped (invalid).</span>{% endif %}
+  </p>
+</section>
+{% if categories %}
+<table class="ib-table">
+  <thead>
+    <tr><th>Suite</th><th class="ib-num">Entries</th></tr>
+  </thead>
+  <tbody>
+    {% for cat in categories %}
+    <tr>
+      <td><a href="{{ base_url }}{{ cat.suite_id }}/">{{ cat.suite_id }}</a></td>
+      <td class="ib-num">{{ cat.count }}</td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% else %}
+<p class="ib-empty">No envelopes have been published yet.
+   Run <code>bench publish --to hf</code> to add one.</p>
+{% endif %}
+{% endblock %}

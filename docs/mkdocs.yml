@@ -1,0 +1,73 @@
+site_name: InferenceBench
+site_description: Vendor-neutral, hardware-fingerprinted, Sigstore-signed AI benchmarks.
+site_url: https://yobitelcomm.github.io/bench
+site_author: Yobitel team
+
+repo_name: yobitelcomm/bench
+repo_url: https://github.com/yobitelcomm/bench
+edit_uri: edit/main/docs/
+
+docs_dir: .
+site_dir: ../site
+
+theme:
+  name: material
+  palette:
+    scheme: default
+    primary: indigo
+    accent: indigo
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.top
+    - navigation.indexes
+    - content.code.copy
+    - content.action.edit
+    - search.suggest
+    - search.highlight
+
+markdown_extensions:
+  - admonition
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.superfences
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - toc:
+      permalink: true
+
+nav:
+  - Home: index.md
+  - Install: install.md
+  - Quickstart: quickstart.md
+  - CLI:
+      - Overview: cli/overview.md
+      - bench run: cli/bench-run.md
+      - bench compare: cli/bench-compare.md
+      - bench publish: cli/bench-publish.md
+      - bench verify: cli/bench-verify.md
+      - bench doctor: cli/bench-doctor.md
+      - bench plugin: cli/bench-plugin.md
+  - Concepts:
+      - Signed envelope: concepts/envelope.md
+      - Hardware fingerprinting: concepts/fingerprinting.md
+      - Reproducibility: concepts/reproducibility.md
+      - Pareto frontiers: concepts/pareto.md
+      - Methodology: concepts/methodology.md
+      - Vendor neutrality: concepts/vendor-neutrality.md
+  - Plugins:
+      - Overview: plugins/overview.md
+      - llm.inference: plugins/llm-inference.md
+  - Integrations:
+      - Hugging Face Hub: integrations/huggingface-hub.md
+      - GitHub Actions: integrations/github-actions.md
+  - Community:
+      - Contributing: community/contributing.md
+      - Code of conduct: community/code-of-conduct.md
+  - Reference:
+      - Envelope schema: reference/envelope-schema.md
+      - CLI reference: reference/cli-reference.md
+  - FAQ: faq.md
+  - Changelog: changelog.md

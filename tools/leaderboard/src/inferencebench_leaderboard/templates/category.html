@@ -1,0 +1,47 @@
+{% extends "base.html" %}
+{% block title %}{{ suite_id }} — InferenceBench{% endblock %}
+{% block content %}
+<nav class="ib-breadcrumb">
+  <a href="{{ base_url }}">Home</a> / <span>{{ suite_id }}</span>
+</nav>
+<h1>{{ suite_id }}</h1>
+<p class="ib-lede">
+  {{ entries|length }} entr{% if entries|length == 1 %}y{% else %}ies{% endif %}.
+  Pareto frontier computed on
+  <code>{{ pareto_x_metric }}</code> (higher is better) vs.
+  <code>{{ pareto_y_metric }}</code> (lower is better).
+  Rows marked <span class="ib-pareto-badge">P</span> are on the frontier.
+</p>
+<table class="ib-table ib-sortable">
+  <thead>
+    <tr>
+      <th></th>
+      <th>Model</th>
+      <th>Engine</th>
+      <th>Hardware</th>
+      <th>Quant</th>
+      {% for key in headline_keys %}
+      <th class="ib-num">{{ headline_labels[key] }}</th>
+      {% endfor %}
+      <th>Envelope</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for e in entries %}
+    <tr{% if e.on_pareto %} class="ib-pareto"{% endif %}>
+      <td>{% if e.on_pareto %}<span class="ib-pareto-badge" title="Pareto frontier">P</span>{% endif %}</td>
+      <td><a href="{{ base_url }}{{ e.suite_id }}/{{ e.run_id }}.html">{{ e.model_id }}</a></td>
+      <td>{{ e.engine_name }} {{ e.engine_version }}</td>
+      <td>{{ e.hardware_class }}</td>
+      <td>{{ e.quantization }}</td>
+      {% for key in headline_keys %}
+      <td class="ib-num" data-value="{{ e.metrics[key] if e.metrics[key] is not none else '' }}">
+        {{ e.metrics[key]|fmt_metric }}
+      </td>
+      {% endfor %}
+      <td><a href="{{ base_url }}envelopes/{{ e.envelope_filename }}">JSON</a></td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endblock %}
