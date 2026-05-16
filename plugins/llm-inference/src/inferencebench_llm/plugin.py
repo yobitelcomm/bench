@@ -144,7 +144,7 @@ class LLMInferencePlugin:
         engine_version = engine.probe(context)
         client = engine.build_client(context)
 
-        driver = self._build_driver(spec)
+        driver = self._build_driver(spec, context)
         gate = ConvergenceGate(
             warmup_runs=spec.warmup.discard_runs,
             window=spec.warmup.convergence_window,
@@ -264,18 +264,44 @@ class LLMInferencePlugin:
         """
         return load_prompts(spec.dataset)
 
-    def _build_driver(self, spec: BenchmarkSpec) -> OpenLoopDriver | ClosedLoopDriver:
-        if spec.driver.type == "open_loop":
-            rps = spec.driver.rps[0] if spec.driver.rps else 1.0
+    def _build_driver(
+        self,
+        spec: BenchmarkSpec,
+        context: RunContext | None = None,
+    ) -> OpenLoopDriver | ClosedLoopDriver:
+        """Build a driver from the spec, allowing CLI overrides via ``context.extra``.
+
+        Recognised override keys (all optional):
+            - ``rps`` (float): override open-loop arrival rate
+            - ``concurrency`` (int): override closed-loop concurrency
+            - ``duration_s`` (int): override the measurement window
+            - ``driver_type`` ("open_loop"|"closed_loop"): switch driver kind
+        """
+        extra: dict[str, Any] = dict(context.extra) if context is not None else {}
+        driver_type = str(extra.get("driver_type") or spec.driver.type)
+        duration_s = int(extra.get("duration_s") or spec.driver.duration_s)
+
+        if driver_type == "open_loop":
+            rps_override = extra.get("rps")
+            rps = (
+                float(rps_override)
+                if rps_override is not None
+                else (spec.driver.rps[0] if spec.driver.rps else 1.0)
+            )
             return OpenLoopDriver(
                 mean_rps=rps,
-                duration_s=spec.driver.duration_s,
+                duration_s=duration_s,
                 warmup_requests=spec.warmup.discard_runs,
             )
-        concurrency = spec.driver.concurrency[0] if spec.driver.concurrency else 1
+        concurrency_override = extra.get("concurrency")
+        concurrency = (
+            int(concurrency_override)
+            if concurrency_override is not None
+            else (spec.driver.concurrency[0] if spec.driver.concurrency else 1)
+        )
         return ClosedLoopDriver(
             concurrency=concurrency,
-            duration_s=spec.driver.duration_s,
+            duration_s=duration_s,
             warmup_requests=spec.warmup.discard_runs,
         )
 

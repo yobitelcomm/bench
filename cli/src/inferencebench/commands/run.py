@@ -125,6 +125,35 @@ def _print_benchmark_list(plugin_name: str, specs: list[Any]) -> None:
     console.print(table)
 
 
+def _merge_driver_overrides(
+    extra: dict[str, str | int | float | bool],
+    *,
+    concurrency: str,
+    duration_s: int,
+    rps: float,
+) -> None:
+    """Translate CLI driver flags into ``RunContext.extra`` override keys.
+
+    Phase 1 only forwards the first entry from a comma-separated list — the
+    full sweep is a Phase 2 enhancement (one envelope per point on the curve).
+    """
+    if duration_s:
+        extra["duration_s"] = int(duration_s)
+    if rps > 0:
+        extra["rps"] = float(rps)
+        extra["driver_type"] = "open_loop"
+    if concurrency and concurrency != "1":
+        first = concurrency.split(",")[0].strip()
+        if first:
+            try:
+                extra["concurrency"] = int(first)
+                extra["driver_type"] = "closed_loop"
+            except ValueError:
+                err_console.print(
+                    f"[yellow]warning: ignoring non-integer --concurrency {concurrency!r}[/yellow]"
+                )
+
+
 def _build_signing_extra(
     signing_mode: str, dev_key: str
 ) -> dict[str, str | int | float | bool]:
@@ -228,6 +257,13 @@ def run(
     duration: Annotated[
         int, typer.Option("--duration", help="Measurement duration in seconds.")
     ] = 300,
+    rps: Annotated[
+        float,
+        typer.Option(
+            "--rps",
+            help="Open-loop arrival rate (req/s). Overrides the spec's first rps entry.",
+        ),
+    ] = 0.0,
     slo_template: Annotated[
         str,
         typer.Option(
@@ -309,6 +345,7 @@ def run(
 
     output_dir = Path(output) if output else Path.cwd() / "results"
     extra = _build_signing_extra(signing_mode, dev_key)
+    _merge_driver_overrides(extra, concurrency=concurrency, duration_s=duration, rps=rps)
 
     try:
         ctx = run_context_cls(

@@ -97,6 +97,42 @@ _REGISTRY: dict[tuple[str, str], ModelPricing] = {
         input_per_million_usd=0.59,
         output_per_million_usd=0.79,
     ),
+    ("together", "meta-llama/Llama-3.1-8B-Instruct"): ModelPricing(
+        provider="together",
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        input_per_million_usd=0.18,
+        output_per_million_usd=0.18,
+    ),
+    ("fireworks", "meta-llama/Llama-3.1-8B-Instruct"): ModelPricing(
+        provider="fireworks",
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        input_per_million_usd=0.20,
+        output_per_million_usd=0.20,
+    ),
+    ("groq", "meta-llama/Llama-3.1-8B-Instruct"): ModelPricing(
+        provider="groq",
+        model="meta-llama/Llama-3.1-8B-Instruct",
+        input_per_million_usd=0.05,
+        output_per_million_usd=0.08,
+    ),
+    ("together", "meta-llama/Llama-3.1-70B-Instruct"): ModelPricing(
+        provider="together",
+        model="meta-llama/Llama-3.1-70B-Instruct",
+        input_per_million_usd=0.88,
+        output_per_million_usd=0.88,
+    ),
+    ("fireworks", "meta-llama/Llama-3.1-70B-Instruct"): ModelPricing(
+        provider="fireworks",
+        model="meta-llama/Llama-3.1-70B-Instruct",
+        input_per_million_usd=0.90,
+        output_per_million_usd=0.90,
+    ),
+    ("groq", "meta-llama/Llama-3.1-70B-Instruct"): ModelPricing(
+        provider="groq",
+        model="meta-llama/Llama-3.1-70B-Instruct",
+        input_per_million_usd=0.59,
+        output_per_million_usd=0.79,
+    ),
 }
 
 

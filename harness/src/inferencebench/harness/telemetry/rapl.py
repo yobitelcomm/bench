@@ -14,10 +14,13 @@ samples — telemetry is best-effort, never blocking.
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
 from pathlib import Path
 
 from inferencebench.harness.telemetry.base import Sampler, TelemetrySample
+
+_log = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,11 +48,14 @@ class RAPLSampler(Sampler):
     def _setup(self) -> None:
         """Enumerate readable RAPL domains."""
         if not self._root.exists():
+            _log.info("RAPL: %s missing — skipping CPU/DRAM energy telemetry", self._root)
             return
         try:
             entries = sorted(self._root.iterdir())
-        except (PermissionError, OSError):
+        except (PermissionError, OSError) as exc:
+            _log.info("RAPL: cannot enumerate %s (%s) — skipping", self._root, exc)
             return
+        skipped_eacces = 0
         for entry in entries:
             if not entry.is_dir():
                 continue
@@ -67,8 +73,15 @@ class RAPLSampler(Sampler):
             try:
                 energy_file.read_text(encoding="utf-8")
             except (PermissionError, OSError):
+                skipped_eacces += 1
                 continue
             self._domain_paths.append((domain_name, energy_file))
+        if not self._domain_paths and skipped_eacces > 0:
+            _log.info(
+                "RAPL: found %d domain(s) but all are EACCES — CPU/DRAM energy will be empty. "
+                "On most hosts this needs CAP_SYS_RAWIO or membership in the 'rapl' group.",
+                skipped_eacces,
+            )
 
     def _one_sample(self, t_ms: float) -> RAPLSample | None:
         if not self._domain_paths:
