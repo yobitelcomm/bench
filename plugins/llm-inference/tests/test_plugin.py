@@ -76,13 +76,13 @@ def test_validate_warns_when_vllm_base_url_missing() -> None:
 
 
 def test_validate_warns_on_unsupported_engine() -> None:
-    """SGLang isn't implemented Phase 1 — validate should flag it."""
+    """TRT-LLM isn't implemented yet — validate should flag it."""
     plugin = LLMInferencePlugin()
     spec = plugin.get_benchmark("llm.inference.sharegpt-v3")
     ctx = RunContext(
         model_id="m",
-        engine_kind=EngineKind.SGLANG,
-        base_url="http://localhost:30000/v1",
+        engine_kind=EngineKind.TRTLLM,
+        base_url="http://localhost:8000/v1",
         output_dir=Path("/tmp/bench"),
     )
     warnings = plugin.validate(spec, ctx)

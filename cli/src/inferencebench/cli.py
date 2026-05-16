@@ -17,11 +17,13 @@ from inferencebench._logging import configure_logging
 from inferencebench.commands import (
     compare,
     cost,
+    diff,
     doctor,
     fetch,
     leaderboard,
     plugin,
     publish,
+    replay,
     run,
     summary,
     verify,
@@ -74,10 +76,12 @@ app.command(name="run", help="Run a benchmark and produce a signed envelope.")(r
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
 app.command(name="publish", help="Publish a signed envelope (HF Hub, local).")(publish.publish)
+app.command(name="replay", help="Replay a benchmark from an existing envelope.")(replay.replay)
 app.command(name="verify", help="Verify a signed envelope's signature + content.")(verify.verify)
 app.command(name="leaderboard", help="Browse public leaderboards.")(leaderboard.leaderboard)
 app.command(name="doctor", help="Diagnose hardware health before benchmarking.")(doctor.doctor)
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
+app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
 app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)
 
 # `plugin` has subcommands (list/init/install/info) → sub-Typer

@@ -46,10 +46,37 @@ def test_publish_local_copies_to_mirror_dir(tmp_path: Path) -> None:
         ["publish", str(env_path), "--to", "local", "--workspace", str(mirror)],
     )
     assert result.exit_code == 0, result.output
-    written = list(mirror.rglob("*.json"))
-    assert len(written) == 1
-    payload: dict[str, Any] = json.loads(written[0].read_text("utf-8"))
+    envelope_files = list((mirror / "llm-inference").glob("*.json"))
+    assert len(envelope_files) == 1
+    payload: dict[str, Any] = json.loads(envelope_files[0].read_text("utf-8"))
     assert payload["model"]["id"] == "meta-llama/Llama-4-Maverick"
+
+    index = json.loads((mirror / "index.json").read_text("utf-8"))
+    assert index["schema"] == "inferencebench.mirror.v1"
+    assert index["n_entries"] == 1
+    entry = index["entries"][0]
+    assert entry["suite_id"] == "llm.inference"
+    assert entry["model_id"] == "meta-llama/Llama-4-Maverick"
+    assert entry["path"].startswith("llm-inference/")
+
+
+def test_publish_local_index_appends_on_second_publish(tmp_path: Path) -> None:
+    """Two publishes update the same index.json without overwriting prior entry."""
+    env_path = _envelope_on_disk(tmp_path)
+    mirror = tmp_path / "mirror"
+    runner.invoke(app, ["publish", str(env_path), "--to", "local", "--workspace", str(mirror)])
+    # publish a different envelope (different model id → different content_hash)
+    other_env = make_envelope(
+        model_id="mistralai/Mistral-Large",
+        metrics={"throughput_tok_per_s": 900.0},
+    )
+    other_path = write_envelope_json(tmp_path / "other.json", other_env)
+    runner.invoke(app, ["publish", str(other_path), "--to", "local", "--workspace", str(mirror)])
+
+    index = json.loads((mirror / "index.json").read_text("utf-8"))
+    assert index["n_entries"] == 2
+    model_ids = {e["model_id"] for e in index["entries"]}
+    assert model_ids == {"meta-llama/Llama-4-Maverick", "mistralai/Mistral-Large"}
 
 
 def test_publish_unknown_target_errors(tmp_path: Path) -> None:

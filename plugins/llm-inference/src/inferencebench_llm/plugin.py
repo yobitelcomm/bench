@@ -42,7 +42,7 @@ from inferencebench.harness import (
 from inferencebench.harness.convergence import ConvergenceGate
 from inferencebench.harness.metrics import SLOPredicate, summarise_energy
 from inferencebench_llm.datasets import compute_dataset_hash, load_prompts
-from inferencebench_llm.engines import Engine, EngineUnavailableError, VLLMEngine
+from inferencebench_llm.engines import Engine, EngineUnavailableError, SGLangEngine, VLLMEngine
 from inferencebench_llm.schemas import BenchmarkSpec, EngineKind, RunContext
 
 if TYPE_CHECKING:
@@ -66,15 +66,17 @@ def _json_str(v: str | None) -> str:
 # --------------------------------------------------------------------------- #
 _ENGINES: dict[EngineKind, type[Engine]] = {
     EngineKind.VLLM: VLLMEngine,
+    EngineKind.SGLANG: SGLangEngine,
 }
 
 
 def _engine_for(kind: EngineKind) -> Engine:
     cls = _ENGINES.get(kind)
     if cls is None:
+        supported = ", ".join(sorted(k.value for k in _ENGINES))
         msg = (
-            f"Engine '{kind.value}' is not implemented in Phase 1. "
-            "Supported: " + ", ".join(k.value for k in _ENGINES) + "."
+            f"Engine '{kind.value}' is not implemented yet. "
+            f"Supported engines: {supported}."
         )
         raise EngineUnavailableError(msg)
     return cls()

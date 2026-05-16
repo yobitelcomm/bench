@@ -177,7 +177,55 @@ def _publish_to_local(
     target_dir.mkdir(parents=True, exist_ok=True)
     target = target_dir / f"{envelope.content_hash()[:12]}.json"
     shutil.copy2(envelope_path, target)
+    _update_mirror_index(root, suite_slug, envelope, target, tag=tag)
     console.print(f"[bold green]OK[/bold green] mirrored to {target}")
     if tag:
         (target_dir / f"{target.stem}.tag").write_text(tag, encoding="utf-8")
         console.print(f"  tag:  {tag}")
+
+
+def _update_mirror_index(
+    root: Path, suite_slug: str, envelope: Envelope, target: Path, *, tag: str = ""
+) -> None:
+    """Maintain a self-describing ``index.json`` at the mirror root.
+
+    Each entry: ``{suite_id, suite_slug, model_id, content_hash, path, signed,
+    tag, timestamp}``. The index is append-style — we re-load it, add or
+    update the entry for this target, sort by timestamp desc, and write back.
+    Existing entries with the same ``path`` are replaced.
+    """
+    index_path = root / "index.json"
+    entries: list[dict[str, str | int | bool]] = []
+    if index_path.exists():
+        try:
+            payload = json.loads(index_path.read_text(encoding="utf-8"))
+            existing = payload.get("entries") if isinstance(payload, dict) else None
+            if isinstance(existing, list):
+                entries = [e for e in existing if isinstance(e, dict)]
+        except (OSError, ValueError):
+            entries = []
+
+    rel_path = str(target.relative_to(root))
+    new_entry: dict[str, str | int | bool] = {
+        "suite_id": str(envelope.suite_id),
+        "suite_slug": suite_slug,
+        "model_id": str(envelope.model.id),
+        "engine": f"{envelope.engine.name} v{envelope.engine.version}",
+        "content_hash": envelope.content_hash(),
+        "path": rel_path,
+        "signed": envelope.signature is not None,
+        "tag": tag,
+        "timestamp": envelope.timestamp.isoformat(),
+    }
+    entries = [e for e in entries if e.get("path") != rel_path]
+    entries.append(new_entry)
+    entries.sort(key=lambda e: str(e.get("timestamp", "")), reverse=True)
+
+    index_payload = {
+        "schema": "inferencebench.mirror.v1",
+        "n_entries": len(entries),
+        "entries": entries,
+    }
+    tmp = index_path.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps(index_payload, indent=2, sort_keys=True), encoding="utf-8")
+    tmp.replace(index_path)
