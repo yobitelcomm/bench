@@ -154,6 +154,24 @@ def _merge_driver_overrides(
                 )
 
 
+def _apply_prices_file(
+    extra: dict[str, str | int | float | bool], prices_file: str
+) -> None:
+    """Validate ``--prices-file`` and stash the resolved path on ``extra``.
+
+    Plugins read ``extra['prices_file']`` to override the bundled pricing
+    registry in the cost-fallback path; see
+    :func:`inferencebench_llm.plugin.LLMInferencePlugin._custom_pricing_registry`.
+    """
+    if not prices_file:
+        return
+    prices_path = Path(prices_file)
+    if not prices_path.is_file():
+        err_console.print(f"[red]--prices-file not found:[/red] {prices_path}")
+        raise typer.Exit(code=2)
+    extra["prices_file"] = str(prices_path.resolve())
+
+
 def _build_signing_extra(
     signing_mode: str, dev_key: str
 ) -> dict[str, str | int | float | bool]:
@@ -843,6 +861,17 @@ def run(
             ),
         ),
     ] = False,
+    prices_file: Annotated[
+        str,
+        typer.Option(
+            "--prices-file",
+            help=(
+                "Path to a custom prices YAML used by the plugin's "
+                "registry-cost fallback (when LiteLLM doesn't report a "
+                "provider cost). Forwarded as RunContext.extra['prices_file']."
+            ),
+        ),
+    ] = "",
 ) -> None:
     """Run a benchmark from the named suite and emit a signed envelope."""
     sweep_points, sweep_kind = _resolve_sweep_flags(
@@ -887,6 +916,8 @@ def run(
 
     output_dir = Path(output) if output else Path.cwd() / "results"
     signing_extra = _build_signing_extra(signing_mode, dev_key)
+
+    _apply_prices_file(signing_extra, prices_file)
 
     if sweep_points is not None and sweep_kind is not None:
         _run_sweep(

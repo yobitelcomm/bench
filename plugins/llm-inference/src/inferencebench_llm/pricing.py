@@ -2,8 +2,9 @@
 doesn't include cost in its API response.
 
 The registry is a small in-memory dict of ``(provider, model)`` → input/output
-$/M-token rates. Phase 1 ships a starter set of public list prices; Phase 2
-adds a YAML file and a community PR flow to keep prices fresh.
+$/M-token rates. The data lives in :file:`prices.yaml` shipped with the
+plugin; users can override it by passing ``--prices-file <path>`` to
+``bench cost`` or ``bench run``.
 
 For LiteLLM-routed providers (OpenAI, Anthropic, Together, etc.) LiteLLM
 usually returns ``response_cost`` directly — use that when available.
@@ -16,7 +17,15 @@ quoting publicly).
 
 from __future__ import annotations
 
+import logging
 from dataclasses import dataclass
+from importlib.resources import as_file, files
+from pathlib import Path
+from typing import Any
+
+import yaml
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,10 +46,9 @@ class ModelPricing:
         )
 
 
-# Provider/model → ModelPricing. Phase 1 starter set — keep it small + verified.
-# Prices in USD per million tokens. Update via PR with a citation to the
-# provider's pricing page.
-_REGISTRY: dict[tuple[str, str], ModelPricing] = {
+# Hardcoded fallback used only if the bundled :file:`prices.yaml` is missing
+# or corrupt. Keeps the module importable in adversarial install states.
+_BUILTIN_FALLBACK: dict[tuple[str, str], ModelPricing] = {
     ("openai", "gpt-4o"): ModelPricing(
         provider="openai",
         model="gpt-4o",
@@ -134,6 +142,196 @@ _REGISTRY: dict[tuple[str, str], ModelPricing] = {
         output_per_million_usd=0.79,
     ),
 }
+
+
+@dataclass(frozen=True, slots=True)
+class _ParseStats:
+    """Validation summary for a single YAML pricing file."""
+
+    valid: int
+    skipped: int
+    errors: list[str]
+
+
+def _parse_entry(
+    raw: Any,  # noqa: ANN401 -- YAML payload is arbitrary user input
+    *,
+    index: int,
+    source: str,
+) -> ModelPricing | str:
+    """Validate one YAML entry. Returns a :class:`ModelPricing` or an error message.
+
+    Required keys: ``provider`` (str), ``model`` (str),
+    ``input_per_million_usd`` (number), ``output_per_million_usd`` (number).
+    Optional: ``notes`` (str).
+    """
+    if not isinstance(raw, dict):
+        return f"entry {index} in {source}: expected mapping, got {type(raw).__name__}"
+    required = ("provider", "model", "input_per_million_usd", "output_per_million_usd")
+    missing = [k for k in required if k not in raw]
+    if missing:
+        return f"entry {index} in {source}: missing required keys {missing}"
+    provider = raw["provider"]
+    model = raw["model"]
+    input_rate = raw["input_per_million_usd"]
+    output_rate = raw["output_per_million_usd"]
+    notes = raw.get("notes", "")
+    if not isinstance(provider, str) or not provider.strip():
+        return f"entry {index} in {source}: 'provider' must be a non-empty string"
+    if not isinstance(model, str) or not model.strip():
+        return f"entry {index} in {source}: 'model' must be a non-empty string"
+    if not isinstance(input_rate, int | float) or isinstance(input_rate, bool):
+        return f"entry {index} in {source}: 'input_per_million_usd' must be a number"
+    if not isinstance(output_rate, int | float) or isinstance(output_rate, bool):
+        return f"entry {index} in {source}: 'output_per_million_usd' must be a number"
+    if notes is None:
+        notes = ""
+    if not isinstance(notes, str):
+        return f"entry {index} in {source}: 'notes' must be a string"
+    return ModelPricing(
+        provider=provider,
+        model=model,
+        input_per_million_usd=float(input_rate),
+        output_per_million_usd=float(output_rate),
+        notes=notes,
+    )
+
+
+def _build_registry_from_yaml(
+    payload: Any,  # noqa: ANN401 -- YAML payload is arbitrary user input
+    *,
+    source: str,
+) -> tuple[dict[tuple[str, str], ModelPricing], _ParseStats]:
+    """Build a ``(provider, model) -> ModelPricing`` dict from a parsed YAML payload.
+
+    Invalid entries are logged as warnings and skipped (no exception). The
+    returned :class:`_ParseStats` summarises what was kept vs skipped.
+    """
+    if not isinstance(payload, dict):
+        msg = f"{source}: top-level YAML must be a mapping, got {type(payload).__name__}"
+        return {}, _ParseStats(valid=0, skipped=0, errors=[msg])
+    entries = payload.get("entries", [])
+    if not isinstance(entries, list):
+        msg = f"{source}: 'entries' must be a list, got {type(entries).__name__}"
+        return {}, _ParseStats(valid=0, skipped=0, errors=[msg])
+
+    registry: dict[tuple[str, str], ModelPricing] = {}
+    errors: list[str] = []
+    valid = 0
+    skipped = 0
+    for i, raw in enumerate(entries):
+        parsed = _parse_entry(raw, index=i, source=source)
+        if isinstance(parsed, str):
+            logger.warning("Skipping invalid pricing entry: %s", parsed)
+            errors.append(parsed)
+            skipped += 1
+            continue
+        registry[(parsed.provider.lower().strip(), parsed.model.strip())] = parsed
+        valid += 1
+    return registry, _ParseStats(valid=valid, skipped=skipped, errors=errors)
+
+
+def _load_bundled() -> dict[tuple[str, str], ModelPricing]:
+    """Load the bundled :file:`prices.yaml` resource. Fall back to the builtin dict."""
+    try:
+        resource = files("inferencebench_llm") / "prices.yaml"
+        with as_file(resource) as path:
+            if not path.is_file():
+                logger.warning(
+                    "Bundled prices.yaml missing; using _BUILTIN_FALLBACK"
+                )
+                return dict(_BUILTIN_FALLBACK)
+            text = path.read_text(encoding="utf-8")
+    except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
+        logger.warning(
+            "Could not read bundled prices.yaml (%s); using _BUILTIN_FALLBACK", exc
+        )
+        return dict(_BUILTIN_FALLBACK)
+    try:
+        payload = yaml.safe_load(text)
+    except yaml.YAMLError as exc:
+        logger.warning(
+            "Bundled prices.yaml is malformed (%s); using _BUILTIN_FALLBACK", exc
+        )
+        return dict(_BUILTIN_FALLBACK)
+    registry, _stats = _build_registry_from_yaml(payload, source="<bundled prices.yaml>")
+    if not registry:
+        logger.warning(
+            "Bundled prices.yaml produced an empty registry; using _BUILTIN_FALLBACK"
+        )
+        return dict(_BUILTIN_FALLBACK)
+    return registry
+
+
+def load_pricing(
+    path: Path | str | None = None,
+) -> dict[tuple[str, str], ModelPricing]:
+    """Load a pricing registry from disk.
+
+    With ``path=None`` returns a fresh copy of the bundled registry (the same
+    one ``lookup``/``estimate_cost`` consult by default).
+
+    With a path, parses that YAML file and returns the resulting registry
+    dict. Does NOT mutate the module-level ``_REGISTRY`` — pass the result
+    around explicitly or call :func:`set_pricing` to install it process-wide.
+
+    Raises ``FileNotFoundError`` if ``path`` is set but doesn't exist, and
+    ``ValueError`` if the YAML is malformed.
+    """
+    if path is None:
+        return _load_bundled()
+    p = Path(path)
+    if not p.is_file():
+        msg = f"prices file not found: {p}"
+        raise FileNotFoundError(msg)
+    try:
+        payload = yaml.safe_load(p.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        msg = f"failed to parse YAML at {p}: {exc}"
+        raise ValueError(msg) from exc
+    registry, _stats = _build_registry_from_yaml(payload, source=str(p))
+    return registry
+
+
+def validate_pricing_file(path: Path | str) -> _ParseStats:
+    """Parse a YAML pricing file and return a :class:`_ParseStats` summary.
+
+    Used by ``bench cost --validate-prices <path>``. Does not raise on
+    invalid entries — they're surfaced as ``errors`` on the result. Does
+    raise ``FileNotFoundError`` if the file is missing and ``ValueError``
+    if the YAML itself is malformed.
+    """
+    p = Path(path)
+    if not p.is_file():
+        msg = f"prices file not found: {p}"
+        raise FileNotFoundError(msg)
+    try:
+        payload = yaml.safe_load(p.read_text(encoding="utf-8"))
+    except yaml.YAMLError as exc:
+        msg = f"failed to parse YAML at {p}: {exc}"
+        raise ValueError(msg) from exc
+    _registry, stats = _build_registry_from_yaml(payload, source=str(p))
+    return stats
+
+
+# Module-level registry consulted by ``lookup``/``estimate_cost``/etc.
+# Built from the bundled YAML at import time; can be replaced via
+# :func:`set_pricing` for callers that want process-wide custom pricing.
+_REGISTRY: dict[tuple[str, str], ModelPricing] = _load_bundled()
+
+
+def set_pricing(registry: dict[tuple[str, str], ModelPricing]) -> None:
+    """Replace the module-level pricing registry with ``registry`` in place.
+
+    This is **process-wide global state** — every subsequent call to
+    :func:`lookup`, :func:`estimate_cost`, :func:`all_providers`,
+    :func:`models_for`, and :func:`providers_for` consults the new dict.
+    Prefer :func:`load_pricing` + passing the result explicitly when
+    possible; reach for ``set_pricing`` only when retrofitting code paths
+    that go through the module-level helpers.
+    """
+    global _REGISTRY
+    _REGISTRY = registry
 
 
 def lookup(provider: str, model: str) -> ModelPricing | None:

@@ -2,11 +2,38 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from typer.testing import CliRunner
 
 from inferencebench.cli import app
 
 runner = CliRunner(env={"COLUMNS": "240"})
+
+
+_GOOD_YAML = """
+schema: inferencebench.pricing.v1
+currency: USD
+per_million_tokens: true
+entries:
+  - provider: acme
+    model: acme/Bigfoot-9B
+    input_per_million_usd: 0.42
+    output_per_million_usd: 1.00
+    notes: "Internal estimate"
+  - provider: zenith
+    model: acme/Bigfoot-9B
+    input_per_million_usd: 0.50
+    output_per_million_usd: 1.10
+"""
+
+_BAD_YAML = """
+schema: inferencebench.pricing.v1
+entries:
+  - provider: bad
+    input_per_million_usd: 1.0
+    output_per_million_usd: 2.0
+"""
 
 
 def test_cost_known_model_lists_providers() -> None:
@@ -91,3 +118,51 @@ def test_cost_suite_flag_is_accepted() -> None:
         ],
     )
     assert result.exit_code == 0, result.output
+
+
+def test_cost_with_custom_prices_file(tmp_path: Path) -> None:
+    """``--prices-file <yaml>`` uses entries from the supplied file."""
+    prices = tmp_path / "custom.yaml"
+    prices.write_text(_GOOD_YAML, encoding="utf-8")
+
+    result = runner.invoke(
+        app,
+        ["cost", "acme/Bigfoot-9B", "--prices-file", str(prices)],
+    )
+    assert result.exit_code == 0, result.output
+    assert "acme" in result.output
+    assert "zenith" in result.output
+    # bundled-only providers must not appear.
+    assert "together" not in result.output
+
+
+def test_cost_with_missing_prices_file_errors(tmp_path: Path) -> None:
+    """A nonexistent ``--prices-file`` exits non-zero with a clear message."""
+    missing = tmp_path / "absent.yaml"
+    result = runner.invoke(
+        app,
+        ["cost", "gpt-4o", "--prices-file", str(missing)],
+    )
+    assert result.exit_code != 0
+    assert "not found" in result.output or "absent.yaml" in result.output
+
+
+def test_cost_validate_prices_good_file(tmp_path: Path) -> None:
+    """``--validate-prices <good.yaml>`` exits 0 and prints a summary."""
+    good = tmp_path / "good.yaml"
+    good.write_text(_GOOD_YAML, encoding="utf-8")
+
+    result = runner.invoke(app, ["cost", "--validate-prices", str(good)])
+    assert result.exit_code == 0, result.output
+    assert "2 entries valid" in result.output
+    assert "0 skipped" in result.output
+
+
+def test_cost_validate_prices_bad_file(tmp_path: Path) -> None:
+    """``--validate-prices <bad.yaml>`` exits 1 and reports the skipped entry."""
+    bad = tmp_path / "bad.yaml"
+    bad.write_text(_BAD_YAML, encoding="utf-8")
+
+    result = runner.invoke(app, ["cost", "--validate-prices", str(bad)])
+    assert result.exit_code == 1, result.output
+    assert "skipped" in result.output

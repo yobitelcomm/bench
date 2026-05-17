@@ -57,6 +57,10 @@ _HIGHER_IS_BETTER: frozenset[str] = frozenset(
         "compliance_rate",
         "ok_rate",
         "goodput_at_slo",
+        "accuracy",
+        "accuracy_p05",
+        "accuracy_p50",
+        "accuracy_p95",
     }
 )
 

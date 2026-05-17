@@ -1,0 +1,12 @@
+benchmark_id: llm.quality.reasoning-mini
+suite_version: 1.0.0
+description: GSM8K-style single-number answer, exact match.
+modality: llm
+kind: quality
+dataset:
+  id: builtin-reasoning-mini
+  path: reasoning-mini.jsonl
+slo_template: llm.quality.standard
+warmup:
+  discard_runs: 0
+scoring: exact_match

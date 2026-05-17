@@ -1,0 +1,12 @@
+benchmark_id: llm.quality.factual-mini
+suite_version: 1.0.0
+description: Short factual recall, substring match against ground truth.
+modality: llm
+kind: quality
+dataset:
+  id: builtin-factual-mini
+  path: factual-mini.jsonl
+slo_template: llm.quality.standard
+warmup:
+  discard_runs: 0
+scoring: substring_match

@@ -1,0 +1,10 @@
+{"question": "If Alice has 3 apples and Bob gives her 5 more, how many apples does Alice have? Answer with just the number.", "answer": "8", "category": "arithmetic"}
+{"question": "A train travels 60 km in 1 hour. How many km does it travel in 4 hours at the same speed? Answer with just the number.", "answer": "240", "category": "arithmetic"}
+{"question": "What is 12 multiplied by 12? Answer with just the number.", "answer": "144", "category": "arithmetic"}
+{"question": "If a shirt costs $15 and you buy 3 of them, what is the total cost in dollars? Answer with just the number.", "answer": "45", "category": "arithmetic"}
+{"question": "A box contains 24 chocolates. If you eat one quarter of them, how many remain? Answer with just the number.", "answer": "18", "category": "arithmetic"}
+{"question": "What is 100 minus 37? Answer with just the number.", "answer": "63", "category": "arithmetic"}
+{"question": "If a square has a side length of 7, what is its area? Answer with just the number.", "answer": "49", "category": "geometry"}
+{"question": "Sarah is 12 years old and her brother is twice her age. How old is her brother? Answer with just the number.", "answer": "24", "category": "arithmetic"}
+{"question": "There are 5 baskets, each holding 9 oranges. How many oranges are there in total? Answer with just the number.", "answer": "45", "category": "arithmetic"}
+{"question": "If 8 cookies are shared equally between 4 children, how many cookies does each child get? Answer with just the number.", "answer": "2", "category": "arithmetic"}

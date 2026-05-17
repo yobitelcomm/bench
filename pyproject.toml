@@ -37,6 +37,7 @@ members = [
     "envelope",
     "harness",
     "plugins/llm-inference",
+    "plugins/llm-quality",
     "integrations/hf-publisher",
     "tools/leaderboard",
 ]
@@ -67,6 +68,7 @@ src = [
     "envelope/src",
     "harness/src",
     "plugins/llm-inference/src",
+    "plugins/llm-quality/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -117,6 +119,8 @@ ignore = [
 "harness/src/inferencebench/harness/telemetry/base.py" = ["B027"]   # _setup / _teardown are optional override hooks
 "harness/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501", "B018"]
 "plugins/llm-inference/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/llm-quality/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/llm-quality/src/inferencebench_quality/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; ModelClient.complete signature mirrors harness contract
 "plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
@@ -144,7 +148,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:integrations/hf-publisher/src:tools/leaderboard/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -165,6 +169,7 @@ files = [
     "envelope/src",
     "harness/src",
     "plugins/llm-inference/src",
+    "plugins/llm-quality/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -199,6 +204,7 @@ testpaths = [
     "envelope/tests",
     "harness/tests",
     "plugins/llm-inference/tests",
+    "plugins/llm-quality/tests",
     "integrations/hf-publisher/tests",
     "tools/leaderboard/tests",
 ]
@@ -220,6 +226,7 @@ source = [
     "envelope/src",
     "harness/src",
     "plugins/llm-inference/src",
+    "plugins/llm-quality/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
 ]

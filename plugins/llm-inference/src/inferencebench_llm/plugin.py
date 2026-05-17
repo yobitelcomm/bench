@@ -49,7 +49,7 @@ from inferencebench_llm.engines import (
     SGLangEngine,
     VLLMEngine,
 )
-from inferencebench_llm.pricing import providers_for
+from inferencebench_llm.pricing import ModelPricing, load_pricing, providers_for
 from inferencebench_llm.schemas import BenchmarkSpec, EngineKind, RunContext
 
 if TYPE_CHECKING:
@@ -86,15 +86,28 @@ def _strip_routing_prefix(model_id: str) -> str:
     return model_id
 
 
-def _registry_reference_cost(model_id: str) -> tuple[float, str] | None:
+def _registry_reference_cost(
+    model_id: str,
+    *,
+    custom_registry: dict[tuple[str, str], ModelPricing] | None = None,
+) -> tuple[float, str] | None:
     """Return ``(blended_rate_usd_per_million, cheapest_provider)`` for ``model_id``.
 
-    Returns ``None`` if no provider in the bundled registry offers this model —
-    callers should omit the cost metric entirely in that case rather than emit
-    a misleading zero.
+    Returns ``None`` if no provider in the (bundled or custom) registry offers
+    this model — callers should omit the cost metric entirely in that case
+    rather than emit a misleading zero.
+
+    When ``custom_registry`` is supplied (typically from
+    ``RunContext.extra["prices_file"]``) it overrides the bundled registry.
     """
     canonical = _strip_routing_prefix(model_id)
-    entries = providers_for(canonical)
+    if custom_registry is not None:
+        entries = sorted(
+            (e for (_, m), e in custom_registry.items() if m == canonical),
+            key=lambda e: e.provider,
+        )
+    else:
+        entries = providers_for(canonical)
     if not entries:
         return None
     best = min(
@@ -306,6 +319,31 @@ class LLMInferencePlugin:
         except OSError:
             pass  # diagnostics-only — never block the run
 
+    def _custom_pricing_registry(
+        self, context: RunContext
+    ) -> dict[tuple[str, str], ModelPricing] | None:
+        """Return a user-supplied pricing registry if ``RunContext.extra['prices_file']`` is set.
+
+        Returns ``None`` (i.e. fall through to the bundled registry) when the
+        key is absent, empty, or the file can't be loaded. Load failures are
+        surfaced as warnings via stderr rather than aborting the run — cost
+        is an optional metric.
+        """
+        raw = context.extra.get("prices_file")
+        if not raw:
+            return None
+        path = Path(str(raw))
+        try:
+            return load_pricing(path)
+        except (FileNotFoundError, ValueError, OSError) as exc:
+            import sys
+
+            print(
+                f"warning: failed to load --prices-file {path}: {exc}",
+                file=sys.stderr,
+            )
+            return None
+
     def _benchmarks_dir(self) -> Path:
         return Path(__file__).parent / "benchmarks"
 
@@ -413,7 +451,10 @@ class LLMInferencePlugin:
             metrics["cost_usd_per_million_tokens"] = (cost_total / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
         else:
-            registry_cost = _registry_reference_cost(context.model_id)
+            custom_registry = self._custom_pricing_registry(context)
+            registry_cost = _registry_reference_cost(
+                context.model_id, custom_registry=custom_registry
+            )
             if registry_cost is not None:
                 rate, provider = registry_cost
                 metrics["cost_usd_per_million_tokens"] = rate

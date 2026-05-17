@@ -15,6 +15,7 @@ from rich.console import Console
 
 from inferencebench._logging import configure_logging
 from inferencebench.commands import (
+    bundle,
     cache,
     compare,
     cost,
@@ -79,6 +80,12 @@ def main(
 # behaves correctly (sub-Typer with invoke_without_command=True has a parsing
 # quirk that breaks positional-then-option args).
 app.command(name="run", help="Run a benchmark and produce a signed envelope.")(run.run)
+# `bundle` has subcommands (create/extract) → sub-Typer
+app.add_typer(
+    bundle.app,
+    name="bundle",
+    help="Pack/unpack a one-file shareable envelope bundle (.bundle.zip).",
+)
 # `cache` has subcommands (list/clear/path) → sub-Typer
 app.add_typer(cache.app, name="cache", help="Manage the local envelope fetch cache.")
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
