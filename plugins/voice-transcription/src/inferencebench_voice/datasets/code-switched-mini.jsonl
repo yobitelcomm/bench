@@ -1,0 +1,5 @@
+{"audio_path": "cs-01.wav", "reference": "I'll meet you en la oficina at three", "duration_s": 2.8}
+{"audio_path": "cs-02.wav", "reference": "necesito comprar some milk on the way home", "duration_s": 3.1}
+{"audio_path": "cs-03.wav", "reference": "the meeting fue cancelada due to weather", "duration_s": 2.9}
+{"audio_path": "cs-04.wav", "reference": "can you mandarme the file por favor", "duration_s": 2.4}
+{"audio_path": "cs-05.wav", "reference": "vamos a la playa after lunch tomorrow", "duration_s": 2.7}

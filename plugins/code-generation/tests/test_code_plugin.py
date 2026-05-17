@@ -52,11 +52,36 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_one_bundled_benchmark() -> None:
+def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = CodeGenerationPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 1
-    assert specs[0].benchmark_id == "code.generation.humaneval-mini"
+    assert len(specs) >= 2
+    ids = {s.benchmark_id for s in specs}
+    assert {
+        "code.generation.humaneval-mini",
+        "code.generation.mbpp-mini",
+    }.issubset(ids)
+
+
+def test_get_benchmark_mbpp_mini_resolves() -> None:
+    plugin = CodeGenerationPlugin()
+    spec = plugin.get_benchmark("code.generation.mbpp-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.modality == "code"
+    assert spec.kind == "generation"
+    assert spec.scoring == "pass_at_1"
+    assert spec.language == "python"
+    assert spec.timeout_s == 5.0
+    assert spec.dataset.path == "mbpp-mini.jsonl"
+
+    # Fixture has exactly 5 entries.
+    plugin_dir = Path(plugin._benchmarks_dir()).parent
+    fixture_path = plugin_dir / "datasets" / "mbpp-mini.jsonl"
+    assert fixture_path.exists()
+    lines = [
+        line for line in fixture_path.read_text(encoding="utf-8").splitlines() if line.strip()
+    ]
+    assert len(lines) == 5
 
 
 def test_plugin_get_benchmark_humaneval_mini() -> None:

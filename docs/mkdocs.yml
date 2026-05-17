@@ -42,6 +42,7 @@ nav:
   - Home: index.md
   - Install: install.md
   - Quickstart: quickstart.md
+  - 10-minute tour: tour.md
   - CLI reference:
       - Overview: cli/overview.md
       - bench audit: cli/bench-audit.md
@@ -92,6 +93,8 @@ nav:
   - Community:
       - Contributing: community/contributing.md
       - Code of conduct: community/code-of-conduct.md
+      - Security: community/security.md
+      - Discussions: community/discussions.md
   - Reference:
       - Envelope schema: reference/envelope-schema.md
       - CLI reference: reference/cli-reference.md

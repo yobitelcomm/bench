@@ -15,7 +15,31 @@ def test_plugin_lists_at_least_three_specs() -> None:
     assert "llm.inference.sharegpt-v3" in ids
     assert "llm.inference.chatbot-short" in ids
     assert "llm.inference.long-context" in ids
-    assert len(specs) >= 3
+    assert "llm.inference.code-completion" in ids
+    assert "llm.inference.rag-style" in ids
+    assert len(specs) >= 5
+
+
+def test_get_benchmark_code_completion_resolves() -> None:
+    plugin = LLMInferencePlugin()
+    spec = plugin.get_benchmark("llm.inference.code-completion")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.driver.type == "closed_loop"
+    assert spec.driver.concurrency == [1, 4, 16]
+    assert spec.driver.duration_s == 120
+    assert spec.slo_template == "llm.standard"
+    assert spec.dataset.uri == "builtin://"
+
+
+def test_get_benchmark_rag_style_resolves() -> None:
+    plugin = LLMInferencePlugin()
+    spec = plugin.get_benchmark("llm.inference.rag-style")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.driver.type == "open_loop"
+    assert spec.driver.rps == [1, 4]
+    assert spec.driver.duration_s == 180
+    assert spec.slo_template == "llm.relaxed"
+    assert spec.dataset.uri == "builtin://"
 
 
 def test_each_spec_validates_against_benchmark_spec() -> None:

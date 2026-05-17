@@ -50,8 +50,70 @@ fix(envelope): correct content_hash canonical ordering
 docs(quickstart): clarify HF Hub publish flow
 ```
 
+## Contributing a new plugin
+
+A plugin is a Python package that registers an `inferencebench.plugins` entry point and implements the four-method plugin contract. The CLI ships a scaffolder that produces an end-to-end runnable package — including a `smoke` benchmark you can run immediately to produce a signed envelope.
+
+### 1. Scaffold
+
+```bash
+uv run bench plugin init my-modality --kind both --modality llm
+```
+
+This creates `plugins/my-modality/` with:
+
+```
+plugins/my-modality/
+  pyproject.toml          # name: inferencebench-my-modality; entry point wired up
+  README.md
+  src/inferencebench_my_modality/
+    __init__.py
+    schemas.py            # BenchmarkSpec + RunContext pydantic models
+    plugin.py             # MyModalityPlugin class — the four contract methods
+  tests/
+    test_plugin.py        # asserts the smoke benchmark produces a signed envelope
+```
+
+Install it into the workspace and run the smoke benchmark:
+
+```bash
+uv pip install -e ./plugins/my-modality
+cosign generate-key-pair
+uv run bench run my-modality.smoke --signing-mode dev --dev-key cosign.key
+```
+
+You should see a signed envelope under `~/.cache/inferencebench/runs/`.
+
+### 2. The plugin contract
+
+Your plugin class implements four methods. The scaffolded class has working stubs for each:
+
+| Method | Purpose |
+|---|---|
+| `list_benchmarks() -> list[BenchmarkSpec]` | Return every benchmark this plugin exposes. Used by `bench list`. |
+| `get_benchmark(benchmark_id: str) -> BenchmarkSpec` | Resolve one spec by id. Used by `bench run <id>`. |
+| `validate(spec, context) -> list[str]` | Return human-readable errors. Empty list = OK. Runs before `run`. |
+| `run(spec, context) -> Envelope` | Execute the benchmark and return a signed envelope. |
+
+The reference implementation is [`plugins/llm-inference/`](https://github.com/yobitelcomm/bench/tree/main/plugins/llm-inference/) — it shows how to plumb a real workload (vLLM, SGLang, llama.cpp, MLX), drive the convergence gate, capture NVML/RAPL telemetry, and emit a Sigstore-signed envelope.
+
+For a smaller example, see [`plugins/llm-quality/`](https://github.com/yobitelcomm/bench/tree/main/plugins/llm-quality/) — deterministic fixture scoring, no engine integration, LLM-as-judge deferred to Phase 2.
+
+### 3. Naming
+
+- Package name: `inferencebench-<short-name>` (PyPI distribution).
+- Python module: `inferencebench_<short_name>`.
+- Entry point id: `<short-name>` (lowercase, hyphens, must match `[a-z][a-z0-9-]*`).
+- Benchmark ids: `<short-name>.<benchmark>` (e.g. `voice.asr-librispeech`).
+
+### 4. Methodology review
+
+New plugins go through methodology review before they merge. Open a "Benchmark suggestion" issue first using the [benchmark issue template](https://github.com/yobitelcomm/bench/blob/main/.github/ISSUE_TEMPLATE/benchmark.yml). The validator checks dataset license, contamination risk, vendor bias, and scoring metric robustness.
+
 ## See also
 
 - [Code of conduct](code-of-conduct.md)
+- [Security policy](security.md)
 - [CONTRIBUTING.md on GitHub](https://github.com/yobitelcomm/bench/blob/main/CONTRIBUTING.md)
 - [Methodology](../concepts/methodology.md)
+- [`bench plugin` reference](../cli/bench-plugin.md)

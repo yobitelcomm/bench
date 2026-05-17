@@ -1,0 +1,60 @@
+name: Bug report
+description: Something is not working as documented
+title: "[bug] "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for filing a bug. Please fill in every section — the `bench doctor` table is required because most user-visible bugs depend on hardware/driver state.
+  - type: textarea
+    id: description
+    attributes:
+      label: Description
+      description: One paragraph describing the bug.
+    validations:
+      required: true
+  - type: textarea
+    id: did
+    attributes:
+      label: What you did
+      description: Exact command(s) you ran. Paste them verbatim.
+      render: bash
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: What happened instead
+      description: Paste the actual output or error message.
+    validations:
+      required: true
+  - type: textarea
+    id: version
+    attributes:
+      label: bench --version output
+      description: Output of `bench --version`.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: doctor
+    attributes:
+      label: bench doctor output (paste full table)
+      description: Output of `bench doctor`. The full table — not a summary.
+      render: text
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+      description: Logs, screenshots, related issues.
+    validations:
+      required: false

@@ -1,0 +1,56 @@
+name: Benchmark suggestion
+description: Propose a new benchmark or modality
+title: "[benchmark] "
+labels: ["benchmark-proposal", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Proposals go through methodology review before they ship. Be specific — the more concrete the proposal, the faster it moves.
+  - type: dropdown
+    id: modality
+    attributes:
+      label: Modality (llm/voice/code/embeddings/mt/other)
+      options:
+        - llm
+        - voice
+        - code
+        - embeddings
+        - mt
+        - other
+    validations:
+      required: true
+  - type: textarea
+    id: why
+    attributes:
+      label: Why this benchmark
+      description: What gap does it close? Who is the audience? What decision does it inform?
+    validations:
+      required: true
+  - type: textarea
+    id: dataset
+    attributes:
+      label: Dataset (public/license)
+      description: Source, size, license, redistribution terms. Private datasets do not qualify.
+    validations:
+      required: true
+  - type: textarea
+    id: metric
+    attributes:
+      label: Scoring metric
+      description: How is a single result scored? Include the exact formula or reference implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: prior
+    attributes:
+      label: Existing implementations to learn from
+      description: Links to lm-eval-harness, HELM, MTEB, or other prior art covering this benchmark.
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+    validations:
+      required: false

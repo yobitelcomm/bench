@@ -1,0 +1,13 @@
+benchmark_id: embeddings.retrieval.msmarco-style
+suite_version: 1.0.0
+description: MS MARCO-style passage ranking, MRR@10.
+modality: embeddings
+kind: retrieval
+dataset:
+  id: builtin-msmarco-style
+  path: msmarco-style-queries.jsonl
+  corpus_path: msmarco-style-corpus.jsonl
+slo_template: embeddings.retrieval.standard
+warmup:
+  discard_runs: 0
+metric: mrr_at_10

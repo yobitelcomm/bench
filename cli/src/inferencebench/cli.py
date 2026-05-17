@@ -38,7 +38,9 @@ from inferencebench.commands import (
     run,
     schema_cmd,
     server,
+    spec,
     summary,
+    tour,
     verify,
     watch,
 )
@@ -152,7 +154,17 @@ app.command(
     name="server",
     help="Run a minimal HTTP API for distributed envelope ingestion.",
 )(server.server)
+# `spec` has subcommands (validate/show/lint) → sub-Typer
+app.add_typer(
+    spec.app,
+    name="spec",
+    help="Validate / show / lint user-supplied benchmark spec YAML files.",
+)
 app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)
+app.command(
+    name="tour",
+    help="Interactive end-to-end install-validation walkthrough.",
+)(tour.tour)
 app.command(
     name="watch",
     help="Watch an envelopes directory and rebuild the leaderboard on changes.",

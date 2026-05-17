@@ -24,12 +24,33 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_two_bundled_benchmarks() -> None:
+def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = VoiceTranscriptionPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 2
+    assert len(specs) >= 4
     ids = {s.benchmark_id for s in specs}
-    assert ids == {"voice.transcription.fleurs-mini", "voice.transcription.long-form"}
+    assert {
+        "voice.transcription.fleurs-mini",
+        "voice.transcription.long-form",
+        "voice.transcription.code-switched-mini",
+        "voice.transcription.accented-mini",
+    }.issubset(ids)
+
+
+def test_get_benchmark_code_switched_mini_resolves() -> None:
+    plugin = VoiceTranscriptionPlugin()
+    spec = plugin.get_benchmark("voice.transcription.code-switched-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.scoring == "wer"
+    assert spec.dataset.path == "code-switched-mini.jsonl"
+
+
+def test_get_benchmark_accented_mini_resolves() -> None:
+    plugin = VoiceTranscriptionPlugin()
+    spec = plugin.get_benchmark("voice.transcription.accented-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.scoring == "wer"
+    assert spec.dataset.path == "accented-mini.jsonl"
 
 
 def test_plugin_get_benchmark_fleurs_mini() -> None:

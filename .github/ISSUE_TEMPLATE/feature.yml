@@ -1,0 +1,36 @@
+name: Feature request
+description: Suggest a new feature or enhancement
+title: "[feat] "
+labels: ["enhancement", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Use this for CLI features, harness/envelope changes, or docs improvements. For a new benchmark, use the "Benchmark suggestion" template.
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem
+      description: What can't you do today, or what's painful about the current workflow?
+    validations:
+      required: true
+  - type: textarea
+    id: proposed
+    attributes:
+      label: Proposed solution
+      description: Concrete examples (CLI invocations, API shape, sample output) are best.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: What other approaches did you think about and reject, and why?
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else
+    validations:
+      required: false

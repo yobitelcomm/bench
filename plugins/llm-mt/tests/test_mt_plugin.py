@@ -29,15 +29,36 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_two_bundled_benchmarks() -> None:
+def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = LLMMTPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 2
+    assert len(specs) >= 4
     ids = {s.benchmark_id for s in specs}
-    assert ids == {
+    assert {
         "llm.mt.flores-200-mini-en-fr",
         "llm.mt.flores-200-mini-en-de",
-    }
+        "llm.mt.flores-200-mini-en-es",
+        "llm.mt.flores-200-mini-en-ja",
+    }.issubset(ids)
+
+
+def test_get_benchmark_en_es_resolves() -> None:
+    plugin = LLMMTPlugin()
+    spec = plugin.get_benchmark("llm.mt.flores-200-mini-en-es")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.source_lang == "en"
+    assert spec.target_lang == "es"
+    assert spec.scoring == "chrf"
+    assert spec.dataset.path == "flores-mini-en-es.jsonl"
+
+
+def test_get_benchmark_en_ja_resolves() -> None:
+    plugin = LLMMTPlugin()
+    spec = plugin.get_benchmark("llm.mt.flores-200-mini-en-ja")
+    assert spec.source_lang == "en"
+    assert spec.target_lang == "ja"
+    assert spec.scoring == "chrf"
+    assert spec.dataset.path == "flores-mini-en-ja.jsonl"
 
 
 def test_plugin_get_benchmark_en_fr() -> None:

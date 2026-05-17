@@ -1,0 +1,8 @@
+{"question": "What is 17 * 23? Answer with just the number.", "answer": "391", "category": "multiplication"}
+{"question": "What is 31 * 12? Answer with just the number.", "answer": "372", "category": "multiplication"}
+{"question": "What is 48 * 25? Answer with just the number.", "answer": "1200", "category": "multiplication"}
+{"question": "What is 247 + 358? Answer with just the number.", "answer": "605", "category": "addition"}
+{"question": "What is 489 + 612? Answer with just the number.", "answer": "1101", "category": "addition"}
+{"question": "What is 706 + 184? Answer with just the number.", "answer": "890", "category": "addition"}
+{"question": "If 3x + 5 = 20, what is x? Answer with just the number.", "answer": "5", "category": "algebra"}
+{"question": "If 2x - 7 = 11, what is x? Answer with just the number.", "answer": "9", "category": "algebra"}

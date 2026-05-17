@@ -25,16 +25,34 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_three_bundled_benchmarks() -> None:
+def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = LLMQualityPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 3
+    assert len(specs) >= 5
     ids = {s.benchmark_id for s in specs}
-    assert ids == {
+    assert {
         "llm.quality.factual-judged",
         "llm.quality.factual-mini",
         "llm.quality.reasoning-mini",
-    }
+        "llm.quality.arithmetic-mini",
+        "llm.quality.instruction-following-mini",
+    }.issubset(ids)
+
+
+def test_get_benchmark_arithmetic_mini_resolves() -> None:
+    plugin = LLMQualityPlugin()
+    spec = plugin.get_benchmark("llm.quality.arithmetic-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.scoring == "exact_match"
+    assert spec.dataset.path == "arithmetic-mini.jsonl"
+
+
+def test_get_benchmark_instruction_following_mini_resolves() -> None:
+    plugin = LLMQualityPlugin()
+    spec = plugin.get_benchmark("llm.quality.instruction-following-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.scoring == "substring_match"
+    assert spec.dataset.path == "instruction-following-mini.jsonl"
 
 
 def test_plugin_get_benchmark_factual_mini() -> None:

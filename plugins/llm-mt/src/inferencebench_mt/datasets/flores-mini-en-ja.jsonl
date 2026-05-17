@@ -1,0 +1,8 @@
+{"source": "Hello, how are you?", "reference": "こんにちは、お元気ですか？", "domain": "greeting"}
+{"source": "Good morning, my friend.", "reference": "おはよう、友よ。", "domain": "greeting"}
+{"source": "The president signed the new climate agreement yesterday.", "reference": "大統領は昨日、新しい気候協定に署名しました。", "domain": "news"}
+{"source": "Stock markets fell sharply after the central bank announcement.", "reference": "中央銀行の発表を受けて、株式市場は急落しました。", "domain": "news"}
+{"source": "The transformer architecture uses self-attention layers.", "reference": "トランスフォーマーアーキテクチャは自己注意層を使用します。", "domain": "technical"}
+{"source": "Please restart the server after the update completes.", "reference": "アップデートが完了したらサーバーを再起動してください。", "domain": "technical"}
+{"source": "I would like a coffee with milk and sugar, please.", "reference": "ミルクと砂糖入りのコーヒーをお願いします。", "domain": "conversational"}
+{"source": "Where is the nearest train station?", "reference": "最寄りの駅はどこですか？", "domain": "conversational"}

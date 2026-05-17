@@ -1,0 +1,13 @@
+benchmark_id: embeddings.retrieval.query-expansion
+suite_version: 1.0.0
+description: Short queries against a paraphrase-rich corpus.
+modality: embeddings
+kind: retrieval
+dataset:
+  id: builtin-query-expansion
+  path: query-expansion-queries.jsonl
+  corpus_path: query-expansion-corpus.jsonl
+slo_template: embeddings.retrieval.standard
+warmup:
+  discard_runs: 0
+metric: recall_at_5

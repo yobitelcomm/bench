@@ -1,0 +1,14 @@
+benchmark_id: llm.mt.flores-200-mini-en-es
+suite_version: 1.0.0
+description: FLORES-200-style English to Spanish, character F-score.
+modality: llm
+kind: translation
+dataset:
+  id: builtin-flores-mini-en-es
+  path: flores-mini-en-es.jsonl
+slo_template: llm.mt.standard
+warmup:
+  discard_runs: 0
+scoring: chrf
+source_lang: en
+target_lang: es

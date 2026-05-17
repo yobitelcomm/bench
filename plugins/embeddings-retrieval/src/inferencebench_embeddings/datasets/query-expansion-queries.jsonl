@@ -1,0 +1,5 @@
+{"query": "car", "relevant_doc_ids": ["qe-1", "qe-2"]}
+{"query": "doctor", "relevant_doc_ids": ["qe-5", "qe-6"]}
+{"query": "movie", "relevant_doc_ids": ["qe-9", "qe-10"]}
+{"query": "house", "relevant_doc_ids": ["qe-13", "qe-14"]}
+{"query": "music", "relevant_doc_ids": ["qe-17", "qe-18"]}

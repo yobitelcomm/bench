@@ -1,0 +1,12 @@
+benchmark_id: voice.transcription.code-switched-mini
+suite_version: 1.0.0
+description: Code-switched English/Spanish utterances.
+modality: voice
+kind: transcription
+dataset:
+  id: builtin-code-switched-mini
+  path: code-switched-mini.jsonl
+slo_template: voice.transcription.standard
+warmup:
+  discard_runs: 0
+scoring: wer

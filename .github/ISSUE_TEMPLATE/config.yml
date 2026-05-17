@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Discussions
+    url: https://github.com/yobitelcomm/bench/discussions
+    about: General questions, ideas, and show-and-tell. Use this before opening an issue if you are not sure it is a bug.
+  - name: Security
+    url: https://github.com/yobitelcomm/bench/blob/main/SECURITY.md
+    about: Report security vulnerabilities privately following SECURITY.md — do not open a public issue.

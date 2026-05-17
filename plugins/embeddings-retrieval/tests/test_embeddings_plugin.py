@@ -24,12 +24,35 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_two_bundled_benchmarks() -> None:
+def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = EmbeddingsRetrievalPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 2
+    assert len(specs) >= 4
     ids = {s.benchmark_id for s in specs}
-    assert ids == {"embeddings.retrieval.beir-mini", "embeddings.retrieval.long-doc"}
+    assert {
+        "embeddings.retrieval.beir-mini",
+        "embeddings.retrieval.long-doc",
+        "embeddings.retrieval.msmarco-style",
+        "embeddings.retrieval.query-expansion",
+    }.issubset(ids)
+
+
+def test_get_benchmark_msmarco_style_resolves() -> None:
+    plugin = EmbeddingsRetrievalPlugin()
+    spec = plugin.get_benchmark("embeddings.retrieval.msmarco-style")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.metric == "mrr_at_10"
+    assert spec.dataset.path == "msmarco-style-queries.jsonl"
+    assert spec.dataset.corpus_path == "msmarco-style-corpus.jsonl"
+
+
+def test_get_benchmark_query_expansion_resolves() -> None:
+    plugin = EmbeddingsRetrievalPlugin()
+    spec = plugin.get_benchmark("embeddings.retrieval.query-expansion")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.metric == "recall_at_5"
+    assert spec.dataset.path == "query-expansion-queries.jsonl"
+    assert spec.dataset.corpus_path == "query-expansion-corpus.jsonl"
 
 
 def test_plugin_get_benchmark_beir_mini() -> None:

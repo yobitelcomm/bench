@@ -1,30 +1,20 @@
-## What changed
+## Summary
 
+<one sentence>
 
+## What changes
 
-## Why
+-
 
+## Test plan
 
+- [ ] `uv run pytest -q` passes
+- [ ] `uv run ruff check .` clean
+- [ ] `uv run mypy` strict clean
+- [ ] (if docs touched) `uv run --group docs mkdocs build --strict --config-file docs/mkdocs.yml` clean
+- [ ] (if new envelope behavior) verified with `bench verify` against a sample envelope
 
-## How to verify
+## Links
 
-```bash
-# steps
-```
-
-## Risks
-
-
-
-## Related tickets
-
-Refs: TICKETS/phase-N/NNNN-<slug>
-
-## Checklist
-
-- [ ] Tests added or updated
-- [ ] CHANGELOG updated (if user-visible change)
-- [ ] Docs updated (if API change)
-- [ ] ADR opened (if non-obvious architecture decision)
-- [ ] No secrets in diff
-- [ ] PR title follows Conventional Commits (`type(scope): subject`)
+- Related issues: <#issue-number>
+- Architecture decision: <link to ADR if applicable>

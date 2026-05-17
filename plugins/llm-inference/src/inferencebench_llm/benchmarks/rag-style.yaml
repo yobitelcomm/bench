@@ -1,0 +1,33 @@
+benchmark_id: llm.inference.rag-style
+suite_version: 1.0.0
+description: |
+  RAG-style prompts (long context window with retrieved passages).
+  Open-loop Poisson sweep over RPS [1, 4]; uses the bundled fallback prompts.
+modality: llm
+kind: perf
+dataset:
+  id: builtin-rag-style
+  uri: builtin://
+  hash: sha256:0000000000000000000000000000000000000000000000000000000000000000
+  sampling:
+    n: 200
+    seed: 42
+driver:
+  type: open_loop
+  arrival: poisson
+  rps: [1, 4]
+  duration_s: 180
+slo_template: llm.relaxed
+metrics:
+  - ttft_p50_ms
+  - ttft_p99_ms
+  - tpot_p50_ms
+  - throughput_tok_per_s
+  - goodput_at_slo
+  - power_avg_w
+  - joules_per_token
+  - cost_usd_per_million_tokens
+warmup:
+  discard_runs: 3
+  convergence_cov_threshold: 0.05
+  convergence_window: 30

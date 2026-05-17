@@ -1,0 +1,8 @@
+{"question": "Respond with only the word 'OK' and nothing else.", "answer": "OK", "category": "format"}
+{"question": "Reply with only the digit '7' and nothing else.", "answer": "7", "category": "format"}
+{"question": "Format the answer as a single lowercase word: what colour is the sky on a clear day?", "answer": "blue", "category": "format"}
+{"question": "Answer with only YES or NO: is water wet?", "answer": "YES", "category": "format"}
+{"question": "No preamble. State the capital of Italy in one word.", "answer": "Rome", "category": "no_preamble"}
+{"question": "Without any explanation, output the result of 6 + 4.", "answer": "10", "category": "no_preamble"}
+{"question": "Respond with the single character 'Y' only.", "answer": "Y", "category": "format"}
+{"question": "No greeting, no commentary. Output the word 'done'.", "answer": "done", "category": "no_preamble"}

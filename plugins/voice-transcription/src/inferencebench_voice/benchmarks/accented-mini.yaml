@@ -1,0 +1,12 @@
+benchmark_id: voice.transcription.accented-mini
+suite_version: 1.0.0
+description: English with non-native accents (synthetic stub).
+modality: voice
+kind: transcription
+dataset:
+  id: builtin-accented-mini
+  path: accented-mini.jsonl
+slo_template: voice.transcription.standard
+warmup:
+  discard_runs: 0
+scoring: wer

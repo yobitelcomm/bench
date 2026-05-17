@@ -1,0 +1,12 @@
+benchmark_id: llm.quality.arithmetic-mini
+suite_version: 1.0.0
+description: Mixed two-digit multiplication, three-digit addition, and simple algebra; exact match.
+modality: llm
+kind: quality
+dataset:
+  id: builtin-arithmetic-mini
+  path: arithmetic-mini.jsonl
+slo_template: llm.quality.standard
+warmup:
+  discard_runs: 0
+scoring: exact_match

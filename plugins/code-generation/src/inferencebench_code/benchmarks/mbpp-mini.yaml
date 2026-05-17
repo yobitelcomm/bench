@@ -1,0 +1,15 @@
+benchmark_id: code.generation.mbpp-mini
+suite_version: 1.0.0
+description: Mostly Basic Python Problems (MBPP)-style stdlib-only tasks, pass@1 with a 5-second wall-clock timeout.
+modality: code
+kind: generation
+dataset:
+  id: builtin-mbpp-mini
+  path: mbpp-mini.jsonl
+slo_template: code.generation.standard
+warmup:
+  discard_runs: 0
+language: python
+scoring: pass_at_1
+k: 1
+timeout_s: 5.0
