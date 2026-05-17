@@ -887,7 +887,7 @@ wheels = [
 
 [[package]]
 name = "inferencebench"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "cli" }
 dependencies = [
     { name = "inferencebench-envelope" },
@@ -929,7 +929,7 @@ provides-extras = ["publish", "leaderboard", "all"]
 
 [[package]]
 name = "inferencebench-embeddings"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "plugins/embeddings-retrieval" }
 dependencies = [
     { name = "inferencebench-envelope" },
@@ -948,7 +948,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-envelope"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "envelope" }
 dependencies = [
     { name = "cryptography" },
@@ -967,7 +967,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-harness"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "harness" }
 dependencies = [
     { name = "litellm" },
@@ -992,7 +992,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-hf-publisher"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "integrations/hf-publisher" }
 dependencies = [
     { name = "huggingface-hub" },
@@ -1009,7 +1009,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-leaderboard"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "tools/leaderboard" }
 dependencies = [
     { name = "inferencebench-envelope" },
@@ -1028,7 +1028,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-llm"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "plugins/llm-inference" }
 dependencies = [
     { name = "inferencebench-envelope" },
@@ -1047,7 +1047,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-quality"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "plugins/llm-quality" }
 dependencies = [
     { name = "inferencebench-envelope" },
@@ -1066,7 +1066,7 @@ requires-dist = [
 
 [[package]]
 name = "inferencebench-voice"
-version = "0.0.0"
+version = "0.0.2"
 source = { editable = "plugins/voice-transcription" }
 dependencies = [
     { name = "inferencebench-envelope" },

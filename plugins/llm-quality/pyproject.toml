@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-quality"
-version = "0.0.0"
+version = "0.0.2"
 description = "LLM quality plugin for InferenceBench Suite (deterministic fixture scoring; LLM-as-judge deferred)"
 readme = "README.md"
 requires-python = ">=3.12"
