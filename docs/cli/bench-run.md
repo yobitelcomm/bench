@@ -59,6 +59,9 @@ One signed envelope JSON is written per sweep point under `--output`.
 | `--signing-mode` | `dev` | `dev` (local cosign key) or `keyless` (Sigstore OIDC). |
 | `--dev-key` | `cosign.key` | Path to local cosign signing key when `--signing-mode=dev`. |
 | `--strict` | off | Treat `plugin.validate()` warnings as fatal. |
+| `--prices-file` | `""` | Path to a custom prices YAML used by the plugin's registry-cost fallback when LiteLLM doesn't report a provider cost. Forwarded to `RunContext.extra['prices_file']`. |
+| `--judge-model` | `""` | LLM-as-judge model id. Only honoured when the spec selects `scoring: judge_llm`. Forwarded to `RunContext.extra['judge_model']`. |
+| `--judge-max-questions` | `0` | Cap on the number of questions sent to the judge (`0` = no cap). Only the judged questions contribute to the accuracy metric. Forwarded to `RunContext.extra['judge_max_questions']`. |
 
 ## Sweep semantics
 

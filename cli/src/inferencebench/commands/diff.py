@@ -77,6 +77,14 @@ _HIGHER_IS_BETTER: frozenset[str] = frozenset(
         "mrr_at_10_p50",
         "ndcg_at_10_mean",
         "ndcg_at_10_p50",
+        # llm.mt translation quality (chrF / BLEU / exact-match)
+        "chrf_mean",
+        "chrf_p50",
+        "chrf_p95",
+        "bleu_mean",
+        "bleu_p50",
+        "bleu_p95",
+        "exact_match_rate",
     }
 )
 

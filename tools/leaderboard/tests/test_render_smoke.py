@@ -70,3 +70,33 @@ def test_render_site_empty_dir(tmp_path: Path) -> None:
     assert result.envelopes_loaded == 0
     assert result.categories == {}
     assert (out / "index.html").exists()
+
+
+def test_category_page_contains_filter_input(
+    envelope_corpus: Path, tmp_path: Path
+) -> None:
+    """Rendered category page exposes the client-side filter input + script."""
+    out = tmp_path / "site"
+    render_site(envelope_corpus, out)
+    llm = (out / "llm.inference" / "index.html").read_text(encoding="utf-8")
+    # The filter input is rendered server-side so the page works even before
+    # JS executes; filter.js attaches the input event handler.
+    assert 'class="ib-filter"' in llm
+    assert 'type="search"' in llm
+    assert 'static/filter.js' in llm
+
+
+def test_filter_js_written_to_disk(envelope_corpus: Path, tmp_path: Path) -> None:
+    """The filter.js asset is copied alongside sort.js and site.css."""
+    out = tmp_path / "site"
+    render_site(envelope_corpus, out)
+    assert (out / "static" / "filter.js").exists()
+
+
+def test_filter_js_has_no_external_urls(envelope_corpus: Path, tmp_path: Path) -> None:
+    """filter.js must not reference any external CDN — purely browser-native."""
+    out = tmp_path / "site"
+    render_site(envelope_corpus, out)
+    js = (out / "static" / "filter.js").read_text(encoding="utf-8")
+    assert "http://" not in js
+    assert "https://" not in js

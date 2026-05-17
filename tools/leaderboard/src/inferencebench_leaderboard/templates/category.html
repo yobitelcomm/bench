@@ -12,6 +12,10 @@
   <code>{{ pareto_y_metric }}</code> (lower is better).
   Rows marked <span class="ib-pareto-badge">P</span> are on the frontier.
 </p>
+<div class="ib-filter-wrap">
+  <input type="search" placeholder="Filter by model, engine, hardware..." class="ib-filter">
+  <span class="ib-filter-count">{{ entries|length }} of {{ entries|length }} matching</span>
+</div>
 <table class="ib-table ib-sortable">
   <thead>
     <tr>
@@ -44,4 +48,5 @@
     {% endfor %}
   </tbody>
 </table>
+<script src="{{ base_url }}static/filter.js" defer></script>
 {% endblock %}

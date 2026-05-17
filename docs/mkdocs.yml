@@ -44,25 +44,37 @@ nav:
   - Quickstart: quickstart.md
   - CLI reference:
       - Overview: cli/overview.md
+      - bench audit: cli/bench-audit.md
+      - bench bundle: cli/bench-bundle.md
+      - bench cache: cli/bench-cache.md
+      - bench ci: cli/bench-ci.md
       - bench compare: cli/bench-compare.md
       - bench cost: cli/bench-cost.md
       - bench diff: cli/bench-diff.md
       - bench doctor: cli/bench-doctor.md
       - bench export: cli/bench-export.md
       - bench fetch: cli/bench-fetch.md
+      - bench history: cli/bench-history.md
       - bench leaderboard: cli/bench-leaderboard.md
       - bench list: cli/bench-list.md
+      - bench matrix: cli/bench-matrix.md
       - bench plugin: cli/bench-plugin.md
+      - bench profile: cli/bench-profile.md
       - bench publish: cli/bench-publish.md
       - bench replay: cli/bench-replay.md
       - bench run: cli/bench-run.md
+      - bench schema: cli/bench-schema.md
       - bench summary: cli/bench-summary.md
       - bench verify: cli/bench-verify.md
+      - bench watch: cli/bench-watch.md
   - Recipes:
       - Concurrency sweep: recipes/concurrency-sweep.md
       - Regression check: recipes/regression-check.md
       - Verify and replay: recipes/reproducibility.md
       - Cross-model comparison: recipes/cross-model.md
+      - Audit a published corpus: recipes/audit.md
+      - CI integration: recipes/ci-integration.md
+      - Multi-vendor matrix: recipes/multi-vendor-matrix.md
   - Concepts:
       - Signed envelope: concepts/envelope.md
       - Hardware fingerprinting: concepts/fingerprinting.md

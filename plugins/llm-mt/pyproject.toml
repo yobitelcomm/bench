@@ -1,0 +1,43 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "inferencebench-mt"
+version = "0.0.2"
+description = "Machine-translation plugin for InferenceBench Suite (chrF/BLEU/exact-match on bundled fixtures)"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Apache-2.0" }
+authors = [
+    { name = "Yobitel Communications", email = "bench@yobitel.com" },
+]
+keywords = ["benchmark", "llm", "translation", "chrf", "bleu", "ai", "ml"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: Apache Software License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Scientific/Engineering :: Artificial Intelligence",
+]
+dependencies = [
+    "inferencebench-envelope",
+    "inferencebench-harness",
+    "pydantic~=2.9",
+    "pyyaml~=6.0",
+]
+
+[project.entry-points."inferencebench.plugins"]
+"llm.mt" = "inferencebench_mt.plugin:LLMMTPlugin"
+
+[project.urls]
+Homepage = "https://github.com/yobitelcomm/bench"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inferencebench_mt"]
+
+[tool.uv.sources]
+inferencebench-envelope = { workspace = true }
+inferencebench-harness = { workspace = true }

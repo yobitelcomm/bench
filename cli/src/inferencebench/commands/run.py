@@ -177,6 +177,7 @@ def _apply_judge_overrides(
     *,
     judge_model: str,
     judge_max_questions: int,
+    judge_rps: float,
 ) -> None:
     """Stash the LLM-as-judge CLI overrides on ``extra``.
 
@@ -189,6 +190,8 @@ def _apply_judge_overrides(
         extra["judge_model"] = judge_model
     if judge_max_questions:
         extra["judge_max_questions"] = int(judge_max_questions)
+    if judge_rps > 0:
+        extra["judge_rps"] = float(judge_rps)
 
 
 def _build_signing_extra(
@@ -912,6 +915,17 @@ def run(
             ),
         ),
     ] = 0,
+    judge_rps: Annotated[
+        float,
+        typer.Option(
+            "--judge-rps",
+            help=(
+                "Cap judge API calls at this rate (req/s). 0 = unlimited. "
+                "Forwarded as RunContext.extra['judge_rps']; the llm.quality "
+                "plugin sleeps to keep at most 1/rps seconds between calls."
+            ),
+        ),
+    ] = 0.0,
 ) -> None:
     """Run a benchmark from the named suite and emit a signed envelope."""
     sweep_points, sweep_kind = _resolve_sweep_flags(
@@ -962,6 +976,7 @@ def run(
         signing_extra,
         judge_model=judge_model,
         judge_max_questions=judge_max_questions,
+        judge_rps=judge_rps,
     )
 
     if sweep_points is not None and sweep_kind is not None:

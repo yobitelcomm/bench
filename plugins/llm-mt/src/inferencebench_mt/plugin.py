@@ -1,13 +1,17 @@
-"""LLMQualityPlugin — entry point for ``llm.quality`` benchmarks.
+"""LLMMTPlugin — entry point for ``llm.mt`` benchmarks.
 
-The skeleton sibling to the ``llm.inference`` perf plugin. Implements the same
-contract (``list_benchmarks`` / ``get_benchmark`` / ``validate`` / ``run``) but
-emits accuracy as its headline metric instead of throughput.
+The fifth-modality sibling to the perf / quality / voice / embeddings plugins.
+Implements the same contract (``list_benchmarks`` / ``get_benchmark`` /
+``validate`` / ``run``) but its headline metric is translation accuracy —
+chrF (character n-gram F-score) by default, with token-BLEU and exact-match
+as alternates. Scoring is deterministic and dependency-free; see
+:mod:`inferencebench_mt.scoring`.
 
-Scoring is deterministic exact-match / substring-match / token-F1 against
-bundled fixture answers — see :mod:`inferencebench_quality.scoring`.
-LLM-as-judge is deferred to a later revision; the contract surface should be
-stable enough that swapping the scorer is a one-file change.
+The plugin drives a real :class:`ModelClient` per fixture row, constructs an
+MT prompt (``"Translate from {src} to {tgt}: ..."``), and scores the model's
+hypothesis against the bundled reference. Self-hosted OpenAI-compatible
+endpoints (vLLM, SGLang) get the LiteLLM ``openai/`` routing prefix added
+exactly once — same convention as the llm-quality plugin.
 """
 
 from __future__ import annotations
@@ -16,8 +20,8 @@ import hashlib
 import json
 import math
 import time
-from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 import yaml
 
@@ -41,78 +45,11 @@ from inferencebench.harness import (
     collect_software_provenance,
 )
 from inferencebench.harness.metrics import Percentiles
-from inferencebench_quality.schemas import BenchmarkSpec, EngineKind, RunContext
-from inferencebench_quality.scoring import SCORERS, ScoreContext
+from inferencebench_mt.schemas import BenchmarkSpec, EngineKind, RunContext
+from inferencebench_mt.scoring import SCORERS
 
-_DEFAULT_JUDGE_MODEL = "openai/gpt-4o-mini"
-
-
-class JudgeThrottle:
-    """Single-threaded rate limiter for judge API calls.
-
-    Spaces successive :meth:`acquire` calls at least ``1/rps`` seconds apart
-    by sleeping the residual delta. ``rps <= 0`` disables throttling — the
-    helper becomes a no-op so the unlimited default path costs nothing.
-
-    The ``clock`` and ``sleep`` callables are injected for testability: real
-    code uses :func:`time.monotonic` + :func:`time.sleep`; tests pass mocks
-    so no wall time elapses.
-    """
-
-    def __init__(
-        self,
-        rps: float,
-        *,
-        clock: Callable[[], float] | None = None,
-        sleep: Callable[[float], None] | None = None,
-    ) -> None:
-        self._rps = float(rps)
-        self._interval = 1.0 / self._rps if self._rps > 0 else 0.0
-        self._clock = clock
-        self._sleep = sleep
-        self._last: float | None = None
-
-    @property
-    def rps(self) -> float:
-        """Configured requests-per-second cap (0 = unlimited)."""
-        return self._rps
-
-    def acquire(self) -> None:
-        """Block until at least ``1/rps`` seconds have passed since the last call."""
-        if self._interval <= 0:
-            return
-        clock = self._clock if self._clock is not None else time.monotonic
-        sleep = self._sleep if self._sleep is not None else time.sleep
-        now = clock()
-        if self._last is not None:
-            elapsed = now - self._last
-            wait = self._interval - elapsed
-            if wait > 0:
-                sleep(wait)
-                now = clock()
-        self._last = now
-
-
-def _coerce_judge_rps(raw: str | int | float | bool | None) -> float:
-    """Coerce ``RunContext.extra['judge_rps']`` to a non-negative float.
-
-    Accepts numeric or string-numeric values; anything else (or a negative
-    number) silently falls back to 0 (= unlimited) so a bogus override
-    never blocks a run.
-    """
-    if raw is None or isinstance(raw, bool):
-        return 0.0
-    if isinstance(raw, str):
-        stripped = raw.strip()
-        if not stripped:
-            return 0.0
-        try:
-            value = float(stripped)
-        except ValueError:
-            return 0.0
-    else:
-        value = float(raw)
-    return value if value > 0 else 0.0
+if TYPE_CHECKING:
+    from collections.abc import Callable
 
 
 def _json_num(v: float) -> str:
@@ -128,7 +65,7 @@ def _json_str(v: str | None) -> str:
 
 
 # Engines that require ``base_url`` (self-hosted OpenAI-compatible servers).
-# OPENAI here means "provider-hosted OpenAI endpoint" — base_url is optional.
+# OPENAI / COHERE here mean "provider-hosted endpoint" — base_url is optional.
 _SELF_HOSTED_ENGINES = frozenset({EngineKind.VLLM, EngineKind.SGLANG})
 
 
@@ -144,8 +81,8 @@ def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClien
     OpenAI-compatible self-hosted servers (vLLM, SGLang) require the LiteLLM
     ``openai/<model>`` routing prefix; we add it here exactly once, stripping
     any user-supplied prefix first so a double ``openai/openai/...`` never
-    reaches LiteLLM. Provider-hosted engines (``OPENAI`` kind) leave the
-    model id untouched.
+    reaches LiteLLM. Provider-hosted engines (``OPENAI``, ``COHERE``) leave
+    the model id untouched.
     """
     model_id = context.model_id
     api_key: str | None
@@ -164,12 +101,24 @@ def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClien
     )
 
 
-class LLMQualityPlugin:
+def _build_prompt(source: str, source_lang: str, target_lang: str) -> str:
+    """Construct the translation prompt for one fixture row."""
+    return (
+        f"Translate from {source_lang} to {target_lang}:\n\n"
+        f"{source}\n\n"
+        "Translation:"
+    )
+
+
+class LLMMTPlugin:
     """Plugin entry point. Registered via ``inferencebench.plugins`` entrypoint group."""
 
-    suite_id = "llm.quality"
-    version = "0.0.0"
-    description = "LLM quality benchmarks (accuracy on bundled fixtures; LLM-as-judge deferred)."
+    suite_id = "llm.mt"
+    version = "0.0.2"
+    description = (
+        "LLM machine-translation benchmarks (chrF / token-BLEU / exact-match "
+        "on bundled fixtures)."
+    )
 
     # ----------------------------------------------------------- benchmarks #
     def list_benchmarks(self) -> list[BenchmarkSpec]:
@@ -210,36 +159,7 @@ class LLMQualityPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        judge_client: ModelClient | None = None
-        judge_max_questions: int | None = None
-        judge_throttle: JudgeThrottle | None = None
-        if spec.scoring == "judge_llm":
-            judge_client = self._build_judge_client(spec, context)
-            raw_cap = context.extra.get("judge_max_questions")
-            if isinstance(raw_cap, (int, float)) and not isinstance(raw_cap, bool):
-                judge_max_questions = int(raw_cap)
-            elif isinstance(raw_cap, str) and raw_cap.strip():
-                try:
-                    judge_max_questions = int(raw_cap)
-                except ValueError:
-                    judge_max_questions = None
-            judge_throttle = JudgeThrottle(
-                _coerce_judge_rps(context.extra.get("judge_rps"))
-            )
-
-        judge_errors: list[str] = []
-        judge_cost_usd: list[float] = []
-        samples, scores, n_judged = self._score_items(
-            client,
-            items,
-            scorer,
-            judge_client=judge_client,
-            judge_max_questions=judge_max_questions,
-            judge_errors=judge_errors,
-            judge_cost_usd=judge_cost_usd,
-            is_judge=spec.scoring == "judge_llm",
-            judge_throttle=judge_throttle,
-        )
+        samples, scores = self._score_items(client, items, spec, scorer)
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
@@ -250,9 +170,6 @@ class LLMQualityPlugin:
             samples=samples,
             scores=scores,
             dataset_hash=fixture_hash,
-            n_judged=n_judged if spec.scoring == "judge_llm" else None,
-            judge_errors=judge_errors if spec.scoring == "judge_llm" else None,
-            judge_cost_usd=judge_cost_usd if spec.scoring == "judge_llm" else None,
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -272,41 +189,25 @@ class LLMQualityPlugin:
         self,
         client: ModelClient,
         items: list[dict[str, str]],
-        scorer: Callable[[ScoreContext], float],
-        *,
-        judge_client: ModelClient | None = None,
-        judge_max_questions: int | None = None,
-        judge_errors: list[str] | None = None,
-        judge_cost_usd: list[float] | None = None,
-        is_judge: bool = False,
-        judge_throttle: JudgeThrottle | None = None,
-    ) -> tuple[list[Sample], list[float], int]:
-        """Iterate fixture items sequentially, scoring each model response.
+        spec: BenchmarkSpec,
+        scorer: Callable[[str, str], float],
+    ) -> tuple[list[Sample], list[float]]:
+        """Iterate fixture items, call the model, score each hypothesis.
 
-        Quality runs are per-question and order-independent — no driver
-        machinery is required. We still emit ``Sample`` objects so the
-        envelope-building path stays uniform with the perf plugin.
-
-        When ``is_judge`` is True, each successful model response is graded
-        by the supplied ``judge_client`` (capped at ``judge_max_questions``
-        if non-None). Judged questions contribute to ``scores``; un-judged
-        ones do not. The returned ``n_judged`` is the count of questions
-        actually passed through the judge.
+        MT runs are per-sentence and order-independent — no driver machinery
+        is required. We still emit ``Sample`` objects so the envelope-building
+        path stays uniform with the perf plugin.
         """
         samples: list[Sample] = []
         scores: list[float] = []
-        n_judged = 0
-        # Output channels for judge metrics; the caller owns the lists so
-        # they survive across this call boundary.
-        _judge_errors = judge_errors if judge_errors is not None else []
-        _judge_cost = judge_cost_usd if judge_cost_usd is not None else []
         for idx, item in enumerate(items):
-            question = item["question"]
-            reference = item["answer"]
+            source = item["source"]
+            reference = item["reference"]
+            prompt = _build_prompt(source, spec.source_lang, spec.target_lang)
             t_arrival = time.perf_counter() * 1000.0
             try:
                 result: CompletionResult = client.complete(
-                    question, stream=True, max_tokens=128
+                    prompt, stream=True, max_tokens=256
                 )
             except Exception as exc:
                 samples.append(
@@ -327,39 +228,13 @@ class LLMQualityPlugin:
                 )
                 continue
 
-            score: float | None
-            if is_judge:
-                if judge_max_questions is not None and n_judged >= judge_max_questions:
-                    score = None  # over the cap — skip the judge entirely
-                else:
-                    if judge_throttle is not None:
-                        judge_throttle.acquire()
-                    score_ctx = ScoreContext(
-                        reference=reference,
-                        hypothesis=result.text,
-                        question=question,
-                        judge_client=judge_client,
-                        judge_errors=_judge_errors,
-                        judge_cost_usd=_judge_cost,
-                    )
-                    score = float(scorer(score_ctx))
-                    n_judged += 1
-            else:
-                score_ctx = ScoreContext(
-                    reference=reference,
-                    hypothesis=result.text,
-                    question=question,
-                )
-                score = float(scorer(score_ctx))
-
-            if score is not None:
-                scores.append(score)
+            score = float(scorer(reference, result.text))
+            scores.append(score)
 
             sample_extra: dict[str, str | int | float | bool] = {
-                "category": item.get("category", ""),
+                "domain": item.get("domain", ""),
+                "score": score,
             }
-            if score is not None:
-                sample_extra["score"] = score
             samples.append(
                 Sample(
                     request_idx=idx,
@@ -376,13 +251,13 @@ class LLMQualityPlugin:
                     extra=sample_extra,
                 )
             )
-        return samples, scores, n_judged
+        return samples, scores
 
     # ------------------------------------------------------------ samples #
     def _dump_samples(self, context: RunContext, samples: list[Sample]) -> None:
         """Write per-request samples (incl. score) to ``<output_dir>/samples-<ts>.jsonl``.
 
-        Mirrors the llm-inference plugin's diagnostic dump — failures here
+        Mirrors the llm-quality plugin's diagnostic dump — failures here
         never block the run.
         """
         try:
@@ -413,30 +288,6 @@ class LLMQualityPlugin:
         except OSError:
             pass  # diagnostics-only — never block the run
 
-    # ---------------------------------------------------------- judge #
-    def _build_judge_client(
-        self, spec: BenchmarkSpec, context: RunContext
-    ) -> ModelClient:
-        """Construct the judge :class:`ModelClient`.
-
-        Model id precedence: spec.judge_model > extra['judge_model'] >
-        ``openai/gpt-4o-mini``. The judge reuses ``context``'s engine kind,
-        base_url and api_key — most judges are OpenAI-compatible endpoints,
-        so the same self-hosted vs. provider routing applies.
-        """
-        judge_model = spec.judge_model
-        if not judge_model:
-            extra_model = context.extra.get("judge_model")
-            if isinstance(extra_model, str) and extra_model:
-                judge_model = extra_model
-        if not judge_model:
-            judge_model = _DEFAULT_JUDGE_MODEL
-
-        # Use a shallow copy of the context with model_id swapped out, so the
-        # existing _build_client routing applies unchanged.
-        judge_context = context.model_copy(update={"model_id": judge_model})
-        return _build_client(judge_context)
-
     # ---------------------------------------------------------- file paths #
     def _benchmarks_dir(self) -> Path:
         return Path(__file__).parent / "benchmarks"
@@ -465,13 +316,13 @@ class LLMQualityPlugin:
                 obj = json.loads(line)
                 if not isinstance(obj, dict):
                     continue
-                if "question" not in obj or "answer" not in obj:
+                if "source" not in obj or "reference" not in obj:
                     continue
                 items.append(
                     {
-                        "question": str(obj["question"]),
-                        "answer": str(obj["answer"]),
-                        "category": str(obj.get("category", "")),
+                        "source": str(obj["source"]),
+                        "reference": str(obj["reference"]),
+                        "domain": str(obj.get("domain", "")),
                     }
                 )
         if not items:
@@ -488,9 +339,6 @@ class LLMQualityPlugin:
         samples: list[Sample],
         scores: list[float],
         dataset_hash: str,
-        n_judged: int | None = None,
-        judge_errors: list[str] | None = None,
-        judge_cost_usd: list[float] | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -503,23 +351,29 @@ class LLMQualityPlugin:
         metrics["n_ok"] = float(n_ok)
         metrics["ok_rate"] = float(n_ok) / float(len(samples)) if samples else 0.0
 
+        # Headline scoring metric — keyed by the spec's scoring strategy so
+        # downstream ``bench diff`` knows the direction (all three MT scorers
+        # are higher-is-better).
         if scores:
-            mean_acc = sum(scores) / len(scores)
-            metrics["accuracy"] = mean_acc
-            # Bootstrap CI on per-sample scores via the existing Percentiles
-            # machinery. p05/p50/p95 are the quantile-on-resampled-mean band
-            # that consumers like ``bench diff`` already know how to read.
-            if len(scores) >= 2:
-                pcts = Percentiles(scores, percentiles=(5.0, 50.0, 95.0))
-                metrics["accuracy_p05"] = pcts.p5
-                metrics["accuracy_p50"] = pcts.p50
-                metrics["accuracy_p95"] = pcts.p95
+            mean_score = sum(scores) / len(scores)
+            if spec.scoring == "exact_match":
+                metrics["exact_match_rate"] = mean_score
             else:
-                metrics["accuracy_p05"] = mean_acc
-                metrics["accuracy_p50"] = mean_acc
-                metrics["accuracy_p95"] = mean_acc
+                prefix = spec.scoring  # "chrf" | "bleu_token"
+                # Keep the metric key short for BLEU (``bleu_mean``, not
+                # ``bleu_token_mean``) so diff's _HIGHER_IS_BETTER policy and
+                # the leaderboard column headers stay readable.
+                key_prefix = "bleu" if prefix == "bleu_token" else prefix
+                metrics[f"{key_prefix}_mean"] = mean_score
+                if len(scores) >= 2:
+                    pcts = Percentiles(scores, percentiles=(50.0, 95.0))
+                    metrics[f"{key_prefix}_p50"] = pcts.p50
+                    metrics[f"{key_prefix}_p95"] = pcts.p95
+                else:
+                    metrics[f"{key_prefix}_p50"] = mean_score
+                    metrics[f"{key_prefix}_p95"] = mean_score
 
-        # Latency aggregates — useful for "quality at what cost" comparisons.
+        # Latency aggregates — "quality at what cost" comparisons.
         ttft_vals = [s.ttft_ms for s in ok_samples if math.isfinite(s.ttft_ms)]
         total_vals = [s.total_ms for s in ok_samples if math.isfinite(s.total_ms)]
         if ttft_vals:
@@ -533,26 +387,14 @@ class LLMQualityPlugin:
 
         # Cost: only emit when the provider actually reported it. Self-hosted
         # vLLM / SGLang never do; the perf plugin's pricing-registry fallback
-        # is intentionally NOT mirrored here — quality runs are cheap enough
+        # is intentionally NOT mirrored here — MT runs are cheap enough
         # that a missing-cost row is more honest than an estimated one.
         cost_total = sum(s.cost_usd for s in ok_samples)
-        judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0
-        combined_cost = cost_total + judge_cost_total
-        if tokens_out_total and combined_cost > 0:
+        if tokens_out_total and cost_total > 0:
             metrics["cost_usd_per_million_tokens"] = (
-                combined_cost / tokens_out_total
+                cost_total / tokens_out_total
             ) * 1e6
             metrics["cost_source"] = "provider"
-            if judge_cost_total > 0:
-                metrics["judge_cost_usd_total"] = judge_cost_total
-
-        # LLM-as-judge bookkeeping. ``n_judged`` is the count of questions
-        # whose score came from the judge (NOT counting cap-skipped ones);
-        # ``judge_errors`` is the count of judge calls that raised.
-        if n_judged is not None:
-            metrics["n_judged"] = float(n_judged)
-        if judge_errors is not None:
-            metrics["judge_errors"] = float(len(judge_errors))
 
         builder = EnvelopeBuilder(
             suite_id=spec.benchmark_id,

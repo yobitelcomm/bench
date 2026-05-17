@@ -261,3 +261,64 @@ def test_run_judge_max_questions_flag_forwards_into_run_context(
     assert result.exit_code != 0
     assert "extra" in captured
     assert captured["extra"].get("judge_max_questions") == 5
+
+
+def test_run_help_lists_judge_rps_flag() -> None:
+    """``bench run --help`` exposes the ``--judge-rps`` throttle flag."""
+    result = runner.invoke(app, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "--judge-rps" in result.stdout
+
+
+def test_run_judge_rps_flag_forwards_into_run_context(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--judge-rps 5.0`` → ``RunContext.extra['judge_rps'] == 5.0``."""
+    captured: dict[str, Any] = {}
+    _capture_extra_via_fake_run(monkeypatch, captured)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "llm.inference",
+            "--model",
+            "openai/some-model",
+            "--judge-rps",
+            "5.0",
+            "--signing-mode",
+            "keyless",
+            "--output",
+            str(tmp_path / "results"),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "extra" in captured
+    assert captured["extra"].get("judge_rps") == 5.0
+
+
+def test_run_judge_rps_zero_omits_extra_key(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--judge-rps 0`` (the default) doesn't set the extra key at all."""
+    captured: dict[str, Any] = {}
+    _capture_extra_via_fake_run(monkeypatch, captured)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "llm.inference",
+            "--model",
+            "openai/some-model",
+            "--signing-mode",
+            "keyless",
+            "--output",
+            str(tmp_path / "results"),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "extra" in captured
+    assert "judge_rps" not in captured["extra"]

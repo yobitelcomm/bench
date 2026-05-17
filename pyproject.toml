@@ -40,6 +40,7 @@ members = [
     "plugins/llm-quality",
     "plugins/voice-transcription",
     "plugins/embeddings-retrieval",
+    "plugins/llm-mt",
     "integrations/hf-publisher",
     "tools/leaderboard",
 ]
@@ -73,6 +74,7 @@ src = [
     "plugins/llm-quality/src",
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
+    "plugins/llm-mt/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -129,6 +131,8 @@ ignore = [
 "plugins/voice-transcription/src/inferencebench_voice/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/embeddings-retrieval/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/embeddings-retrieval/src/inferencebench_embeddings/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/llm-mt/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/llm-mt/src/inferencebench_mt/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
@@ -156,7 +160,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:integrations/hf-publisher/src:tools/leaderboard/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:plugins/llm-mt/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -180,6 +184,7 @@ files = [
     "plugins/llm-quality/src",
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
+    "plugins/llm-mt/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -217,6 +222,7 @@ testpaths = [
     "plugins/llm-quality/tests",
     "plugins/voice-transcription/tests",
     "plugins/embeddings-retrieval/tests",
+    "plugins/llm-mt/tests",
     "integrations/hf-publisher/tests",
     "tools/leaderboard/tests",
 ]
@@ -241,6 +247,7 @@ source = [
     "plugins/llm-quality/src",
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
+    "plugins/llm-mt/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
 ]

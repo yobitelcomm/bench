@@ -15,6 +15,7 @@ members = [
     "inferencebench-hf-publisher",
     "inferencebench-leaderboard",
     "inferencebench-llm",
+    "inferencebench-mt",
     "inferencebench-quality",
     "inferencebench-voice",
     "inferencebench-workspace",
@@ -1030,6 +1031,25 @@ requires-dist = [
 name = "inferencebench-llm"
 version = "0.0.2"
 source = { editable = "plugins/llm-inference" }
+dependencies = [
+    { name = "inferencebench-envelope" },
+    { name = "inferencebench-harness" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "inferencebench-envelope", editable = "envelope" },
+    { name = "inferencebench-harness", editable = "harness" },
+    { name = "pydantic", specifier = "~=2.9" },
+    { name = "pyyaml", specifier = "~=6.0" },
+]
+
+[[package]]
+name = "inferencebench-mt"
+version = "0.0.2"
+source = { editable = "plugins/llm-mt" }
 dependencies = [
     { name = "inferencebench-envelope" },
     { name = "inferencebench-harness" },

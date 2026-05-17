@@ -1,0 +1,8 @@
+{"source": "Hello, how are you?", "reference": "Hallo, wie geht es dir?", "domain": "greeting"}
+{"source": "Good morning, my friend.", "reference": "Guten Morgen, mein Freund.", "domain": "greeting"}
+{"source": "The president signed the new climate agreement yesterday.", "reference": "Der Präsident unterzeichnete gestern das neue Klimaabkommen.", "domain": "news"}
+{"source": "Stock markets fell sharply after the central bank announcement.", "reference": "Die Aktienmärkte fielen nach der Ankündigung der Zentralbank stark.", "domain": "news"}
+{"source": "The transformer architecture uses self-attention layers.", "reference": "Die Transformer-Architektur verwendet Self-Attention-Schichten.", "domain": "technical"}
+{"source": "Please restart the server after the update completes.", "reference": "Bitte starten Sie den Server neu, nachdem das Update abgeschlossen ist.", "domain": "technical"}
+{"source": "I would like a coffee with milk and sugar, please.", "reference": "Ich hätte gerne einen Kaffee mit Milch und Zucker, bitte.", "domain": "conversational"}
+{"source": "Where is the nearest train station?", "reference": "Wo ist der nächste Bahnhof?", "domain": "conversational"}
