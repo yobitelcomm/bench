@@ -172,6 +172,25 @@ def _apply_prices_file(
     extra["prices_file"] = str(prices_path.resolve())
 
 
+def _apply_judge_overrides(
+    extra: dict[str, str | int | float | bool],
+    *,
+    judge_model: str,
+    judge_max_questions: int,
+) -> None:
+    """Stash the LLM-as-judge CLI overrides on ``extra``.
+
+    Only used when the spec selects ``scoring: judge_llm`` — the
+    llm.quality plugin reads these keys to construct the judge ModelClient
+    and to cap how many questions get judged. Empty / zero values are
+    skipped so the plugin's own defaults apply.
+    """
+    if judge_model:
+        extra["judge_model"] = judge_model
+    if judge_max_questions:
+        extra["judge_max_questions"] = int(judge_max_questions)
+
+
 def _build_signing_extra(
     signing_mode: str, dev_key: str
 ) -> dict[str, str | int | float | bool]:
@@ -872,6 +891,27 @@ def run(
             ),
         ),
     ] = "",
+    judge_model: Annotated[
+        str,
+        typer.Option(
+            "--judge-model",
+            help=(
+                "LLM-as-judge model id (only used when the spec selects "
+                "scoring: judge_llm). Forwarded as RunContext.extra['judge_model']."
+            ),
+        ),
+    ] = "",
+    judge_max_questions: Annotated[
+        int,
+        typer.Option(
+            "--judge-max-questions",
+            help=(
+                "Cap on the number of questions sent to the judge (0 = no cap). "
+                "Only the judged questions contribute to the accuracy metric. "
+                "Forwarded as RunContext.extra['judge_max_questions']."
+            ),
+        ),
+    ] = 0,
 ) -> None:
     """Run a benchmark from the named suite and emit a signed envelope."""
     sweep_points, sweep_kind = _resolve_sweep_flags(
@@ -918,6 +958,11 @@ def run(
     signing_extra = _build_signing_extra(signing_mode, dev_key)
 
     _apply_prices_file(signing_extra, prices_file)
+    _apply_judge_overrides(
+        signing_extra,
+        judge_model=judge_model,
+        judge_max_questions=judge_max_questions,
+    )
 
     if sweep_points is not None and sweep_kind is not None:
         _run_sweep(

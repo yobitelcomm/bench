@@ -163,3 +163,101 @@ entries:
         f"plugin.run was never reached. output: {result.stdout + (result.stderr or '')}"
     )
     assert captured["extra"].get("prices_file") == str(prices.resolve())
+
+
+def test_run_help_lists_judge_flags() -> None:
+    """``bench run --help`` exposes the LLM-as-judge flags."""
+    result = runner.invoke(app, ["run", "--help"])
+    assert result.exit_code == 0
+    assert "--judge-model" in result.stdout
+    assert "--judge-max-questions" in result.stdout
+
+
+def _capture_extra_via_fake_run(
+    monkeypatch: pytest.MonkeyPatch, captured: dict[str, Any]
+) -> None:
+    """Patch the llm-inference plugin so we can inspect ``ctx.extra``.
+
+    The plugin discovery path goes through the real entry-point registry;
+    we hijack ``run`` + ``validate`` so the test never actually executes a
+    benchmark. The ``run`` callback records ``ctx.extra`` and then raises
+    to short-circuit the rest of the CLI.
+    """
+    from inferencebench_llm.plugin import LLMInferencePlugin
+
+    def fake_run(
+        self: LLMInferencePlugin,  # noqa: ARG001
+        spec: Any,  # noqa: ARG001
+        context: Any,
+    ) -> Any:
+        captured["extra"] = dict(context.extra)
+        msg = "stop after capturing context"
+        raise RuntimeError(msg)
+
+    def fake_validate(
+        self: LLMInferencePlugin,  # noqa: ARG001
+        spec: Any,  # noqa: ARG001
+        context: Any,  # noqa: ARG001
+    ) -> list[str]:
+        return []
+
+    monkeypatch.setattr(LLMInferencePlugin, "run", fake_run)
+    monkeypatch.setattr(LLMInferencePlugin, "validate", fake_validate)
+
+
+def test_run_judge_model_flag_forwards_into_run_context(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--judge-model openai/gpt-4o-mini`` → ``RunContext.extra['judge_model']``."""
+    captured: dict[str, Any] = {}
+    _capture_extra_via_fake_run(monkeypatch, captured)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "llm.inference",
+            "--model",
+            "openai/some-model",
+            "--judge-model",
+            "openai/gpt-4o-mini",
+            "--signing-mode",
+            "keyless",
+            "--output",
+            str(tmp_path / "results"),
+        ],
+    )
+
+    assert result.exit_code != 0  # fake_run raises after capturing
+    assert "extra" in captured, (
+        f"plugin.run was never reached. output: {result.stdout + (result.stderr or '')}"
+    )
+    assert captured["extra"].get("judge_model") == "openai/gpt-4o-mini"
+
+
+def test_run_judge_max_questions_flag_forwards_into_run_context(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    """``--judge-max-questions 5`` → ``RunContext.extra['judge_max_questions']``."""
+    captured: dict[str, Any] = {}
+    _capture_extra_via_fake_run(monkeypatch, captured)
+
+    result = runner.invoke(
+        app,
+        [
+            "run",
+            "llm.inference",
+            "--model",
+            "openai/some-model",
+            "--judge-max-questions",
+            "5",
+            "--signing-mode",
+            "keyless",
+            "--output",
+            str(tmp_path / "results"),
+        ],
+    )
+
+    assert result.exit_code != 0
+    assert "extra" in captured
+    assert captured["extra"].get("judge_max_questions") == 5

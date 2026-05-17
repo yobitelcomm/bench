@@ -1,0 +1,15 @@
+benchmark_id: llm.quality.factual-judged
+suite_version: 1.0.0
+description: |
+  Same factual recall set as factual-mini, but scored by an LLM judge
+  (default openai/gpt-4o-mini) instead of substring match.
+modality: llm
+kind: quality
+dataset:
+  id: builtin-factual-mini
+  path: factual-mini.jsonl
+scoring: judge_llm
+judge_model: openai/gpt-4o-mini
+slo_template: llm.quality.standard
+warmup:
+  discard_runs: 0

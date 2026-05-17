@@ -25,12 +25,16 @@ def test_plugin_metadata() -> None:
     assert plugin.description
 
 
-def test_plugin_lists_two_bundled_benchmarks() -> None:
+def test_plugin_lists_three_bundled_benchmarks() -> None:
     plugin = LLMQualityPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) == 2
+    assert len(specs) == 3
     ids = {s.benchmark_id for s in specs}
-    assert ids == {"llm.quality.factual-mini", "llm.quality.reasoning-mini"}
+    assert ids == {
+        "llm.quality.factual-judged",
+        "llm.quality.factual-mini",
+        "llm.quality.reasoning-mini",
+    }
 
 
 def test_plugin_get_benchmark_factual_mini() -> None:

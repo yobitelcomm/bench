@@ -17,6 +17,7 @@ from inferencebench._logging import configure_logging
 from inferencebench.commands import (
     bundle,
     cache,
+    ci,
     compare,
     cost,
     diff,
@@ -90,6 +91,12 @@ app.add_typer(
 )
 # `cache` has subcommands (list/clear/path) → sub-Typer
 app.add_typer(cache.app, name="cache", help="Manage the local envelope fetch cache.")
+# `ci` has subcommands (init/validate) → sub-Typer
+app.add_typer(
+    ci.app,
+    name="ci",
+    help="Generate or validate a GitHub Actions regression-check workflow.",
+)
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
 app.command(

@@ -66,7 +66,17 @@ class BenchmarkSpec(BaseModel):
     dataset: DatasetConfig
     slo_template: str = "llm.quality.standard"
     warmup: WarmupConfig = Field(default_factory=WarmupConfig)
-    scoring: Literal["exact_match", "substring_match", "f1_token"] = "substring_match"
+    scoring: Literal[
+        "exact_match", "substring_match", "f1_token", "judge_llm"
+    ] = "substring_match"
+    judge_model: str | None = Field(
+        default=None,
+        description=(
+            "Model id used as the LLM judge when scoring == 'judge_llm'. "
+            "Falls back to RunContext.extra['judge_model'] or "
+            "'openai/gpt-4o-mini' when unset."
+        ),
+    )
 
 
 class RunContext(BaseModel):
