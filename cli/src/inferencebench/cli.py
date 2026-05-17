@@ -26,6 +26,7 @@ from inferencebench.commands import (
     history,
     leaderboard,
     list_cmd,
+    matrix,
     plugin,
     profile,
     publish,
@@ -34,6 +35,7 @@ from inferencebench.commands import (
     schema_cmd,
     summary,
     verify,
+    watch,
 )
 
 __version__ = "0.0.0"
@@ -110,6 +112,10 @@ app.command(
     name="list",
     help="List every benchmark across every installed plugin.",
 )(list_cmd.list_benchmarks)
+app.command(
+    name="matrix",
+    help="Run one benchmark across multiple endpoints (multi-vendor matrix).",
+)(matrix.matrix)
 app.command(name="doctor", help="Diagnose hardware health before benchmarking.")(doctor.doctor)
 app.command(
     name="export",
@@ -118,6 +124,10 @@ app.command(
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
 app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
 app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)
+app.command(
+    name="watch",
+    help="Watch an envelopes directory and rebuild the leaderboard on changes.",
+)(watch.watch)
 
 # `plugin` has subcommands (list/init/install/info) → sub-Typer
 app.add_typer(plugin.app, name="plugin", help="Manage benchmark plugins.")

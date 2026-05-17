@@ -1,0 +1,61 @@
+# Example matrix config for `bench matrix`.
+#
+# Runs the same LLM-inference benchmark (`llm.inference.sharegpt-v3`)
+# against two local vLLM endpoints — one serving Llama-3.1-8B, the other
+# serving Qwen2.5-7B — and produces one signed envelope per
+# (target, concurrency-point) pair.
+#
+# Usage:
+#   bench matrix examples/matrix/multi-vllm.yaml \
+#     --output ./matrix-results \
+#     --signing-mode dev --dev-key ./cosign.key
+#
+# Output filenames follow the pattern:
+#   <target.name>-c<sweep_point>-<content_hash[:12]>.json
+#
+# So with the config below you would get six envelopes:
+#   vllm-llama-c1-<hash>.json
+#   vllm-llama-c4-<hash>.json
+#   vllm-llama-c16-<hash>.json
+#   vllm-qwen-c1-<hash>.json
+#   vllm-qwen-c4-<hash>.json
+#   vllm-qwen-c16-<hash>.json
+
+schema: inferencebench.matrix.v1
+
+# The single benchmark to run on every target. Resolves through the plugin
+# entry-point system exactly like `bench run`.
+suite_id: llm.inference.sharegpt-v3
+
+# Per-target measurement window. Defaults to 60 if omitted.
+duration_s: 60
+
+# Closed-loop concurrency points. One signed envelope is produced per
+# target per point — so N targets x M points = N*M envelopes. Defaults to
+# [1] (single run per target) if omitted.
+sweep: [1, 4, 16]
+
+targets:
+  # Local vLLM server hosting meta-llama/Llama-3.1-8B-Instruct on port 8000.
+  - name: vllm-llama
+    model: meta-llama/Llama-3.1-8B-Instruct
+    engine: vllm
+    base_url: http://localhost:8000/v1
+    quant: bf16
+
+  # Second local vLLM server, a Qwen 7B on port 8001.
+  - name: vllm-qwen
+    model: Qwen/Qwen2.5-7B-Instruct
+    engine: vllm
+    base_url: http://localhost:8001/v1
+    quant: bf16
+
+  # Hosted-provider example — uncomment to compare a vendor API too.
+  # Reads the API key from $OPENAI_API_KEY at run time; if the env var is
+  # missing the target is skipped (yellow warning), the rest still run.
+  #
+  # - name: openai-gpt4o-mini
+  #   model: gpt-4o-mini
+  #   engine: openai
+  #   base_url: https://api.openai.com/v1
+  #   api_key_env: OPENAI_API_KEY

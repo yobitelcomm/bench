@@ -1,0 +1,12 @@
+benchmark_id: voice.transcription.long-form
+suite_version: 1.0.0
+description: Longer references (40-100 words each), English.
+modality: voice
+kind: transcription
+dataset:
+  id: builtin-long-form
+  path: long-form.jsonl
+slo_template: voice.transcription.standard
+warmup:
+  discard_runs: 0
+scoring: wer

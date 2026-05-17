@@ -1,0 +1,13 @@
+benchmark_id: embeddings.retrieval.long-doc
+suite_version: 1.0.0
+description: Long-document corpus, nDCG@10.
+modality: embeddings
+kind: retrieval
+dataset:
+  id: builtin-long-doc
+  path: long-doc-queries.jsonl
+  corpus_path: long-doc-corpus.jsonl
+slo_template: embeddings.retrieval.standard
+warmup:
+  discard_runs: 0
+metric: ndcg_at_10

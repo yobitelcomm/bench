@@ -9,12 +9,14 @@ resolution-markers = [
 [manifest]
 members = [
     "inferencebench",
+    "inferencebench-embeddings",
     "inferencebench-envelope",
     "inferencebench-harness",
     "inferencebench-hf-publisher",
     "inferencebench-leaderboard",
     "inferencebench-llm",
     "inferencebench-quality",
+    "inferencebench-voice",
     "inferencebench-workspace",
 ]
 
@@ -891,6 +893,7 @@ dependencies = [
     { name = "inferencebench-envelope" },
     { name = "inferencebench-harness" },
     { name = "pydantic" },
+    { name = "pyyaml" },
     { name = "rich" },
     { name = "structlog" },
     { name = "typer" },
@@ -917,11 +920,31 @@ requires-dist = [
     { name = "inferencebench-leaderboard", marker = "extra == 'all'", editable = "tools/leaderboard" },
     { name = "inferencebench-leaderboard", marker = "extra == 'leaderboard'", editable = "tools/leaderboard" },
     { name = "pydantic", specifier = "~=2.9" },
+    { name = "pyyaml", specifier = "~=6.0" },
     { name = "rich", specifier = "~=13.9" },
     { name = "structlog", specifier = "~=24.4" },
     { name = "typer", specifier = "~=0.12" },
 ]
 provides-extras = ["publish", "leaderboard", "all"]
+
+[[package]]
+name = "inferencebench-embeddings"
+version = "0.0.0"
+source = { editable = "plugins/embeddings-retrieval" }
+dependencies = [
+    { name = "inferencebench-envelope" },
+    { name = "inferencebench-harness" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "inferencebench-envelope", editable = "envelope" },
+    { name = "inferencebench-harness", editable = "harness" },
+    { name = "pydantic", specifier = "~=2.9" },
+    { name = "pyyaml", specifier = "~=6.0" },
+]
 
 [[package]]
 name = "inferencebench-envelope"
@@ -1026,6 +1049,25 @@ requires-dist = [
 name = "inferencebench-quality"
 version = "0.0.0"
 source = { editable = "plugins/llm-quality" }
+dependencies = [
+    { name = "inferencebench-envelope" },
+    { name = "inferencebench-harness" },
+    { name = "pydantic" },
+    { name = "pyyaml" },
+]
+
+[package.metadata]
+requires-dist = [
+    { name = "inferencebench-envelope", editable = "envelope" },
+    { name = "inferencebench-harness", editable = "harness" },
+    { name = "pydantic", specifier = "~=2.9" },
+    { name = "pyyaml", specifier = "~=6.0" },
+]
+
+[[package]]
+name = "inferencebench-voice"
+version = "0.0.0"
+source = { editable = "plugins/voice-transcription" }
 dependencies = [
     { name = "inferencebench-envelope" },
     { name = "inferencebench-harness" },

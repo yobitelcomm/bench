@@ -3,55 +3,41 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "inferencebench"
+name = "inferencebench-embeddings"
 version = "0.0.0"
-description = "InferenceBench Suite CLI — vendor-neutral, signed-envelope AI benchmarks"
+description = "Embeddings retrieval plugin for InferenceBench Suite (deterministic ranking skeleton; real embedding-model invocation deferred)"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Apache-2.0" }
 authors = [
     { name = "Yobitel Communications", email = "bench@yobitel.com" },
 ]
-keywords = ["benchmark", "ai", "ml", "llm", "inference", "vendor-neutral"]
+keywords = ["benchmark", "embeddings", "retrieval", "recall", "ndcg", "ai", "ml"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
-    "Environment :: Console",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
     "License :: OSI Approved :: Apache Software License",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.12",
     "Topic :: Scientific/Engineering :: Artificial Intelligence",
-    "Topic :: System :: Benchmark",
 ]
 dependencies = [
-    "typer~=0.12",
-    "rich~=13.9",
-    "structlog~=24.4",
-    "pydantic~=2.9",
-    "pyyaml~=6.0",
     "inferencebench-envelope",
     "inferencebench-harness",
+    "pydantic~=2.9",
+    "pyyaml~=6.0",
 ]
 
-[project.optional-dependencies]
-publish = ["inferencebench-hf-publisher"]
-leaderboard = ["inferencebench-leaderboard"]
-all = ["inferencebench-hf-publisher", "inferencebench-leaderboard"]
-
-[project.scripts]
-bench = "inferencebench.cli:app"
-inferencebench = "inferencebench.cli:app"
+[project.entry-points."inferencebench.plugins"]
+"embeddings.retrieval" = "inferencebench_embeddings.plugin:EmbeddingsRetrievalPlugin"
 
 [project.urls]
 Homepage = "https://github.com/yobitelcomm/bench"
-Documentation = "https://yobitelcomm.github.io/bench"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/inferencebench_embeddings"]
 
 [tool.uv.sources]
 inferencebench-envelope = { workspace = true }
 inferencebench-harness = { workspace = true }
-inferencebench-hf-publisher = { workspace = true }
-inferencebench-leaderboard = { workspace = true }
-
-[tool.hatch.build.targets.wheel]
-packages = ["src/inferencebench"]

@@ -31,7 +31,8 @@ err_console = Console(stderr=True)
 # --------------------------------------------------------------------------- #
 # Direction policy                                                            #
 # --------------------------------------------------------------------------- #
-# Metrics where a smaller value is better (latencies, cost, energy, power).
+# Metrics where a smaller value is better (latencies, cost, energy, power,
+# error rates — WER/CER for voice transcription).
 _LOWER_IS_BETTER: frozenset[str] = frozenset(
     {
         "ttft_p50_ms",
@@ -45,10 +46,18 @@ _LOWER_IS_BETTER: frozenset[str] = frozenset(
         "power_avg_w",
         "power_peak_w",
         "energy_joules_total",
+        # voice.transcription error rates
+        "wer_mean",
+        "wer_p50",
+        "wer_p95",
+        "cer_mean",
+        "cer_p50",
+        "cer_p95",
     }
 )
 
-# Metrics where a larger value is better (throughput, quality, goodput).
+# Metrics where a larger value is better (throughput, quality, goodput,
+# retrieval hit metrics — recall/MRR/nDCG).
 _HIGHER_IS_BETTER: frozenset[str] = frozenset(
     {
         "throughput_tok_per_s",
@@ -61,6 +70,13 @@ _HIGHER_IS_BETTER: frozenset[str] = frozenset(
         "accuracy_p05",
         "accuracy_p50",
         "accuracy_p95",
+        # embeddings.retrieval hit metrics
+        "recall_at_5_mean",
+        "recall_at_5_p50",
+        "mrr_at_10_mean",
+        "mrr_at_10_p50",
+        "ndcg_at_10_mean",
+        "ndcg_at_10_p50",
     }
 )
 

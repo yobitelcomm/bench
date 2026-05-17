@@ -1,0 +1,5 @@
+{"query": "What is the capital of France?", "relevant_doc_ids": ["doc-1", "doc-3", "doc-12"]}
+{"query": "Tell me about Japan's tallest mountain.", "relevant_doc_ids": ["doc-2", "doc-4"]}
+{"query": "Who wrote Hamlet?", "relevant_doc_ids": ["doc-6", "doc-7"]}
+{"query": "What is the chemical symbol for gold?", "relevant_doc_ids": ["doc-9"]}
+{"query": "When did humans first land on the Moon?", "relevant_doc_ids": ["doc-15", "doc-16"]}

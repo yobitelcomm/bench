@@ -1,0 +1,12 @@
+benchmark_id: voice.transcription.fleurs-mini
+suite_version: 1.0.0
+description: FLEURS-style short utterances, English.
+modality: voice
+kind: transcription
+dataset:
+  id: builtin-fleurs-mini
+  path: fleurs-mini.jsonl
+slo_template: voice.transcription.standard
+warmup:
+  discard_runs: 0
+scoring: wer

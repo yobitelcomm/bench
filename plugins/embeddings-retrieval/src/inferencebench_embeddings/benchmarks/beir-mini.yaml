@@ -1,0 +1,13 @@
+benchmark_id: embeddings.retrieval.beir-mini
+suite_version: 1.0.0
+description: BEIR-style small corpus, recall@5.
+modality: embeddings
+kind: retrieval
+dataset:
+  id: builtin-beir-mini
+  path: beir-mini-queries.jsonl
+  corpus_path: beir-mini-corpus.jsonl
+slo_template: embeddings.retrieval.standard
+warmup:
+  discard_runs: 0
+metric: recall_at_5

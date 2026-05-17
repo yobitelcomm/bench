@@ -38,6 +38,8 @@ members = [
     "harness",
     "plugins/llm-inference",
     "plugins/llm-quality",
+    "plugins/voice-transcription",
+    "plugins/embeddings-retrieval",
     "integrations/hf-publisher",
     "tools/leaderboard",
 ]
@@ -69,6 +71,8 @@ src = [
     "harness/src",
     "plugins/llm-inference/src",
     "plugins/llm-quality/src",
+    "plugins/voice-transcription/src",
+    "plugins/embeddings-retrieval/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -121,6 +125,10 @@ ignore = [
 "plugins/llm-inference/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/llm-quality/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/llm-quality/src/inferencebench_quality/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; ModelClient.complete signature mirrors harness contract
+"plugins/voice-transcription/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/voice-transcription/src/inferencebench_voice/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/embeddings-retrieval/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/embeddings-retrieval/src/inferencebench_embeddings/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
@@ -148,7 +156,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:integrations/hf-publisher/src:tools/leaderboard/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -170,6 +178,8 @@ files = [
     "harness/src",
     "plugins/llm-inference/src",
     "plugins/llm-quality/src",
+    "plugins/voice-transcription/src",
+    "plugins/embeddings-retrieval/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -205,6 +215,8 @@ testpaths = [
     "harness/tests",
     "plugins/llm-inference/tests",
     "plugins/llm-quality/tests",
+    "plugins/voice-transcription/tests",
+    "plugins/embeddings-retrieval/tests",
     "integrations/hf-publisher/tests",
     "tools/leaderboard/tests",
 ]
@@ -227,6 +239,8 @@ source = [
     "harness/src",
     "plugins/llm-inference/src",
     "plugins/llm-quality/src",
+    "plugins/voice-transcription/src",
+    "plugins/embeddings-retrieval/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
 ]
