@@ -47,6 +47,7 @@ from inferencebench_llm.engines import (
     EngineUnavailableError,
     LlamaCppEngine,
     SGLangEngine,
+    TRTLLMEngine,
     VLLMEngine,
 )
 from inferencebench_llm.pricing import ModelPricing, load_pricing, providers_for
@@ -131,6 +132,7 @@ _ENGINES: dict[EngineKind, type[Engine]] = {
     EngineKind.VLLM: VLLMEngine,
     EngineKind.SGLANG: SGLangEngine,
     EngineKind.LLAMACPP: LlamaCppEngine,
+    EngineKind.TRTLLM: TRTLLMEngine,
 }
 
 

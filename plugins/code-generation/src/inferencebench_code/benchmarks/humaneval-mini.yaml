@@ -1,0 +1,15 @@
+benchmark_id: code.generation.humaneval-mini
+suite_version: 1.0.0
+description: Five stdlib-only Python tasks, pass@1 with a 5-second wall-clock timeout.
+modality: code
+kind: generation
+dataset:
+  id: builtin-humaneval-mini
+  path: humaneval-mini.jsonl
+slo_template: code.generation.standard
+warmup:
+  discard_runs: 0
+language: python
+scoring: pass_at_1
+k: 1
+timeout_s: 5.0

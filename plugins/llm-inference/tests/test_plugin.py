@@ -76,12 +76,12 @@ def test_validate_warns_when_vllm_base_url_missing() -> None:
 
 
 def test_validate_warns_on_unsupported_engine() -> None:
-    """TRT-LLM isn't implemented yet — validate should flag it."""
+    """MLX isn't implemented yet — validate should flag it."""
     plugin = LLMInferencePlugin()
     spec = plugin.get_benchmark("llm.inference.sharegpt-v3")
     ctx = RunContext(
         model_id="m",
-        engine_kind=EngineKind.TRTLLM,
+        engine_kind=EngineKind.MLX,
         base_url="http://localhost:8000/v1",
         output_dir=Path("/tmp/bench"),
     )

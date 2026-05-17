@@ -15,6 +15,7 @@ from rich.console import Console
 
 from inferencebench._logging import configure_logging
 from inferencebench.commands import (
+    attest,
     audit,
     bundle,
     cache,
@@ -35,6 +36,7 @@ from inferencebench.commands import (
     replay,
     run,
     schema_cmd,
+    server,
     summary,
     verify,
     watch,
@@ -88,6 +90,10 @@ app.command(
     name="audit",
     help="Verify every envelope in a directory and report failures.",
 )(audit.audit)
+app.command(
+    name="attest",
+    help="Render a third-party-readable attestation slip from an envelope.",
+)(attest.attest)
 # `bundle` has subcommands (create/extract) → sub-Typer
 app.add_typer(
     bundle.app,
@@ -135,6 +141,10 @@ app.command(
 )(export.export)
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
 app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
+app.command(
+    name="server",
+    help="Run a minimal HTTP API for distributed envelope ingestion.",
+)(server.server)
 app.command(name="summary", help="Summarise envelopes in a directory or file.")(summary.summary)
 app.command(
     name="watch",

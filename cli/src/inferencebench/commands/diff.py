@@ -53,6 +53,8 @@ _LOWER_IS_BETTER: frozenset[str] = frozenset(
         "cer_mean",
         "cer_p50",
         "cer_p95",
+        # code.generation execution-timeout rate
+        "timeout_rate",
     }
 )
 
@@ -85,6 +87,13 @@ _HIGHER_IS_BETTER: frozenset[str] = frozenset(
         "bleu_p50",
         "bleu_p95",
         "exact_match_rate",
+        # code.generation pass@k metrics
+        "pass_at_1",
+        "pass_at_1_p05",
+        "pass_at_1_p50",
+        "pass_at_1_p95",
+        "pass_at_k",
+        "pass_at_k_mean",
     }
 )
 

@@ -41,6 +41,7 @@ members = [
     "plugins/voice-transcription",
     "plugins/embeddings-retrieval",
     "plugins/llm-mt",
+    "plugins/code-generation",
     "integrations/hf-publisher",
     "tools/leaderboard",
 ]
@@ -75,6 +76,7 @@ src = [
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
+    "plugins/code-generation/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -133,9 +135,13 @@ ignore = [
 "plugins/embeddings-retrieval/src/inferencebench_embeddings/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/llm-mt/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/llm-mt/src/inferencebench_mt/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/code-generation/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/code-generation/src/inferencebench_code/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/code-generation/src/inferencebench_code/runner.py" = ["S603", "S607"]   # subprocess invocation is intentional — see module docstring + README safety note
 "plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
+"plugins/llm-inference/src/inferencebench_llm/engines/trtllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; workload items are caller-defined; _build_envelope has many branches by design
 "plugins/llm-inference/src/inferencebench_llm/datasets.py" = ["S311"]   # random.shuffle is fine; we want determinism, not crypto
 "plugins/llm-inference/src/inferencebench_llm/pricing.py" = ["D205"]   # multi-paragraph module docstring
@@ -160,7 +166,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:plugins/llm-mt/src:integrations/hf-publisher/src:tools/leaderboard/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:plugins/llm-mt/src:plugins/code-generation/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -185,6 +191,7 @@ files = [
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
+    "plugins/code-generation/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -223,6 +230,7 @@ testpaths = [
     "plugins/voice-transcription/tests",
     "plugins/embeddings-retrieval/tests",
     "plugins/llm-mt/tests",
+    "plugins/code-generation/tests",
     "integrations/hf-publisher/tests",
     "tools/leaderboard/tests",
 ]
@@ -248,6 +256,7 @@ source = [
     "plugins/voice-transcription/src",
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
+    "plugins/code-generation/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
 ]
