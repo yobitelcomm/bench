@@ -74,13 +74,24 @@ def _compute_fixture_hash(items: list[dict[str, str]]) -> str:
 def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClient:
     """Build a :class:`ModelClient` from the run context.
 
-    The engine flavour only changes which env-var the API key defaults from and
-    whether ``base_url`` is required. The wire protocol is OpenAI-compatible
-    for every engine kind we support here.
+    OpenAI-compatible self-hosted servers (vLLM, SGLang) require the LiteLLM
+    ``openai/<model>`` routing prefix; we add it here exactly once, stripping
+    any user-supplied prefix first so a double ``openai/openai/...`` never
+    reaches LiteLLM. Provider-hosted engines (``OPENAI`` kind) leave the
+    model id untouched.
     """
+    model_id = context.model_id
+    api_key: str | None
+    if context.engine_kind in _SELF_HOSTED_ENGINES:
+        if model_id.startswith("openai/"):
+            model_id = model_id[len("openai/") :]
+        model_id = f"openai/{model_id}"
+        api_key = context.api_key or "EMPTY"
+    else:
+        api_key = context.api_key or None
     return ModelClient(
-        model=context.model_id,
-        api_key=context.api_key or None,
+        model=model_id,
+        api_key=api_key,
         base_url=context.base_url or None,
         timeout_s=timeout_s,
     )
