@@ -30,6 +30,7 @@ def test_plugin_init_scaffolds_expected_files(
         base / "pyproject.toml",
         base / "README.md",
         base / "src" / "inferencebench_foo" / "__init__.py",
+        base / "src" / "inferencebench_foo" / "schemas.py",
         base / "src" / "inferencebench_foo" / "plugin.py",
         base / "tests" / "test_plugin.py",
     ]
@@ -39,14 +40,37 @@ def test_plugin_init_scaffolds_expected_files(
     pyproj = (base / "pyproject.toml").read_text(encoding="utf-8")
     assert 'name = "inferencebench-foo"' in pyproj
     assert '"foo" = "inferencebench_foo.plugin:FooPlugin"' in pyproj
+    # Required runtime deps are listed so `pip install -e .` produces a runnable
+    # plugin straight away.
+    assert "inferencebench-envelope" in pyproj
+    assert "inferencebench-harness" in pyproj
+
+    init_py = (base / "src" / "inferencebench_foo" / "__init__.py").read_text(encoding="utf-8")
+    # RunContext + EngineKind must be re-exported so the CLI's
+    # _resolve_plugin_schemas can find them at the package top level.
+    assert "RunContext" in init_py
+    assert "EngineKind" in init_py
+    assert "FooPlugin" in init_py
+
+    schemas_py = (base / "src" / "inferencebench_foo" / "schemas.py").read_text(encoding="utf-8")
+    assert "class EngineKind" in schemas_py
+    assert "class RunContext" in schemas_py
+    assert "class BenchmarkSpec" in schemas_py
+    assert 'ECHO = "echo"' in schemas_py
 
     plugin_py = (base / "src" / "inferencebench_foo" / "plugin.py").read_text(encoding="utf-8")
     assert "class FooPlugin" in plugin_py
     assert 'suite_id = "foo"' in plugin_py
     assert "voice" in plugin_py  # modality embedded in docstring
+    # Contract methods must be present.
+    for symbol in ("list_benchmarks", "get_benchmark", "validate", "run"):
+        assert symbol in plugin_py, f"missing {symbol} in scaffolded plugin.py"
+    # The scaffold produces a signed envelope end-to-end.
+    assert "sign_envelope" in plugin_py
+    assert "EnvelopeBuilder" in plugin_py
 
     test_py = (base / "tests" / "test_plugin.py").read_text(encoding="utf-8")
-    assert "FooPlugin().suite_id == \"foo\"" in test_py
+    assert 'FooPlugin().suite_id == "foo"' in test_py
 
 
 def test_plugin_init_rejects_invalid_name(

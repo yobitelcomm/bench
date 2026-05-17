@@ -15,6 +15,7 @@ from rich.console import Console
 
 from inferencebench._logging import configure_logging
 from inferencebench.commands import (
+    cache,
     compare,
     cost,
     diff,
@@ -25,6 +26,7 @@ from inferencebench.commands import (
     leaderboard,
     list_cmd,
     plugin,
+    profile,
     publish,
     replay,
     run,
@@ -77,12 +79,18 @@ def main(
 # behaves correctly (sub-Typer with invoke_without_command=True has a parsing
 # quirk that breaks positional-then-option args).
 app.command(name="run", help="Run a benchmark and produce a signed envelope.")(run.run)
+# `cache` has subcommands (list/clear/path) → sub-Typer
+app.add_typer(cache.app, name="cache", help="Manage the local envelope fetch cache.")
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
 app.command(
     name="history",
     help="Time-series view of one metric across runs.",
 )(history.history)
+app.command(
+    name="profile",
+    help="Re-run a benchmark with high-frequency telemetry for diagnosis.",
+)(profile.profile)
 app.command(name="publish", help="Publish a signed envelope (HF Hub, local).")(publish.publish)
 app.command(name="replay", help="Replay a benchmark from an existing envelope.")(replay.replay)
 app.command(

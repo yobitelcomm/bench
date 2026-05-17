@@ -42,7 +42,13 @@ from inferencebench.harness import (
 from inferencebench.harness.convergence import ConvergenceGate
 from inferencebench.harness.metrics import SLOPredicate, summarise_energy
 from inferencebench_llm.datasets import compute_dataset_hash, load_prompts
-from inferencebench_llm.engines import Engine, EngineUnavailableError, SGLangEngine, VLLMEngine
+from inferencebench_llm.engines import (
+    Engine,
+    EngineUnavailableError,
+    LlamaCppEngine,
+    SGLangEngine,
+    VLLMEngine,
+)
 from inferencebench_llm.pricing import providers_for
 from inferencebench_llm.schemas import BenchmarkSpec, EngineKind, RunContext
 
@@ -111,6 +117,7 @@ def _registry_reference_cost(model_id: str) -> tuple[float, str] | None:
 _ENGINES: dict[EngineKind, type[Engine]] = {
     EngineKind.VLLM: VLLMEngine,
     EngineKind.SGLANG: SGLangEngine,
+    EngineKind.LLAMACPP: LlamaCppEngine,
 }
 
 
@@ -234,11 +241,15 @@ class LLMInferencePlugin:
                 extra={"token_source": result.token_source},
             )
 
+        nvml_interval_ms = int(context.extra.get("nvml_interval_ms", 50))
+        rapl_interval_ms = int(context.extra.get("rapl_interval_ms", 100))
         bench = BenchmarkRun(
             driver=driver,
             workload=prompts,
             request_fn=_request_fn,
             convergence=gate,
+            nvml_interval_ms=nvml_interval_ms,
+            rapl_interval_ms=rapl_interval_ms,
         )
         raw = bench.execute()
         slos = _SLO_TEMPLATES.get(spec.slo_template, [])
