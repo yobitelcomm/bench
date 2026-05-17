@@ -2,7 +2,7 @@
 # Run `make help` to see all targets.
 
 .DEFAULT_GOAL := help
-.PHONY: help install lint format typecheck test test-fast test-gpu test-paid all clean release-dry-run release-bump-0.0.2
+.PHONY: help install lint format typecheck test test-fast test-gpu test-paid all clean release-dry-run release-bump-0.0.2 release-notes
 
 help: ## Show this help.
 	@awk 'BEGIN {FS = ":.*##"; printf "Usage: make <target>\n\nTargets:\n"} /^[a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 }' $(MAKEFILE_LIST)
@@ -43,3 +43,6 @@ release-dry-run: ## Build every workspace package and inspect each wheel.
 
 release-bump-0.0.2: ## Rewrite every workspace pyproject to 0.0.2, then dry-run build.
 	python scripts/release_dry_run.py --bump 0.0.2
+
+release-notes: ## Print GitHub-Release-ready markdown for v0.0.2.
+	python scripts/release_notes.py --version 0.0.2

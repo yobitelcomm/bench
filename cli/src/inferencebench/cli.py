@@ -20,6 +20,7 @@ from inferencebench.commands import (
     bundle,
     cache,
     ci,
+    cluster,
     compare,
     cost,
     diff,
@@ -107,6 +108,12 @@ app.add_typer(
     ci.app,
     name="ci",
     help="Generate or validate a GitHub Actions regression-check workflow.",
+)
+# `cluster` has subcommands (run/status/sync) → sub-Typer
+app.add_typer(
+    cluster.app,
+    name="cluster",
+    help="Runner-side coordinator: dispatch matrix runs + ship envelopes to a bench server.",
 )
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)

@@ -5,12 +5,13 @@ Each engine is a thin shim that knows how to:
 - Read the engine's version string for envelope provenance
 - Construct a :class:`ModelClient` pointed at it
 
-Phase 1 ships :class:`VLLMEngine`, :class:`SGLangEngine`,
-:class:`LlamaCppEngine`, and :class:`TRTLLMEngine`. MLX follows in Phase 2.
+Ships :class:`VLLMEngine`, :class:`SGLangEngine`, :class:`LlamaCppEngine`,
+:class:`TRTLLMEngine`, and :class:`MLXEngine` — the full five-engine matrix.
 """
 
 from inferencebench_llm.engines.base import Engine, EngineUnavailableError
 from inferencebench_llm.engines.llamacpp import LlamaCppEngine
+from inferencebench_llm.engines.mlx import MLXEngine
 from inferencebench_llm.engines.sglang import SGLangEngine
 from inferencebench_llm.engines.trtllm import TRTLLMEngine
 from inferencebench_llm.engines.vllm import VLLMEngine
@@ -19,6 +20,7 @@ __all__ = [
     "Engine",
     "EngineUnavailableError",
     "LlamaCppEngine",
+    "MLXEngine",
     "SGLangEngine",
     "TRTLLMEngine",
     "VLLMEngine",

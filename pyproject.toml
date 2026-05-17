@@ -142,6 +142,7 @@ ignore = [
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/trtllm.py" = ["S310"]   # controlled HTTP probe
+"plugins/llm-inference/src/inferencebench_llm/engines/mlx.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; workload items are caller-defined; _build_envelope has many branches by design
 "plugins/llm-inference/src/inferencebench_llm/datasets.py" = ["S311"]   # random.shuffle is fine; we want determinism, not crypto
 "plugins/llm-inference/src/inferencebench_llm/pricing.py" = ["D205"]   # multi-paragraph module docstring

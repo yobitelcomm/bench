@@ -46,6 +46,7 @@ from inferencebench_llm.engines import (
     Engine,
     EngineUnavailableError,
     LlamaCppEngine,
+    MLXEngine,
     SGLangEngine,
     TRTLLMEngine,
     VLLMEngine,
@@ -133,6 +134,7 @@ _ENGINES: dict[EngineKind, type[Engine]] = {
     EngineKind.SGLANG: SGLangEngine,
     EngineKind.LLAMACPP: LlamaCppEngine,
     EngineKind.TRTLLM: TRTLLMEngine,
+    EngineKind.MLX: MLXEngine,
 }
 
 

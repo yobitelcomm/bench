@@ -75,18 +75,33 @@ def test_validate_warns_when_vllm_base_url_missing() -> None:
     assert any("base_url" in w.lower() for w in warnings)
 
 
-def test_validate_warns_on_unsupported_engine() -> None:
-    """MLX isn't implemented yet — validate should flag it."""
+@pytest.mark.parametrize(
+    "kind",
+    [
+        EngineKind.VLLM,
+        EngineKind.SGLANG,
+        EngineKind.TRTLLM,
+        EngineKind.LLAMACPP,
+        EngineKind.MLX,
+    ],
+)
+def test_validate_does_not_flag_any_engine_as_unimplemented(kind: EngineKind) -> None:
+    """All five engines (vLLM, SGLang, TRT-LLM, llama.cpp, MLX) must be wired in.
+
+    The probe will fail because the endpoint is unreachable, but the warning
+    must not be the registry's "not implemented" message — that would mean
+    we forgot to register the engine in ``_ENGINES``.
+    """
     plugin = LLMInferencePlugin()
     spec = plugin.get_benchmark("llm.inference.sharegpt-v3")
     ctx = RunContext(
         model_id="m",
-        engine_kind=EngineKind.MLX,
-        base_url="http://localhost:8000/v1",
+        engine_kind=kind,
+        base_url="http://127.0.0.1:1/v1",  # unreachable on purpose
         output_dir=Path("/tmp/bench"),
     )
     warnings = plugin.validate(spec, ctx)
-    assert any("not implemented" in w.lower() for w in warnings)
+    assert not any("not implemented" in w.lower() for w in warnings)
 
 
 def test_run_context_rejects_empty_model_id() -> None:
