@@ -1,14 +1,18 @@
 """VoiceTranscriptionPlugin — entry point for ``voice.transcription`` benchmarks.
 
-Phase-2-quality skeleton: produces a real signed envelope by deterministically
-synthesising a hypothesis for every fixture row (drop the last word + append
-``"end"``) and scoring it. Future revisions wire the actual ASR engine call
-into :meth:`_synthesise_hypothesis`; the rest of the pipeline (signing,
-aggregation, sample dump) is production-shaped.
+Phase-2: drives a REAL Whisper-compatible HTTP endpoint (OpenAI's audio API,
+faster-whisper-server, vLLM-audio, …) for every fixture row. The bundled
+fixtures ship with tiny synthetic WAVs (pure sine tones, 16 kHz mono PCM) so
+the plugin remains runnable without external dependencies; a Whisper server
+will return garbage for sine waves, but the request shape is exercised.
 
-Audio data is **never loaded** here — the ``audio_path`` field in the fixture
-is metadata only. This keeps the skeleton dependency-free (no soundfile /
-torchaudio) until the engines actually need them.
+Users with real audio swap in real WAV files. The plugin reads each WAV,
+ships it to ``<base_url>/audio/transcriptions``, parses the JSON response,
+and scores the returned text against the fixture reference (WER / CER /
+exact-match — selectable per benchmark).
+
+Failures (missing WAV, transport error, non-2xx response) degrade gracefully:
+the offending sample is marked ``ok=False`` and the envelope still signs.
 """
 
 from __future__ import annotations
@@ -41,6 +45,7 @@ from inferencebench.harness import (
     collect_software_provenance,
 )
 from inferencebench.harness.metrics import Percentiles
+from inferencebench_voice.audio_client import TranscriptionResult, transcribe
 from inferencebench_voice.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_voice.scoring import SCORERS
 
@@ -59,6 +64,13 @@ def _json_num(v: float) -> str:
 # OPENAI / COHERE here mean "provider-hosted endpoint" — base_url is optional.
 _SELF_HOSTED_ENGINES = frozenset({EngineKind.WHISPER_HTTP})
 
+# Default base URLs for provider-hosted audio APIs. Self-hosted engines must
+# supply ``context.base_url`` explicitly (validate() warns otherwise).
+_DEFAULT_BASE_URLS: dict[EngineKind, str] = {
+    EngineKind.OPENAI: "https://api.openai.com/v1",
+    EngineKind.COHERE: "https://api.cohere.ai/v1",
+}
+
 
 def _fixtures_cache_root() -> Path:
     """Resolve the bench-fixtures cache root for ``fixtures://`` dataset URIs."""
@@ -74,18 +86,11 @@ def _compute_fixture_hash(items: list[dict[str, str | float]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def _synthesise_hypothesis(reference: str) -> str:
-    """Deterministically corrupt the reference into a stub hypothesis.
-
-    Drops the last whitespace-split token and appends ``"end"`` — yields a
-    known-WER hypothesis (exactly one substitution) without invoking any
-    real ASR engine. Future revisions replace this with a real audio call.
-    Empty / single-word references degrade gracefully to ``"end"``.
-    """
-    tokens = reference.split()
-    if len(tokens) <= 1:
-        return "end"
-    return " ".join(tokens[:-1]) + " end"
+def _resolve_base_url(context: RunContext) -> str:
+    """Pick the base URL: explicit context.base_url overrides provider defaults."""
+    if context.base_url:
+        return context.base_url
+    return _DEFAULT_BASE_URLS.get(context.engine_kind, "")
 
 
 # Metrics this plugin is expected to emit. Consumed by ``bench coverage``.
@@ -97,6 +102,7 @@ EXPECTED_METRICS: tuple[str, ...] = (
     "n_samples",
     "total_audio_duration_s",
     "total_p50_ms",
+    "audio_path_resolved_count",
 )
 
 
@@ -104,10 +110,10 @@ class VoiceTranscriptionPlugin:
     """Plugin entry point. Registered via ``inferencebench.plugins`` entrypoint group."""
 
     suite_id = "voice.transcription"
-    version = "0.0.0"
+    version = "0.1.0"
     description = (
-        "Voice transcription benchmarks (deterministic WER/CER on bundled fixtures; "
-        "real ASR invocation deferred)."
+        "Voice transcription benchmarks against any Whisper-compatible /v1/audio/"
+        "transcriptions endpoint (OpenAI, faster-whisper-server, vLLM-audio)."
     )
 
     # ----------------------------------------------------------- benchmarks #
@@ -148,7 +154,9 @@ class VoiceTranscriptionPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        samples, scores, durations = self._score_items(items, scorer)
+        samples, scores, durations, n_resolved = self._score_items(
+            items, scorer, context
+        )
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
@@ -160,6 +168,7 @@ class VoiceTranscriptionPlugin:
             scores=scores,
             durations=durations,
             dataset_hash=fixture_hash,
+            audio_path_resolved_count=n_resolved,
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -179,51 +188,136 @@ class VoiceTranscriptionPlugin:
         self,
         items: list[dict[str, str | float]],
         scorer: Callable[[str, str], float],
-    ) -> tuple[list[Sample], list[float], list[float]]:
-        """Iterate fixture items, synthesise stub hypotheses, score each one.
+        context: RunContext,
+    ) -> tuple[list[Sample], list[float], list[float], int]:
+        """Iterate fixture items, call the audio transcription endpoint, score each.
 
-        Returns ``(samples, scores, durations)`` — ``samples`` is the
-        harness-compatible per-utterance list, ``scores`` is the raw scoring
-        output (WER/CER/EM error rates), ``durations`` is the per-row audio
-        seconds (used for total-audio-duration and stub RTF latency).
+        Returns ``(samples, scores, durations, audio_path_resolved_count)``.
+        ``samples`` is the harness-compatible per-utterance list, ``scores``
+        is the raw scoring output (WER/CER/EM error rates), ``durations`` is
+        the per-row audio seconds, ``audio_path_resolved_count`` is the
+        number of fixture rows whose ``audio_path`` resolved to a file on
+        disk (rows with a missing WAV are recorded as failed samples but
+        excluded from the resolved count + from the scoring set).
         """
+        base_url = _resolve_base_url(context)
+        api_key = context.api_key or "EMPTY"
+        datasets_root = self._datasets_dir()
+
         samples: list[Sample] = []
         scores: list[float] = []
         durations: list[float] = []
+        n_resolved = 0
+
         for idx, item in enumerate(items):
             reference = str(item["reference"])
             duration_s = float(item.get("duration_s") or 0.0)
-            hypothesis = _synthesise_hypothesis(reference)
-            score = float(scorer(reference, hypothesis))
-            scores.append(score)
-            durations.append(duration_s)
-            # Stub RTF: total_ms = duration_s * 0.3 * 1000 = duration_s * 300.
-            # Stands in for "30% real-time factor on a warm whisper-large-v3
-            # server" — purely a placeholder until real audio invocation lands.
-            total_ms = duration_s * 300.0
+            rel_audio = str(item["audio_path"])
+            audio_path = (datasets_root / rel_audio).resolve()
             t_arrival = time.perf_counter() * 1000.0
+
+            if not audio_path.exists():
+                # Record as a failed sample; do not count toward scoring or
+                # toward audio_path_resolved_count.
+                samples.append(
+                    Sample(
+                        request_idx=idx,
+                        arrival_ms=t_arrival,
+                        start_ms=t_arrival,
+                        ttft_ms=float("nan"),
+                        total_ms=float("nan"),
+                        tpot_ms=float("nan"),
+                        tokens_in=0,
+                        tokens_out=0,
+                        cost_usd=0.0,
+                        finish_reason="error",
+                        ok=False,
+                        error=f"audio file not found: {rel_audio}",
+                        extra={
+                            "reference": reference,
+                            "hypothesis": "",
+                            "duration_s": duration_s,
+                            "audio_path": rel_audio,
+                        },
+                    )
+                )
+                continue
+
+            n_resolved += 1
+            result = self._invoke_transcribe(
+                audio_path,
+                base_url=base_url,
+                model=context.model_id,
+                api_key=api_key,
+            )
             samples.append(
-                Sample(
-                    request_idx=idx,
+                self._to_sample(
+                    idx=idx,
                     arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=float("nan"),
-                    total_ms=total_ms,
-                    tpot_ms=float("nan"),
-                    tokens_in=0,
-                    tokens_out=len(hypothesis.split()),
-                    cost_usd=0.0,
-                    finish_reason="stop",
-                    ok=True,
-                    extra={
-                        "score": score,
-                        "reference": reference,
-                        "hypothesis": hypothesis,
-                        "duration_s": duration_s,
-                    },
+                    result=result,
+                    reference=reference,
+                    duration_s=duration_s,
+                    rel_audio=rel_audio,
+                    scorer=scorer,
                 )
             )
-        return samples, scores, durations
+            if result.ok:
+                scores.append(float(scorer(reference, result.text)))
+                durations.append(duration_s)
+
+        return samples, scores, durations, n_resolved
+
+    # Injection seam — tests patch ``_invoke_transcribe`` to avoid real HTTP.
+    def _invoke_transcribe(
+        self,
+        audio_path: Path,
+        *,
+        base_url: str,
+        model: str,
+        api_key: str,
+    ) -> TranscriptionResult:
+        """Call the audio client. Exists as a method so tests can monkeypatch it."""
+        return transcribe(
+            audio_path,
+            base_url=base_url,
+            model=model,
+            api_key=api_key,
+        )
+
+    def _to_sample(
+        self,
+        *,
+        idx: int,
+        arrival_ms: float,
+        result: TranscriptionResult,
+        reference: str,
+        duration_s: float,
+        rel_audio: str,
+        scorer: Callable[[str, str], float],
+    ) -> Sample:
+        """Fold a :class:`TranscriptionResult` into a harness :class:`Sample`."""
+        score = float(scorer(reference, result.text)) if result.ok else float("nan")
+        return Sample(
+            request_idx=idx,
+            arrival_ms=arrival_ms,
+            start_ms=arrival_ms,
+            ttft_ms=result.ttft_ms,
+            total_ms=result.total_ms,
+            tpot_ms=float("nan"),
+            tokens_in=0,
+            tokens_out=result.tokens_out,
+            cost_usd=result.cost_usd,
+            finish_reason=result.finish_reason,
+            ok=result.ok,
+            error=result.error or "",
+            extra={
+                "score": score,
+                "reference": reference,
+                "hypothesis": result.text,
+                "duration_s": duration_s,
+                "audio_path": rel_audio,
+            },
+        )
 
     # ------------------------------------------------------------ samples #
     def _dump_samples(self, context: RunContext, samples: list[Sample]) -> None:
@@ -319,6 +413,7 @@ class VoiceTranscriptionPlugin:
         scores: list[float],
         durations: list[float],
         dataset_hash: str,
+        audio_path_resolved_count: int,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -330,6 +425,7 @@ class VoiceTranscriptionPlugin:
         metrics["n_samples"] = float(len(samples))
         metrics["n_ok"] = float(n_ok)
         metrics["ok_rate"] = float(n_ok) / float(len(samples)) if samples else 0.0
+        metrics["audio_path_resolved_count"] = float(audio_path_resolved_count)
 
         # Headline scoring metric — keyed by the spec's scoring strategy
         # so downstream `bench diff` knows whether lower or higher is better

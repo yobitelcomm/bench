@@ -38,6 +38,22 @@ JUDGE_PROMPT = (
 )
 
 
+JUDGE_PERSONA_PROMPT = (
+    "You are evaluating whether an assistant maintained a requested persona\n"
+    "across a multi-turn conversation. The system prompt establishes the persona.\n"
+    "Reply with just a single integer 0-10 where 10 = persona maintained perfectly\n"
+    "in every turn, 0 = persona never present. No explanation.\n"
+    "\n"
+    "System prompt (persona):\n"
+    "{system_prompt}\n"
+    "\n"
+    "Transcript:\n"
+    "{transcript}\n"
+    "\n"
+    "Score (0-10):"
+)
+
+
 @dataclass
 class ScoreContext:
     """Per-question context passed to a scorer.
@@ -166,3 +182,127 @@ SCORERS: dict[str, Callable[[ScoreContext], float]] = {
     "f1_token": f1_token,
     "judge_llm": judge_llm,
 }
+
+
+# --------------------------------------------------------------------------- #
+# Multi-turn persona consistency                                              #
+# --------------------------------------------------------------------------- #
+@dataclass
+class PersonaConsistencyResult:
+    """Result of scoring a single multi-turn persona conversation.
+
+    ``score`` is the fraction of turns where at least one marker was present.
+    ``drift_first_miss_turn`` is the 0-indexed turn at which the first miss
+    occurred (or ``None`` if every turn maintained the persona).
+    ``markers_present_per_turn`` is the per-turn boolean trace.
+    """
+
+    score: float
+    drift_first_miss_turn: int | None
+    markers_present_per_turn: list[bool]
+
+
+def persona_consistency(
+    turns: list[tuple[str, str]], *, markers: list[str]
+) -> PersonaConsistencyResult:
+    """Score a multi-turn conversation against expected persona markers.
+
+    For each turn's response, check whether AT LEAST ONE marker substring is
+    present (case-insensitive). Score = (# turns with a marker present) /
+    total turns. ``drift_first_miss_turn`` is the 0-indexed first miss, or
+    ``None`` when every turn keeps the persona.
+
+    Defensive: if ``markers`` is empty or ``turns`` is empty, return score
+    0.0 with an empty trace — a persona with no markers cannot be measured,
+    and an empty conversation has nothing to score.
+    """
+    if not turns or not markers:
+        return PersonaConsistencyResult(
+            score=0.0,
+            drift_first_miss_turn=0 if turns else None,
+            markers_present_per_turn=[False] * len(turns),
+        )
+
+    lowered_markers = [m.lower() for m in markers if m]
+    present_per_turn: list[bool] = []
+    drift_first_miss: int | None = None
+    for idx, (_question, response) in enumerate(turns):
+        haystack = (response or "").lower()
+        hit = any(m in haystack for m in lowered_markers)
+        present_per_turn.append(hit)
+        if not hit and drift_first_miss is None:
+            drift_first_miss = idx
+
+    score = sum(1 for p in present_per_turn if p) / len(present_per_turn)
+    return PersonaConsistencyResult(
+        score=score,
+        drift_first_miss_turn=drift_first_miss,
+        markers_present_per_turn=present_per_turn,
+    )
+
+
+def _parse_judge_persona_score(text: str) -> float | None:
+    """Parse the judge's reply into a 0-10 integer, normalized to ``[0, 1]``.
+
+    Returns ``None`` when no leading integer is recoverable so callers can
+    distinguish "judge said nothing usable" from "judge said 0".
+    """
+    text = (text or "").strip()
+    if not text:
+        return None
+    digits = ""
+    for ch in text:
+        if ch.isdigit():
+            digits += ch
+        elif digits:
+            break
+    if not digits:
+        return None
+    try:
+        value = int(digits)
+    except ValueError:
+        return None
+    return max(0.0, min(1.0, value / 10.0))
+
+
+def judge_llm_persona(
+    turns: list[tuple[str, str]],
+    *,
+    system_prompt: str,
+    judge_client: ModelClient | None,
+    judge_errors: list[str] | None = None,
+    judge_cost_usd: list[float] | None = None,
+) -> float:
+    """Ask the judge LLM to grade overall persona consistency on 0-10 scale.
+
+    Returns ``judge_response / 10`` clamped to ``[0, 1]``. Any judge failure
+    (network, rate limit, parse error) is recorded on ``judge_errors`` and
+    scored 0.0 — never propagates the exception, matching :func:`judge_llm`.
+    """
+    if judge_client is None:
+        if judge_errors is not None:
+            judge_errors.append("no judge_client configured")
+        return 0.0
+    transcript_lines: list[str] = []
+    for idx, (q, r) in enumerate(turns):
+        transcript_lines.append(f"Turn {idx + 1} user: {q}")
+        transcript_lines.append(f"Turn {idx + 1} assistant: {r}")
+    transcript = "\n".join(transcript_lines)
+    prompt = JUDGE_PERSONA_PROMPT.format(
+        system_prompt=system_prompt, transcript=transcript
+    )
+    try:
+        result = judge_client.complete(
+            prompt, stream=False, max_tokens=4, temperature=0.0
+        )
+    except Exception as exc:
+        if judge_errors is not None:
+            judge_errors.append(str(exc))
+        return 0.0
+    if judge_cost_usd is not None and result.cost_usd:
+        judge_cost_usd.append(float(result.cost_usd))
+    parsed = _parse_judge_persona_score(result.text or "")
+    return 0.0 if parsed is None else parsed
+
+
+JUDGE_LLM_PERSONA = "judge_llm_persona"

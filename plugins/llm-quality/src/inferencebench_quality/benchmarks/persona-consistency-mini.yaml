@@ -1,0 +1,17 @@
+benchmark_id: llm.quality.persona-consistency-mini
+suite_version: 1.0.0
+description: |
+  Multi-turn persona-consistency: the model is told to play a specific
+  character (pirate, formal academic, terse minimalist, etc.) and then
+  asked 4-6 questions. Score = fraction of turns where persona markers
+  are maintained.
+modality: llm
+kind: quality
+multi_turn: true
+dataset:
+  id: persona-consistency-mini
+  path: persona-consistency-mini.jsonl
+scoring: persona_consistency
+slo_template: llm.quality.standard
+warmup:
+  discard_runs: 0

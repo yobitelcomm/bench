@@ -1,0 +1,12 @@
+benchmark_id: vision.understanding.ocr-mini
+suite_version: 1.0.0
+description: OCR-style read-text-from-image tasks against a handful of synthetic images.
+modality: vision
+kind: understanding
+dataset:
+  id: builtin-ocr-mini
+  path: ocr-mini.jsonl
+slo_template: vision.standard
+warmup:
+  discard_runs: 0
+scoring: substring_match

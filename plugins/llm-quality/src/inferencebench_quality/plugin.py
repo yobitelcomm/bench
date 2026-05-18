@@ -43,7 +43,13 @@ from inferencebench.harness import (
 )
 from inferencebench.harness.metrics import Percentiles
 from inferencebench_quality.schemas import BenchmarkSpec, EngineKind, RunContext
-from inferencebench_quality.scoring import SCORERS, ScoreContext
+from inferencebench_quality.scoring import (
+    SCORERS,
+    PersonaConsistencyResult,
+    ScoreContext,
+    judge_llm_persona,
+    persona_consistency,
+)
 
 _DEFAULT_JUDGE_MODEL = "openai/gpt-4o-mini"
 
@@ -151,6 +157,16 @@ def _compute_fixture_hash(items: list[dict[str, str]]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def _compute_fixture_hash_multi_turn(cases: list[dict[str, object]]) -> str:
+    """SHA-256 over canonical-JSON-encoded multi-turn cases.
+
+    The nested ``turns`` / ``markers`` lists are encoded as-is; sort_keys
+    plus tight separators makes the hash stable across Python versions.
+    """
+    canonical = json.dumps(cases, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
+
 def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClient:
     """Build a :class:`ModelClient` from the run context.
 
@@ -189,6 +205,34 @@ EXPECTED_METRICS: tuple[str, ...] = (
     "ttft_p50_ms",
     "total_p50_ms",
 )
+
+
+# Scoring strategies that operate on a multi-turn conversation rather than
+# a single ``(question, answer)`` pair.
+_MULTI_TURN_SCORERS = frozenset({"persona_consistency", "judge_llm_persona"})
+
+
+def _render_multi_turn_prompt(
+    prior_turns: list[tuple[str, str]],
+    next_question: str,
+) -> str:
+    """Render the conversation history into a single prompt string.
+
+    The underlying ``ModelClient.complete`` takes one prompt + an optional
+    system message. To preserve conversational context across turns without
+    re-engineering the client API, we fold the prior turns into the prompt
+    body as plain text. The caller passes the persona directive separately
+    via ``ModelClient.complete``'s ``system`` kwarg.
+    """
+    if not prior_turns:
+        return next_question
+    lines: list[str] = []
+    for q, r in prior_turns:
+        lines.append(f"User: {q}")
+        lines.append(f"Assistant: {r}")
+    lines.append(f"User: {next_question}")
+    lines.append("Assistant:")
+    return "\n".join(lines)
 
 
 class LLMQualityPlugin:
@@ -232,6 +276,8 @@ class LLMQualityPlugin:
     # ------------------------------------------------------------------ run #
     def run(self, spec: BenchmarkSpec, context: RunContext) -> Envelope:
         """Execute the benchmark and return a SIGNED envelope."""
+        if spec.multi_turn or spec.scoring in _MULTI_TURN_SCORERS:
+            return self._run_multi_turn(spec, context)
         client = _build_client(context)
         items = self._load_fixture(spec)
         fixture_hash = _compute_fixture_hash(items)
@@ -405,6 +451,198 @@ class LLMQualityPlugin:
             )
         return samples, scores, n_judged
 
+    # ------------------------------------------------------- multi-turn #
+    def _run_multi_turn(
+        self, spec: BenchmarkSpec, context: RunContext
+    ) -> Envelope:
+        """Execute a multi-turn persona-consistency benchmark.
+
+        Each fixture row is one conversation case. We send the system prompt
+        once per case and replay every prior turn in the prompt body so the
+        model has full context for the next reply. Each case contributes
+        exactly one ``Sample`` whose score is the persona consistency over
+        that case's turns.
+        """
+        client = _build_client(context)
+        cases = self._load_multi_turn_fixture(spec)
+        fixture_hash = _compute_fixture_hash_multi_turn(cases)
+
+        judge_client: ModelClient | None = None
+        judge_errors: list[str] = []
+        judge_cost_usd: list[float] = []
+        judge_throttle: JudgeThrottle | None = None
+        if spec.scoring == "judge_llm_persona":
+            judge_client = self._build_judge_client(spec, context)
+            judge_throttle = JudgeThrottle(
+                _coerce_judge_rps(context.extra.get("judge_rps"))
+            )
+
+        samples: list[Sample] = []
+        scores: list[float] = []
+        drift_misses: list[int] = []  # 0-indexed first-miss per drifting case
+        n_drifted = 0
+        n_judged = 0
+
+        for idx, case in enumerate(cases):
+            # _load_multi_turn_fixture validates these types; the dict value
+            # type is ``object`` to avoid a TypedDict declaration just for
+            # this helper. Cast locally so the rest of the loop is typed.
+            system_prompt = str(case["system_prompt"])
+            raw_markers = case["markers"]
+            markers: list[str] = (
+                [str(m) for m in raw_markers]
+                if isinstance(raw_markers, list)
+                else []
+            )
+            case_id = str(case.get("case_id") or f"case-{idx}")
+            raw_turns = case["turns"]
+            turn_questions: list[str] = (
+                [str(t) for t in raw_turns]
+                if isinstance(raw_turns, list)
+                else []
+            )
+
+            t_arrival = time.perf_counter() * 1000.0
+            collected_turns: list[tuple[str, str]] = []
+            ttft_first: float = float("nan")
+            total_sum: float = 0.0
+            tokens_in_sum = 0
+            tokens_out_sum = 0
+            cost_sum = 0.0
+            ok = True
+            error_msg: str | None = None
+            for t_idx, question in enumerate(turn_questions):
+                prompt_text = _render_multi_turn_prompt(
+                    collected_turns, question
+                )
+                try:
+                    result: CompletionResult = client.complete(
+                        prompt_text,
+                        stream=True,
+                        max_tokens=128,
+                        system=system_prompt,
+                    )
+                except Exception as exc:  # pragma: no cover - mocked tests
+                    ok = False
+                    error_msg = str(exc)
+                    break
+                collected_turns.append((question, result.text))
+                if t_idx == 0 and math.isfinite(result.ttft_ms):
+                    ttft_first = result.ttft_ms
+                if math.isfinite(result.total_ms):
+                    total_sum += result.total_ms
+                tokens_in_sum += result.tokens_in
+                tokens_out_sum += result.tokens_out
+                cost_sum += result.cost_usd
+
+            sample_extra: dict[str, str | int | float | bool] = {
+                "case_id": case_id,
+                "n_turns": float(len(collected_turns)),
+            }
+
+            score: float
+            persona_result: PersonaConsistencyResult | None = None
+            if not ok or not collected_turns:
+                samples.append(
+                    Sample(
+                        request_idx=idx,
+                        arrival_ms=t_arrival,
+                        start_ms=t_arrival,
+                        ttft_ms=float("nan"),
+                        total_ms=float("nan"),
+                        tpot_ms=float("nan"),
+                        tokens_in=0,
+                        tokens_out=0,
+                        cost_usd=0.0,
+                        finish_reason="error",
+                        ok=False,
+                        error=error_msg or "no turns collected",
+                        extra=sample_extra,
+                    )
+                )
+                continue
+
+            if spec.scoring == "judge_llm_persona":
+                if judge_throttle is not None:
+                    judge_throttle.acquire()
+                score = float(
+                    judge_llm_persona(
+                        collected_turns,
+                        system_prompt=system_prompt,
+                        judge_client=judge_client,
+                        judge_errors=judge_errors,
+                        judge_cost_usd=judge_cost_usd,
+                    )
+                )
+                n_judged += 1
+            else:
+                persona_result = persona_consistency(
+                    collected_turns, markers=markers
+                )
+                score = float(persona_result.score)
+                if persona_result.drift_first_miss_turn is not None:
+                    n_drifted += 1
+                    drift_misses.append(persona_result.drift_first_miss_turn)
+                    sample_extra["drift_first_miss_turn"] = float(
+                        persona_result.drift_first_miss_turn
+                    )
+
+            scores.append(score)
+            sample_extra["score"] = score
+
+            tpot = (
+                (total_sum - ttft_first) / max(tokens_out_sum - 1, 1)
+                if math.isfinite(ttft_first) and tokens_out_sum > 1
+                else float("nan")
+            )
+            samples.append(
+                Sample(
+                    request_idx=idx,
+                    arrival_ms=t_arrival,
+                    start_ms=t_arrival,
+                    ttft_ms=ttft_first,
+                    total_ms=total_sum if total_sum > 0 else float("nan"),
+                    tpot_ms=tpot,
+                    tokens_in=tokens_in_sum,
+                    tokens_out=tokens_out_sum,
+                    cost_usd=cost_sum,
+                    finish_reason="stop",
+                    ok=True,
+                    extra=sample_extra,
+                )
+            )
+
+        self._dump_samples(context, samples)
+
+        envelope = self._build_multi_turn_envelope(
+            spec,
+            context,
+            samples=samples,
+            scores=scores,
+            drift_misses=drift_misses,
+            n_drifted=n_drifted,
+            dataset_hash=fixture_hash,
+            n_judged=n_judged if spec.scoring == "judge_llm_persona" else None,
+            judge_errors=(
+                judge_errors if spec.scoring == "judge_llm_persona" else None
+            ),
+            judge_cost_usd=(
+                judge_cost_usd if spec.scoring == "judge_llm_persona" else None
+            ),
+        )
+        signing_mode = context.extra.get("signing_mode", "dev")
+        dev_key_path = context.extra.get("dev_key_path")
+        if signing_mode == "dev":
+            if not dev_key_path:
+                msg = "dev signing requires context.extra['dev_key_path']"
+                raise ValueError(msg)
+            return sign_envelope(
+                envelope,
+                mode=SigningMode.DEV,
+                dev_key_path=Path(str(dev_key_path)),
+            )
+        return sign_envelope(envelope, mode=SigningMode.KEYLESS)
+
     # ------------------------------------------------------------ samples #
     def _dump_samples(self, context: RunContext, samples: list[Sample]) -> None:
         """Write per-request samples (incl. score) to ``<output_dir>/samples-<ts>.jsonl``.
@@ -516,6 +754,77 @@ class LLMQualityPlugin:
             raise ValueError(msg)
         return items
 
+    def _load_multi_turn_fixture(
+        self, spec: BenchmarkSpec
+    ) -> list[dict[str, object]]:
+        """Load and validate a multi-turn persona fixture.
+
+        Expected per-row shape::
+
+            {
+              "case_id": str,
+              "system_prompt": str,
+              "markers": [str, ...],
+              "turns": [{"question": str, ...}, ...]
+            }
+
+        Rows missing required fields are silently skipped — matches the
+        single-turn loader's behaviour. Raises ``FileNotFoundError`` /
+        ``ValueError`` on a missing or empty fixture so the run halts loudly
+        rather than producing an empty envelope.
+        """
+        path = self._dataset_path(spec)
+        if not path.exists():
+            if spec.dataset.path.startswith("fixtures://"):
+                key = spec.dataset.path[len("fixtures://") :]
+                msg = (
+                    f"fixture not cached: {path}. "
+                    f"Run `bench fixtures fetch {key}` first."
+                )
+                raise FileNotFoundError(msg)
+            msg = f"fixture not found: {path}"
+            raise FileNotFoundError(msg)
+        cases: list[dict[str, object]] = []
+        with path.open("r", encoding="utf-8") as fp:
+            for line in fp:
+                line = line.strip()
+                if not line:
+                    continue
+                obj = json.loads(line)
+                if not isinstance(obj, dict):
+                    continue
+                if (
+                    "system_prompt" not in obj
+                    or "turns" not in obj
+                    or "markers" not in obj
+                ):
+                    continue
+                turns_raw = obj["turns"]
+                if not isinstance(turns_raw, list):
+                    continue
+                turn_questions: list[str] = []
+                for t in turns_raw:
+                    if isinstance(t, dict) and "question" in t:
+                        turn_questions.append(str(t["question"]))
+                if not turn_questions:
+                    continue
+                markers_raw = obj["markers"]
+                if not isinstance(markers_raw, list):
+                    continue
+                markers = [str(m) for m in markers_raw]
+                cases.append(
+                    {
+                        "case_id": str(obj.get("case_id", "")),
+                        "system_prompt": str(obj["system_prompt"]),
+                        "markers": markers,
+                        "turns": turn_questions,
+                    }
+                )
+        if not cases:
+            msg = f"multi-turn fixture is empty: {path}"
+            raise ValueError(msg)
+        return cases
+
     # ---------------------------------------------------------- envelope #
     def _build_envelope(
         self,
@@ -586,6 +895,122 @@ class LLMQualityPlugin:
         # LLM-as-judge bookkeeping. ``n_judged`` is the count of questions
         # whose score came from the judge (NOT counting cap-skipped ones);
         # ``judge_errors`` is the count of judge calls that raised.
+        if n_judged is not None:
+            metrics["n_judged"] = float(n_judged)
+        if judge_errors is not None:
+            metrics["judge_errors"] = float(len(judge_errors))
+
+        builder = EnvelopeBuilder(
+            suite_id=spec.benchmark_id,
+            suite_version=spec.suite_version,
+            model=ModelConfig(
+                id=context.model_id,
+                revision=context.model_revision,
+                provider=context.engine_kind.value,
+                endpoint_hash="0" * 64,
+            ),
+            engine=EngineConfig(
+                name=context.engine_kind.value,
+                version=context.engine_version or "unknown",
+                config_hash="0" * 64,
+            ),
+            hardware_fingerprint=hw,
+            software_provenance=sw,
+            dataset=EnvDatasetSpec(id=spec.dataset.id, hash=dataset_hash),
+            seed=0,
+            quantization=(
+                Quantization(format=context.quantization_format)
+                if context.quantization_format
+                else None
+            ),
+            metrics=metrics,
+            slo_template=spec.slo_template,
+        )
+        return builder.build()
+
+    def _build_multi_turn_envelope(
+        self,
+        spec: BenchmarkSpec,
+        context: RunContext,
+        *,
+        samples: list[Sample],
+        scores: list[float],
+        drift_misses: list[int],
+        n_drifted: int,
+        dataset_hash: str,
+        n_judged: int | None = None,
+        judge_errors: list[str] | None = None,
+        judge_cost_usd: list[float] | None = None,
+    ) -> Envelope:
+        """Build a signed envelope for a multi-turn persona-consistency run.
+
+        Mirrors :meth:`_build_envelope` but emits persona-specific aggregates
+        (``persona_consistency_mean / _p50 / _p95``, ``drift_rate``,
+        ``mean_drift_turn``) instead of the single-shot ``accuracy`` row.
+        ``accuracy``-keyed metrics are also written so existing tooling that
+        ranks on accuracy keeps working.
+        """
+        hw = collect_hardware_fingerprint()
+        sw = collect_software_provenance()
+
+        metrics: dict[str, float | int | str | None] = {}
+
+        ok_samples = [s for s in samples if s.ok]
+        n_ok = len(ok_samples)
+        metrics["n_samples"] = float(len(samples))
+        metrics["n_ok"] = float(n_ok)
+        metrics["ok_rate"] = float(n_ok) / float(len(samples)) if samples else 0.0
+
+        if scores:
+            mean_score = sum(scores) / len(scores)
+            metrics["persona_consistency_mean"] = mean_score
+            # Alias under accuracy so downstream tooling (bench diff,
+            # bench coverage) that ranks on `accuracy` keeps working.
+            metrics["accuracy"] = mean_score
+            if len(scores) >= 2:
+                pcts = Percentiles(scores, percentiles=(5.0, 50.0, 95.0))
+                metrics["persona_consistency_p50"] = pcts.p50
+                metrics["persona_consistency_p95"] = pcts.p95
+                metrics["accuracy_p05"] = pcts.p5
+                metrics["accuracy_p50"] = pcts.p50
+                metrics["accuracy_p95"] = pcts.p95
+            else:
+                metrics["persona_consistency_p50"] = mean_score
+                metrics["persona_consistency_p95"] = mean_score
+                metrics["accuracy_p05"] = mean_score
+                metrics["accuracy_p50"] = mean_score
+                metrics["accuracy_p95"] = mean_score
+
+        # Drift bookkeeping. ``drift_rate`` is the share of scored cases that
+        # ever lost the persona; ``mean_drift_turn`` averages the 0-indexed
+        # first-miss turn across drifting cases only (NaN-safe via absence).
+        if scores:
+            metrics["drift_rate"] = float(n_drifted) / float(len(scores))
+        if drift_misses:
+            metrics["mean_drift_turn"] = sum(drift_misses) / len(drift_misses)
+
+        ttft_vals = [s.ttft_ms for s in ok_samples if math.isfinite(s.ttft_ms)]
+        total_vals = [s.total_ms for s in ok_samples if math.isfinite(s.total_ms)]
+        if ttft_vals:
+            metrics["ttft_p50_ms"] = Percentiles(ttft_vals).p50
+        if total_vals:
+            metrics["total_p50_ms"] = Percentiles(total_vals).p50
+
+        tokens_out_total = sum(s.tokens_out for s in ok_samples)
+        if tokens_out_total:
+            metrics["tokens_out_total"] = float(tokens_out_total)
+
+        cost_total = sum(s.cost_usd for s in ok_samples)
+        judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0
+        combined_cost = cost_total + judge_cost_total
+        if tokens_out_total and combined_cost > 0:
+            metrics["cost_usd_per_million_tokens"] = (
+                combined_cost / tokens_out_total
+            ) * 1e6
+            metrics["cost_source"] = "provider"
+            if judge_cost_total > 0:
+                metrics["judge_cost_usd_total"] = judge_cost_total
+
         if n_judged is not None:
             metrics["n_judged"] = float(n_judged)
         if judge_errors is not None:

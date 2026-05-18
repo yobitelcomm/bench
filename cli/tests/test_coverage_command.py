@@ -252,6 +252,7 @@ def test_coverage_voice_suite_uses_voice_expected_metrics(tmp_path: Path) -> Non
         "n_samples": 24,
         "total_audio_duration_s": 720.0,
         "total_p50_ms": 1500.0,
+        "audio_path_resolved_count": 24,
     }
     _write(
         tmp_path / "voice.json",
@@ -264,6 +265,6 @@ def test_coverage_voice_suite_uses_voice_expected_metrics(tmp_path: Path) -> Non
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     [row] = payload["envelopes"]
-    assert row["expected_count"] == 7
-    assert row["found_count"] == 7
+    assert row["expected_count"] == 8
+    assert row["found_count"] == 8
     assert row["coverage_pct"] == 100.0

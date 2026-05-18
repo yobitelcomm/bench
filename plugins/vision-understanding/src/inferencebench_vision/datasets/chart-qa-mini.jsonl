@@ -1,0 +1,5 @@
+{"image_path": "images/chart-01.png", "question": "What is the value of the tallest bar? Answer with just the number.", "answer": "42", "task": "chart-qa"}
+{"image_path": "images/chart-02.png", "question": "What is the value of the shortest bar? Answer with just the number.", "answer": "8", "task": "chart-qa"}
+{"image_path": "images/chart-03.png", "question": "How many bars are in the chart? Answer with just the number.", "answer": "4", "task": "chart-qa"}
+{"image_path": "images/chart-04.png", "question": "What is the value of bar B? Answer with just the number.", "answer": "27", "task": "chart-qa"}
+{"image_path": "images/chart-05.png", "question": "What is the sum of all bar values? Answer with just the number.", "answer": "60", "task": "chart-qa"}

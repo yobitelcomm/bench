@@ -1,0 +1,5 @@
+{"image_path": "images/ocr-01.png", "question": "What text appears in this image? Respond with the text only.", "answer": "april 17", "task": "ocr"}
+{"image_path": "images/ocr-02.png", "question": "What text appears in this image? Respond with the text only.", "answer": "invoice 4421", "task": "ocr"}
+{"image_path": "images/ocr-03.png", "question": "What text appears in this image? Respond with the text only.", "answer": "total $89.50", "task": "ocr"}
+{"image_path": "images/ocr-04.png", "question": "What text appears in this image? Respond with the text only.", "answer": "order #7732", "task": "ocr"}
+{"image_path": "images/ocr-05.png", "question": "What text appears in this image? Respond with the text only.", "answer": "due may 03", "task": "ocr"}

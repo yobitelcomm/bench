@@ -1,5 +1,5 @@
-{"audio_path": "fleurs-001.wav", "reference": "the quick brown fox jumps over the lazy dog", "duration_s": 3.2}
-{"audio_path": "fleurs-002.wav", "reference": "she sells seashells by the seashore", "duration_s": 2.4}
-{"audio_path": "fleurs-003.wav", "reference": "how much wood would a woodchuck chuck", "duration_s": 2.7}
-{"audio_path": "fleurs-004.wav", "reference": "peter piper picked a peck of pickled peppers", "duration_s": 3.5}
-{"audio_path": "fleurs-005.wav", "reference": "the rain in spain falls mainly on the plain", "duration_s": 3.0}
+{"audio_path": "audio/fleurs-001.wav", "reference": "the quick brown fox jumps over the lazy dog", "duration_s": 0.3}
+{"audio_path": "audio/fleurs-002.wav", "reference": "she sells seashells by the seashore", "duration_s": 0.3}
+{"audio_path": "audio/fleurs-003.wav", "reference": "how much wood would a woodchuck chuck", "duration_s": 0.3}
+{"audio_path": "audio/fleurs-004.wav", "reference": "peter piper picked a peck of pickled peppers", "duration_s": 0.3}
+{"audio_path": "audio/fleurs-005.wav", "reference": "the rain in spain falls mainly on the plain", "duration_s": 0.3}

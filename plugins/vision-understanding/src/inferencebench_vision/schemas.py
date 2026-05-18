@@ -1,4 +1,4 @@
-"""Pydantic schemas for llm-quality benchmark specs + run context."""
+"""Pydantic schemas for vision-understanding benchmark specs + run context."""
 
 from __future__ import annotations
 
@@ -12,24 +12,24 @@ from pydantic import BaseModel, ConfigDict, Field
 class EngineKind(StrEnum):
     """Engines this plugin can drive.
 
-    Quality scoring is dominated by per-prompt API calls, so a provider-hosted
-    OpenAI-style endpoint is the most useful third option alongside the
-    self-hosted vLLM / SGLang servers exercised by the perf plugin.
+    Modern vision-language model serving is dominated by OpenAI-compatible
+    endpoints (vLLM, SGLang) and provider-hosted multimodal APIs (OpenAI,
+    Anthropic). All four accept the same ``messages[].content`` list-of-parts
+    request shape, so they share one plugin code path.
     """
 
     VLLM = "vllm"
     SGLANG = "sglang"
     OPENAI = "openai"
+    ANTHROPIC = "anthropic"
 
 
 class DatasetConfig(BaseModel):
     """Dataset under evaluation.
 
-    For the quality plugin the dataset is a small bundled JSONL fixture with
-    one ``{"question", "answer", "category"}`` object per line. Multi-turn
-    benchmarks (``persona_consistency`` / ``judge_llm_persona``) use a
-    different per-row shape: ``{"case_id", "system_prompt", "markers",
-    "turns": [{"question", ...}]}``.
+    For the vision plugin the dataset is a small bundled JSONL fixture with
+    one ``{"image_path", "question", "answer", "task"}`` object per line.
+    Image paths are resolved relative to the plugin's ``datasets/`` directory.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -48,9 +48,8 @@ class DatasetConfig(BaseModel):
 class WarmupConfig(BaseModel):
     """Warmup parameters.
 
-    Quality scoring is per-question and order-independent, so the default is
-    zero discarded runs. Surfaced as a knob so future revisions can warm up
-    a JIT-compiled judge model if needed.
+    Vision scoring is per-question and order-independent, so the default is
+    zero discarded runs. Surfaced as a knob for parity with the other plugins.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -58,39 +57,24 @@ class WarmupConfig(BaseModel):
 
 
 class BenchmarkSpec(BaseModel):
-    """One quality benchmark — fixture + scoring strategy + metadata."""
+    """One vision-understanding benchmark — fixture + scoring strategy + metadata."""
 
     model_config = ConfigDict(extra="forbid")
     benchmark_id: Annotated[str, Field(min_length=1)]
     suite_version: Annotated[str, Field(pattern=r"^\d+\.\d+\.\d+(-[\w.]+)?$")]
     description: str = ""
-    modality: Literal["llm"] = "llm"
-    kind: Literal["quality"] = "quality"
+    modality: Literal["vision"] = "vision"
+    kind: Literal["understanding"] = "understanding"
     dataset: DatasetConfig
-    slo_template: str = "llm.quality.standard"
+    slo_template: str = "vision.standard"
     warmup: WarmupConfig = Field(default_factory=WarmupConfig)
-    scoring: Literal[
-        "exact_match",
-        "substring_match",
-        "f1_token",
-        "judge_llm",
-        "persona_consistency",
-        "judge_llm_persona",
-    ] = "substring_match"
+    scoring: Literal["exact_match", "substring_match", "judge_llm"] = "substring_match"
     judge_model: str | None = Field(
         default=None,
         description=(
-            "Model id used as the LLM judge when scoring == 'judge_llm' or "
-            "'judge_llm_persona'. Falls back to RunContext.extra['judge_model'] "
-            "or 'openai/gpt-4o-mini' when unset."
-        ),
-    )
-    multi_turn: bool = Field(
-        default=False,
-        description=(
-            "When True, the plugin's run() switches to the multi-turn path. "
-            "Fixture rows then carry a (system_prompt, turns, markers) shape "
-            "and scoring must be one of the persona scorers."
+            "Model id used as the LLM judge when scoring == 'judge_llm'. "
+            "Falls back to RunContext.extra['judge_model'] or "
+            "'openai/gpt-4o-mini' when unset."
         ),
     )
 
@@ -98,8 +82,8 @@ class BenchmarkSpec(BaseModel):
 class RunContext(BaseModel):
     """Per-invocation context (where to send requests, where to write results).
 
-    Mirrors the llm-inference plugin so cross-plugin tooling can reuse the
-    same context object shape.
+    Mirrors the llm-quality plugin so cross-plugin tooling can reuse the same
+    context object shape.
     """
 
     model_config = ConfigDict(extra="forbid", arbitrary_types_allowed=True)

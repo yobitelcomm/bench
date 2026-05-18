@@ -31,13 +31,13 @@ def _load_bundled_registry() -> dict[str, object]:
     return json.loads(raw)  # type: ignore[no-any-return]
 
 
-def test_bundled_registry_parses_with_six_entries() -> None:
-    """The bundled registry is valid JSON and ships all 6 core plugins."""
+def test_bundled_registry_parses_with_seven_entries() -> None:
+    """The bundled registry is valid JSON and ships all 7 core plugins."""
     doc = _load_bundled_registry()
     assert doc["schema"] == "inferencebench.plugin-registry.v1"
     plugins = doc["plugins"]
     assert isinstance(plugins, list)
-    assert len(plugins) == 6
+    assert len(plugins) == 7
     names = {p["name"] for p in plugins}
     assert names == {
         "llm.inference",
@@ -46,6 +46,7 @@ def test_bundled_registry_parses_with_six_entries() -> None:
         "code.generation",
         "voice.transcription",
         "embeddings.retrieval",
+        "vision.understanding",
     }
     # Every entry has the required fields.
     required = {
@@ -66,7 +67,7 @@ def test_bundled_registry_parses_with_six_entries() -> None:
         assert required <= set(entry), f"missing fields in {entry.get('name')}"
 
 
-def test_discover_default_shows_all_six_plugins(
+def test_discover_default_shows_all_seven_plugins(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     """``bench plugin discover`` with no filters lists every plugin."""
@@ -81,6 +82,7 @@ def test_discover_default_shows_all_six_plugins(
         "code.generation",
         "voice.transcription",
         "embeddings.retrieval",
+        "vision.understanding",
     ):
         assert name in out, f"missing plugin {name} in output:\n{out}"
 
@@ -97,21 +99,21 @@ def test_discover_modality_llm_filter(
     assert names == {"llm.inference", "llm.quality"}
 
 
-def test_discover_status_core_returns_all_six(
+def test_discover_status_core_returns_all_seven(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
     result = runner.invoke(app, ["plugin", "discover", "--status", "core", "--json"])
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
     doc = json.loads(result.stdout)
-    assert len(doc["plugins"]) == 6
+    assert len(doc["plugins"]) == 7
     assert all(p["status"] == "core" for p in doc["plugins"])
 
 
 def test_discover_installed_filter_lists_installed_plugins(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """In the workspace dev env all 6 plugins are installed editable."""
+    """In the workspace dev env all 7 plugins are installed editable."""
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
     result = runner.invoke(app, ["plugin", "discover", "--installed", "--json"])
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
@@ -124,6 +126,7 @@ def test_discover_installed_filter_lists_installed_plugins(
         "code.generation",
         "voice.transcription",
         "embeddings.retrieval",
+        "vision.understanding",
     }
 
 

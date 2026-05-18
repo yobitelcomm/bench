@@ -1,0 +1,12 @@
+benchmark_id: vision.understanding.chart-qa-mini
+suite_version: 1.0.0
+description: ChartQA-style numeric extraction from bar/line charts.
+modality: vision
+kind: understanding
+dataset:
+  id: builtin-chart-qa-mini
+  path: chart-qa-mini.jsonl
+slo_template: vision.standard
+warmup:
+  discard_runs: 0
+scoring: exact_match

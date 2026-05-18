@@ -42,6 +42,7 @@ members = [
     "plugins/embeddings-retrieval",
     "plugins/llm-mt",
     "plugins/code-generation",
+    "plugins/vision-understanding",
     "integrations/hf-publisher",
     "tools/leaderboard",
 ]
@@ -77,6 +78,7 @@ src = [
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
     "plugins/code-generation/src",
+    "plugins/vision-understanding/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -131,6 +133,8 @@ ignore = [
 "plugins/llm-quality/src/inferencebench_quality/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; ModelClient.complete signature mirrors harness contract
 "plugins/voice-transcription/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/voice-transcription/src/inferencebench_voice/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/voice-transcription/src/inferencebench_voice/audio_client.py" = ["S310"]   # caller-supplied http(s) endpoint; same pattern as vllm/sglang engines
+"tools/generate_voice_wavs.py" = ["T201", "S311"]   # one-shot maintainer script; prints are intentional
 "plugins/embeddings-retrieval/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/embeddings-retrieval/src/inferencebench_embeddings/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/llm-mt/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
@@ -138,6 +142,10 @@ ignore = [
 "plugins/code-generation/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
 "plugins/code-generation/src/inferencebench_code/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
 "plugins/code-generation/src/inferencebench_code/runner.py" = ["S603", "S607"]   # subprocess invocation is intentional — see module docstring + README safety note
+"plugins/vision-understanding/tests/**/*" = ["S", "ANN", "D", "PT006", "PT011", "ARG", "SLF001", "E501"]
+"plugins/vision-understanding/src/inferencebench_vision/plugin.py" = ["ARG002", "ANN401", "C901"]   # spec arg part of contract API; envelope branching is intentional
+"plugins/vision-understanding/src/inferencebench_vision/multimodal_client.py" = ["ANN401", "S105"]   # LiteLLM is dynamically typed; token_source enum mirrors harness.client conventions
+"plugins/vision-understanding/tools/generate_vision_fixtures.py" = ["T201", "ANN401"]   # one-shot maintainer script; prints are intentional
 "plugins/llm-inference/src/inferencebench_llm/engines/vllm.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/sglang.py" = ["S310"]   # controlled HTTP probe
 "plugins/llm-inference/src/inferencebench_llm/engines/llamacpp.py" = ["S310"]   # controlled HTTP probe
@@ -167,7 +175,7 @@ python_version = "3.12"
 strict = true
 namespace_packages = true
 explicit_package_bases = true
-mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:plugins/llm-mt/src:plugins/code-generation/src:integrations/hf-publisher/src:tools/leaderboard/src"
+mypy_path = "cli/src:envelope/src:harness/src:plugins/llm-inference/src:plugins/llm-quality/src:plugins/voice-transcription/src:plugins/embeddings-retrieval/src:plugins/llm-mt/src:plugins/code-generation/src:plugins/vision-understanding/src:integrations/hf-publisher/src:tools/leaderboard/src"
 warn_return_any = true
 warn_unused_configs = true
 disallow_any_generics = true
@@ -193,6 +201,7 @@ files = [
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
     "plugins/code-generation/src",
+    "plugins/vision-understanding/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
     "tests",
@@ -232,6 +241,7 @@ testpaths = [
     "plugins/embeddings-retrieval/tests",
     "plugins/llm-mt/tests",
     "plugins/code-generation/tests",
+    "plugins/vision-understanding/tests",
     "integrations/hf-publisher/tests",
     "tools/leaderboard/tests",
 ]
@@ -258,6 +268,7 @@ source = [
     "plugins/embeddings-retrieval/src",
     "plugins/llm-mt/src",
     "plugins/code-generation/src",
+    "plugins/vision-understanding/src",
     "integrations/hf-publisher/src",
     "tools/leaderboard/src",
 ]

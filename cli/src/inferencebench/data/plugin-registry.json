@@ -85,6 +85,20 @@
       "description": "Embeddings retrieval benchmarks: deterministic ranking with MRR/NDCG/Recall@k.",
       "engines_supported": ["sentence-transformers", "openai", "cohere"],
       "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "vision.understanding",
+      "package": "inferencebench-vision",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-vision",
+      "modality": "vision",
+      "kind": "understanding",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/vision-understanding",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "Vision-language understanding benchmarks: multimodal accuracy on bundled image+question fixtures.",
+      "engines_supported": ["vllm", "sglang", "openai", "anthropic"],
+      "maintainer": "yobitelcomm"
     }
   ]
 }

@@ -1,8 +1,14 @@
-"""Tests for the voice-transcription plugin scaffold + scoring pipeline."""
+"""End-to-end tests for the voice-transcription plugin.
+
+The plugin's real-audio path (`audio_client.transcribe`) is mocked in these
+tests — no live HTTP server is contacted. Tests cover the plugin contract,
+validation, scoring aggregation, and the missing-WAV degradation path.
+"""
 
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 import pytest
 
@@ -12,6 +18,7 @@ from inferencebench_voice import (
     RunContext,
     VoiceTranscriptionPlugin,
 )
+from inferencebench_voice.audio_client import TranscriptionResult
 
 
 # --------------------------------------------------------------------------- #
@@ -99,59 +106,158 @@ def test_validate_provider_hosted_engine_does_not_require_base_url() -> None:
 
 
 # --------------------------------------------------------------------------- #
-# End-to-end run (no real audio invocation)                                   #
+# End-to-end run with mocked audio client                                     #
 # --------------------------------------------------------------------------- #
-def test_run_produces_signed_envelope_with_expected_wer(make_run_context) -> None:
-    """Skeleton substitutes the last word -> WER is the (1/n) average across rows."""
+def _patch_transcribe_returning(
+    monkeypatch: pytest.MonkeyPatch,
+    text_for_reference: dict[str, str] | None = None,
+    *,
+    constant_text: str | None = None,
+    total_ms: float = 123.0,
+) -> list[Path]:
+    """Patch the plugin's audio-call seam.
+
+    Returns the list of audio paths the patched function was asked to transcribe
+    (in call order) so tests can assert which fixture rows were exercised.
+    """
+    seen: list[Path] = []
+
+    def _fake(
+        self: Any,
+        audio_path: Path,
+        *,
+        base_url: str,
+        model: str,
+        api_key: str,
+    ) -> TranscriptionResult:
+        seen.append(audio_path)
+        text = constant_text if constant_text is not None else ""
+        if text_for_reference is not None:
+            # Match by filename — tests register lookup tables keyed by WAV name.
+            text = text_for_reference.get(audio_path.name, text)
+        return TranscriptionResult(
+            text=text,
+            total_ms=total_ms,
+            ttft_ms=total_ms,
+            tokens_out=len(text.split()),
+        )
+
+    monkeypatch.setattr(
+        VoiceTranscriptionPlugin,
+        "_invoke_transcribe",
+        _fake,
+        raising=True,
+    )
+    return seen
+
+
+def test_run_with_mocked_transcribe_returning_reference_yields_zero_wer(
+    make_run_context: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """End-to-end: stub returns the reference verbatim -> WER = 0."""
     plugin = VoiceTranscriptionPlugin()
     spec = plugin.get_benchmark("voice.transcription.fleurs-mini")
-    ctx = make_run_context()
 
-    envelope = plugin.run(spec, ctx)
+    # Map each fixture WAV to its reference string.
+    references = {
+        "fleurs-001.wav": "the quick brown fox jumps over the lazy dog",
+        "fleurs-002.wav": "she sells seashells by the seashore",
+        "fleurs-003.wav": "how much wood would a woodchuck chuck",
+        "fleurs-004.wav": "peter piper picked a peck of pickled peppers",
+        "fleurs-005.wav": "the rain in spain falls mainly on the plain",
+    }
+    seen = _patch_transcribe_returning(monkeypatch, references, total_ms=50.0)
 
-    # Signature is real
+    envelope = plugin.run(spec, make_run_context())
+
+    assert len(seen) == 5
     assert envelope.signature is not None
-    assert envelope.signature.method == "dev-key"
-    assert envelope.signature.bundle  # non-empty base64 blob
-
     wer_mean = envelope.metrics.get("wer_mean")
-    assert wer_mean is not None
-    assert isinstance(wer_mean, (int, float))
-    # 5 fleurs-mini rows: 9, 6, 7, 8, 9 words -> WER 1/n each.
-    expected = sum(x for x in (1 / 9, 1 / 6, 1 / 7, 1 / 8, 1 / 9)) / 5
-    assert float(wer_mean) == pytest.approx(expected, rel=1e-9)
-
-    # Supplementary metrics are present.
-    assert envelope.metrics.get("wer_p50") is not None
-    assert envelope.metrics.get("wer_p95") is not None
-    assert envelope.metrics.get("total_audio_duration_s") == pytest.approx(14.8)
-    assert envelope.metrics.get("total_p50_ms") is not None
-    assert envelope.metrics.get("ok_rate") == 1.0
-    assert envelope.metrics.get("n_samples") == 5.0
+    assert wer_mean == pytest.approx(0.0, abs=1e-12)
+    assert envelope.metrics["wer_p50"] == pytest.approx(0.0, abs=1e-12)
+    assert envelope.metrics["wer_p95"] == pytest.approx(0.0, abs=1e-12)
+    assert envelope.metrics["ok_rate"] == 1.0
+    assert envelope.metrics["n_samples"] == 5.0
+    assert envelope.metrics["audio_path_resolved_count"] == 5.0
+    assert envelope.metrics["total_p50_ms"] == pytest.approx(50.0)
 
 
-def test_run_long_form_envelope_has_lower_wer(make_run_context) -> None:
-    """Long references -> stub WER is ~1/(40-100 words) -> smaller WER mean."""
+def test_run_with_corrupted_hypothesis_matches_handcomputed_wer(
+    make_run_context: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stub drops the last word of each reference -> WER == 1/n_words per row."""
     plugin = VoiceTranscriptionPlugin()
-    spec = plugin.get_benchmark("voice.transcription.long-form")
-    ctx = make_run_context()
-    envelope = plugin.run(spec, ctx)
+    spec = plugin.get_benchmark("voice.transcription.fleurs-mini")
 
-    wer_mean = envelope.metrics.get("wer_mean")
-    assert wer_mean is not None
-    # All references are >40 words → WER per row <= 1/40 = 0.025.
-    assert 0.0 < float(wer_mean) <= 0.025
-    assert envelope.metrics.get("n_samples") == 3.0
+    refs = {
+        "fleurs-001.wav": "the quick brown fox jumps over the lazy dog",
+        "fleurs-002.wav": "she sells seashells by the seashore",
+        "fleurs-003.wav": "how much wood would a woodchuck chuck",
+        "fleurs-004.wav": "peter piper picked a peck of pickled peppers",
+        "fleurs-005.wav": "the rain in spain falls mainly on the plain",
+    }
+    # Drop the last word — yields exactly one deletion -> WER = 1/n_words.
+    corrupted = {name: " ".join(text.split()[:-1]) for name, text in refs.items()}
+    _patch_transcribe_returning(monkeypatch, corrupted)
+
+    envelope = plugin.run(spec, make_run_context())
+    expected = sum(1 / 9 + 1 / 6 + 1 / 7 + 1 / 8 + 1 / 9 for _ in [0]) / 5
+    assert envelope.metrics["wer_mean"] == pytest.approx(expected, rel=1e-9)
 
 
-def test_run_writes_samples_jsonl_alongside_envelope(make_run_context) -> None:
+def test_run_writes_samples_jsonl_alongside_envelope(
+    make_run_context: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """The diagnostic samples-<ts>.jsonl is written to output_dir."""
     plugin = VoiceTranscriptionPlugin()
     spec = plugin.get_benchmark("voice.transcription.fleurs-mini")
     ctx = make_run_context()
+    _patch_transcribe_returning(monkeypatch, constant_text="ok")
 
     plugin.run(spec, ctx)
     samples_files = list(ctx.output_dir.glob("samples-*.jsonl"))
     assert len(samples_files) == 1
     lines = samples_files[0].read_text(encoding="utf-8").splitlines()
     assert len(lines) == 5  # one per fixture row
+
+
+def test_run_missing_wav_skips_row_and_drops_resolved_count(
+    make_run_context: Any,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    """A fixture row that points at a missing WAV is recorded as failed.
+
+    The envelope's ``audio_path_resolved_count`` reflects the drop and
+    ``n_ok`` excludes the failed row.
+    """
+    # Build a temporary plugin instance with a synthesized fixture that
+    # points at one missing WAV and one real one.
+    plugin = VoiceTranscriptionPlugin()
+    datasets_dir = Path(plugin._datasets_dir())
+    custom_fixture = datasets_dir / "_test_missing_wav.jsonl"
+    custom_fixture.write_text(
+        '{"audio_path": "audio/fleurs-001.wav", "reference": "hello", "duration_s": 0.3}\n'
+        '{"audio_path": "audio/does_not_exist.wav", "reference": "world", "duration_s": 0.3}\n',
+        encoding="utf-8",
+    )
+    try:
+        spec = BenchmarkSpec(
+            benchmark_id="voice.transcription.test-missing",
+            suite_version="0.0.1",
+            dataset={"id": "test-missing", "path": "_test_missing_wav.jsonl"},
+            scoring="wer",
+        )
+        _patch_transcribe_returning(monkeypatch, constant_text="hello")
+
+        envelope = plugin.run(spec, make_run_context())
+        assert envelope.metrics["n_samples"] == 2.0
+        assert envelope.metrics["n_ok"] == 1.0
+        assert envelope.metrics["audio_path_resolved_count"] == 1.0
+        # Only the resolved row contributed to WER.
+        assert envelope.metrics["wer_mean"] == pytest.approx(0.0, abs=1e-12)
+    finally:
+        custom_fixture.unlink(missing_ok=True)
