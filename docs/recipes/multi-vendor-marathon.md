@@ -12,7 +12,16 @@ A single `bench` install can drive **9 production-class LLMs across 5 vendors an
 
 ## Results
 
-Every row below is a real signed envelope verified via `bench audit`. The full 50-envelope corpus is in [validation-runs/2026-05-18-multi-vendor-marathon/](https://github.com/yobitelcomm/bench/tree/main/validation-runs).
+Every row below is a real signed envelope. The full 50-envelope corpus is published as one dataset repo per run under [huggingface.co/Yobitel](https://huggingface.co/Yobitel). Verify any of them with:
+
+```bash
+pip install inferencebench inferencebench-hf-publisher
+bench fetch hf://datasets/Yobitel/qwen-qwen2-5-7b-instruct__llm-inference-chatbot-short__019e3b88f8d6
+bench verify ~/.cache/inferencebench/fetched/*.json \
+  --dev-public-key trust/cosign-2026-05-18-marathon.pub
+```
+
+The public key is committed at [trust/cosign-2026-05-18-marathon.pub](https://github.com/yobitelcomm/bench/blob/main/trust/cosign-2026-05-18-marathon.pub) and mirrored at [huggingface.co/datasets/Yobitel/bench-trust-anchors](https://huggingface.co/datasets/Yobitel/bench-trust-anchors). All 50 envelopes pass audit against this key.
 
 | Model | Vendor | tok/s | factual% | arith% | persona | chrF en→fr | HumanEval | MBPP | OCR | chartQA | reason% |
 |---|---|---|---|---|---|---|---|---|---|---|---|
