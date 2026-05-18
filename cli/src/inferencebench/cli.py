@@ -23,10 +23,12 @@ from inferencebench.commands import (
     cluster,
     compare,
     cost,
+    coverage,
     diff,
     doctor,
     export,
     fetch,
+    fixtures,
     history,
     leaderboard,
     list_cmd,
@@ -119,6 +121,12 @@ app.add_typer(
 )
 app.command(name="compare", help="Compare benchmark runs (Pareto frontier).")(compare.compare)
 app.command(name="fetch", help="Fetch a signed envelope from a remote URI.")(fetch.fetch)
+# `fixtures` has subcommands (list/fetch/path/clear) → sub-Typer
+app.add_typer(
+    fixtures.app,
+    name="fixtures",
+    help="Fetch real public dataset fixtures (FLORES, HumanEval, GSM8K, ...).",
+)
 app.command(
     name="history",
     help="Time-series view of one metric across runs.",
@@ -149,6 +157,10 @@ app.command(
     help="Export an envelope as markdown / CSV / Slack snippet.",
 )(export.export)
 app.command(name="cost", help="Compare model cost across providers.")(cost.cost)
+app.command(
+    name="coverage",
+    help="Report metric completeness per envelope (plugin-aware EXPECTED_METRICS).",
+)(coverage.coverage)
 app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
 app.command(
     name="server",

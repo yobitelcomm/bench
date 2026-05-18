@@ -1,15 +1,21 @@
 """``bench plugin`` — manage benchmark plugins.
 
-Subcommands: list, init, install, info.
-Plugin discovery via Python entry points.
+Subcommands: list, init, install, info, discover.
+Plugin discovery via Python entry points (installed) and a curated JSON
+registry (available to install).
 """
 
 from __future__ import annotations
 
+import json
+import os
 import re
-from importlib import metadata
+import urllib.error
+import urllib.parse
+import urllib.request
+from importlib import metadata, resources
 from pathlib import Path
-from typing import Annotated
+from typing import Annotated, Any
 
 import typer
 from rich.console import Console
@@ -20,6 +26,10 @@ console = Console()
 err_console = Console(stderr=True)
 
 _NAME_RE = re.compile(r"^[a-z][a-z0-9-]*$")
+
+_REGISTRY_RESOURCE = "plugin-registry.json"
+_VALID_MODALITIES = {"llm", "voice", "code", "embeddings", "mt", "other"}
+_VALID_STATUSES = {"core", "community", "experimental", "archived"}
 
 
 def _discover_plugins() -> list[metadata.EntryPoint]:
@@ -508,6 +518,288 @@ def test_plugin_run_produces_signed_envelope(tmp_path: Path) -> None:
     numeric_metrics = [v for v in envelope.metrics.values() if isinstance(v, (int, float))]
     assert numeric_metrics, "expected at least one numeric metric in the envelope"
 '''
+
+
+# --------------------------------------------------------------------------- #
+# Registry discovery                                                          #
+# --------------------------------------------------------------------------- #
+def _cache_registry_path() -> Path:
+    """Return the user-cache path for a registry refreshed via --refresh."""
+    override = os.environ.get("BENCH_CACHE_ROOT")
+    root = Path(override) if override else Path.home() / ".cache" / "inferencebench"
+    return root / "plugin-registry.json"
+
+
+def _bundled_registry_text() -> str:
+    """Return the registry JSON shipped inside the CLI wheel."""
+    return resources.files("inferencebench").joinpath(
+        f"data/{_REGISTRY_RESOURCE}"
+    ).read_text(encoding="utf-8")
+
+
+def _parse_registry(raw: str, *, source: str) -> dict[str, Any]:
+    """Parse and minimally validate a registry document.
+
+    ``source`` is purely for error messages so users can tell which file
+    failed to parse.
+    """
+    try:
+        data: Any = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        msg = f"registry at {source} is not valid JSON: {exc}"
+        raise ValueError(msg) from exc
+    if not isinstance(data, dict):
+        msg = f"registry at {source}: top-level must be a JSON object"
+        raise ValueError(msg)
+    plugins = data.get("plugins")
+    if not isinstance(plugins, list):
+        msg = f"registry at {source}: 'plugins' must be a list"
+        raise ValueError(msg)
+    return data
+
+
+def _read_url(url: str, *, timeout: float = 10.0) -> str:
+    """Fetch a remote registry document. Only ``http(s)`` schemes accepted."""
+    parsed = urllib.parse.urlparse(url)
+    if parsed.scheme not in {"http", "https"}:
+        msg = f"unsupported URL scheme: {parsed.scheme!r}"
+        raise ValueError(msg)
+    req = urllib.request.Request(  # noqa: S310 - scheme validated above
+        url, headers={"User-Agent": "bench-plugin-discover"}
+    )
+    with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310 - scheme validated
+        data: bytes = resp.read()
+    return data.decode("utf-8")
+
+
+def _load_registry(
+    override: str | None,
+    *,
+    prefer_cache: bool = True,
+) -> tuple[dict[str, Any], str]:
+    """Load the registry. Returns ``(parsed, source_label)``.
+
+    Resolution order:
+
+    1. ``override`` — explicit path or URL. Required to load if set.
+    2. Local refresh cache at ``~/.cache/inferencebench/plugin-registry.json``
+       (only if ``prefer_cache`` and the file exists).
+    3. The bundled copy shipped inside the CLI wheel.
+    """
+    if override is not None:
+        parsed = urllib.parse.urlparse(override)
+        if parsed.scheme in {"http", "https"}:
+            raw = _read_url(override)
+            return _parse_registry(raw, source=override), f"url:{override}"
+        path = Path(override).expanduser()
+        if not path.exists() or not path.is_file():
+            msg = f"registry path not found: {path}"
+            raise FileNotFoundError(msg)
+        raw = path.read_text(encoding="utf-8")
+        return _parse_registry(raw, source=str(path)), f"path:{path}"
+
+    if prefer_cache:
+        cache = _cache_registry_path()
+        if cache.exists() and cache.is_file():
+            raw = cache.read_text(encoding="utf-8")
+            return _parse_registry(raw, source=str(cache)), f"cache:{cache}"
+
+    raw = _bundled_registry_text()
+    return _parse_registry(raw, source="<bundled>"), "bundled"
+
+
+def _installed_plugin_names() -> set[str]:
+    """Return entry-point names of plugins installed in the current env."""
+    return {ep.name for ep in _discover_plugins()}
+
+
+def _filter_plugins(
+    plugins: list[dict[str, Any]],
+    *,
+    installed_filter: bool,
+    available_filter: bool,
+    modality: str | None,
+    status: str | None,
+    installed_names: set[str],
+) -> list[dict[str, Any]]:
+    """Apply the discover-CLI filter flags."""
+    out: list[dict[str, Any]] = []
+    for entry in plugins:
+        name = str(entry.get("name", ""))
+        if installed_filter and name not in installed_names:
+            continue
+        if available_filter and name in installed_names:
+            continue
+        if modality is not None and str(entry.get("modality", "")) != modality:
+            continue
+        if status is not None and str(entry.get("status", "")) != status:
+            continue
+        out.append(entry)
+    return out
+
+
+@app.command("discover")
+def discover_plugins(
+    installed: Annotated[
+        bool,
+        typer.Option(
+            "--installed/--no-installed",
+            help="Show only plugins currently installed locally.",
+        ),
+    ] = False,
+    available: Annotated[
+        bool,
+        typer.Option(
+            "--available/--no-available",
+            help="Show only plugins not yet installed locally.",
+        ),
+    ] = False,
+    modality: Annotated[
+        str | None,
+        typer.Option(
+            "--modality",
+            help=(
+                "Filter by modality: llm, voice, code, embeddings, mt, other."
+            ),
+        ),
+    ] = None,
+    status: Annotated[
+        str | None,
+        typer.Option(
+            "--status",
+            help="Filter by status: core, community, experimental, archived.",
+        ),
+    ] = None,
+    json_out: Annotated[
+        bool,
+        typer.Option(
+            "--json/--no-json",
+            help="Emit the (filtered) registry as JSON instead of a table.",
+        ),
+    ] = False,
+    registry: Annotated[
+        str | None,
+        typer.Option(
+            "--registry",
+            help=(
+                "Override the registry source. Accepts a local file path or "
+                "an http(s) URL. Default: the bundled registry shipped in "
+                "the CLI wheel (or the refresh cache if present)."
+            ),
+        ),
+    ] = None,
+    refresh: Annotated[
+        str | None,
+        typer.Option(
+            "--refresh",
+            help=(
+                "Fetch a fresh registry from URL, write it to the local "
+                "cache at ~/.cache/inferencebench/plugin-registry.json, "
+                "then use it. Subsequent invocations prefer the cached "
+                "version over the bundled one."
+            ),
+        ),
+    ] = None,
+) -> None:
+    """Discover known InferenceBench plugins.
+
+    Reads a curated JSON registry of plugins (the bundled copy by default)
+    and renders it as a Rich table. Use ``--installed`` / ``--available``
+    to cross-reference against locally installed entry points,
+    ``--modality`` / ``--status`` to filter by metadata, and ``--json``
+    for machine-readable output.
+    """
+    if modality is not None and modality not in _VALID_MODALITIES:
+        err_console.print(
+            f"[red]invalid --modality:[/red] {modality!r} "
+            f"(valid: {', '.join(sorted(_VALID_MODALITIES))})"
+        )
+        raise typer.Exit(code=2)
+    if status is not None and status not in _VALID_STATUSES:
+        err_console.print(
+            f"[red]invalid --status:[/red] {status!r} "
+            f"(valid: {', '.join(sorted(_VALID_STATUSES))})"
+        )
+        raise typer.Exit(code=2)
+    if installed and available:
+        err_console.print(
+            "[red]--installed and --available are mutually exclusive.[/red]"
+        )
+        raise typer.Exit(code=2)
+
+    refreshed_source: str | None = None
+    if refresh is not None:
+        try:
+            raw = _read_url(refresh)
+            # Validate before persisting so we don't cache garbage.
+            _parse_registry(raw, source=refresh)
+        except (urllib.error.URLError, TimeoutError, ValueError, OSError) as exc:
+            err_console.print(f"[red]failed to refresh registry from {refresh}:[/red] {exc}")
+            raise typer.Exit(code=2) from exc
+        cache_path = _cache_registry_path()
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(raw, encoding="utf-8")
+        refreshed_source = f"refresh:{refresh}"
+
+    try:
+        data, source = _load_registry(registry)
+    except (FileNotFoundError, ValueError, OSError, urllib.error.URLError) as exc:
+        err_console.print(f"[red]failed to load registry:[/red] {exc}")
+        raise typer.Exit(code=2) from exc
+    if refreshed_source is not None:
+        source = refreshed_source
+
+    plugins_raw = data.get("plugins", [])
+    plugins: list[dict[str, Any]] = [p for p in plugins_raw if isinstance(p, dict)]
+
+    installed_names = _installed_plugin_names()
+    filtered = _filter_plugins(
+        plugins,
+        installed_filter=installed,
+        available_filter=available,
+        modality=modality,
+        status=status,
+        installed_names=installed_names,
+    )
+
+    if json_out:
+        out_doc = {
+            "schema": data.get("schema"),
+            "updated_iso": data.get("updated_iso"),
+            "source": source,
+            "plugins": filtered,
+        }
+        console.print_json(json.dumps(out_doc))
+        return
+
+    if not filtered:
+        console.print(
+            f"[yellow]no plugins match the given filters[/yellow]  (source: {source})"
+        )
+        return
+
+    title = (
+        f"InferenceBench plugin registry "
+        f"(updated {data.get('updated_iso', '?')}, source: {source})"
+    )
+    table = Table(title=title, show_header=True, header_style="bold")
+    table.add_column("name", style="cyan")
+    table.add_column("modality", style="green")
+    table.add_column("status", style="magenta")
+    table.add_column("install", style="bold")
+    table.add_column("repo", style="dim")
+    for entry in filtered:
+        name = str(entry.get("name", ""))
+        marker = " [green](installed)[/green]" if name in installed_names else ""
+        table.add_row(
+            f"{name}{marker}",
+            str(entry.get("modality", "")),
+            str(entry.get("status", "")),
+            str(entry.get("install", "")),
+            str(entry.get("repo", "")),
+        )
+    console.print(table)
+    console.print(f"[dim]registry source: {source}[/dim]")
 
 
 @app.command("install")

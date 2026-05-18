@@ -15,6 +15,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import time
 from collections.abc import Callable
 from pathlib import Path
@@ -45,6 +46,18 @@ from inferencebench_quality.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_quality.scoring import SCORERS, ScoreContext
 
 _DEFAULT_JUDGE_MODEL = "openai/gpt-4o-mini"
+
+
+def _fixtures_cache_root() -> Path:
+    """Resolve the bench-fixtures cache root for ``fixtures://`` dataset URIs.
+
+    Honours ``BENCH_FIXTURES_ROOT`` for tests/power-users; otherwise matches
+    the default location ``bench fixtures fetch`` writes to.
+    """
+    override = os.environ.get("BENCH_FIXTURES_ROOT")
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "inferencebench" / "fixtures"
 
 
 class JudgeThrottle:
@@ -162,6 +175,20 @@ def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClien
         base_url=context.base_url or None,
         timeout_s=timeout_s,
     )
+
+
+# Metrics this plugin is expected to emit. Consumed by ``bench coverage``.
+EXPECTED_METRICS: tuple[str, ...] = (
+    "accuracy",
+    "accuracy_p05",
+    "accuracy_p50",
+    "accuracy_p95",
+    "n_samples",
+    "n_ok",
+    "ok_rate",
+    "ttft_p50_ms",
+    "total_p50_ms",
+)
 
 
 class LLMQualityPlugin:
@@ -445,7 +472,10 @@ class LLMQualityPlugin:
         return Path(__file__).parent / "datasets"
 
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
-        return self._datasets_dir() / spec.dataset.path
+        raw = spec.dataset.path
+        if raw.startswith("fixtures://"):
+            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+        return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -454,6 +484,13 @@ class LLMQualityPlugin:
     def _load_fixture(self, spec: BenchmarkSpec) -> list[dict[str, str]]:
         path = self._dataset_path(spec)
         if not path.exists():
+            if spec.dataset.path.startswith("fixtures://"):
+                key = spec.dataset.path[len("fixtures://") :]
+                msg = (
+                    f"fixture not cached: {path}. "
+                    f"Run `bench fixtures fetch {key}` first."
+                )
+                raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
         items: list[dict[str, str]] = []

@@ -58,6 +58,28 @@ if TYPE_CHECKING:
     from inferencebench.harness.run import RunResult
 
 
+# Metrics this plugin is expected to emit on a healthy run. Used by
+# ``bench coverage`` to flag silent-failure envelopes (e.g. NVML samples
+# failed → no power_avg_w).
+EXPECTED_METRICS: tuple[str, ...] = (
+    "throughput_tok_per_s",
+    "ttft_p50_ms",
+    "ttft_p99_ms",
+    "tpot_p50_ms",
+    "tpot_p99_ms",
+    "total_p50_ms",
+    "total_p99_ms",
+    "ok_rate",
+    "compliance_rate",
+    "power_avg_w",
+    "power_peak_w",
+    "energy_joules_total",
+    "joules_per_token",
+    "req_per_s_passing",
+    "req_per_s_all",
+)
+
+
 def _json_num(v: float) -> str:
     """JSON-safe numeric encoder: NaN/inf become null."""
     if isinstance(v, float) and (math.isnan(v) or math.isinf(v)):

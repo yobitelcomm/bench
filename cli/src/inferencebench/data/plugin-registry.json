@@ -1,0 +1,90 @@
+{
+  "schema": "inferencebench.plugin-registry.v1",
+  "updated_iso": "2026-05-18",
+  "plugins": [
+    {
+      "name": "llm.inference",
+      "package": "inferencebench-llm",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-llm",
+      "modality": "llm",
+      "kind": "perf",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/llm-inference",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "LLM inference performance benchmarks (TTFT/TPOT/throughput/goodput).",
+      "engines_supported": ["vllm", "sglang", "llamacpp", "trtllm", "mlx"],
+      "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "llm.quality",
+      "package": "inferencebench-quality",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-quality",
+      "modality": "llm",
+      "kind": "quality",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/llm-quality",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "LLM quality benchmarks: exact/substring/F1/judge-llm scoring against fixtures.",
+      "engines_supported": ["vllm", "sglang", "openai"],
+      "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "llm.mt",
+      "package": "inferencebench-mt",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-mt",
+      "modality": "mt",
+      "kind": "quality",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/llm-mt",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "Machine-translation quality benchmarks: chrF/BLEU/exact-match on bundled fixtures.",
+      "engines_supported": ["vllm", "sglang", "openai"],
+      "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "code.generation",
+      "package": "inferencebench-code",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-code",
+      "modality": "code",
+      "kind": "quality",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/code-generation",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "Code-generation benchmarks with HumanEval-style execution-based scoring.",
+      "engines_supported": ["vllm", "sglang", "openai"],
+      "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "voice.transcription",
+      "package": "inferencebench-voice",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-voice",
+      "modality": "voice",
+      "kind": "quality",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/voice-transcription",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "Voice transcription benchmarks: deterministic fixture-driven WER/CER skeleton.",
+      "engines_supported": ["whisper", "faster-whisper", "openai"],
+      "maintainer": "yobitelcomm"
+    },
+    {
+      "name": "embeddings.retrieval",
+      "package": "inferencebench-embeddings",
+      "version": "0.0.2",
+      "install": "pip install inferencebench-embeddings",
+      "modality": "embeddings",
+      "kind": "quality",
+      "repo": "https://github.com/yobitelcomm/bench/tree/main/plugins/embeddings-retrieval",
+      "license": "Apache-2.0",
+      "status": "core",
+      "description": "Embeddings retrieval benchmarks: deterministic ranking with MRR/NDCG/Recall@k.",
+      "engines_supported": ["sentence-transformers", "openai", "cohere"],
+      "maintainer": "yobitelcomm"
+    }
+  ]
+}

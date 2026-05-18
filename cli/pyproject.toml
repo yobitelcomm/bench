@@ -55,3 +55,6 @@ inferencebench-leaderboard = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inferencebench"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"src/inferencebench/data/plugin-registry.json" = "inferencebench/data/plugin-registry.json"

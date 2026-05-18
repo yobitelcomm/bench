@@ -4,6 +4,9 @@ Phase 1 supports:
 - ``builtin://`` — 5-prompt fallback shipped with the plugin (no network)
 - ``hf://<repo>/<config>`` — Hugging Face datasets (graceful fallback to builtin if offline)
 - ``file://<path>`` — local JSONL files (one prompt per line, ``{"prompt": "..."}`` shape)
+- ``fixtures://<key>`` — pre-fetched dataset from ``bench fixtures fetch <key>``
+  (resolved against ``$BENCH_FIXTURES_ROOT`` or
+  ``~/.cache/inferencebench/fixtures/``)
 
 The dataset hash in :class:`DatasetConfig.hash` is *not* recomputed here —
 it's a manifest fingerprint that ships in the YAML. If the HF dataset content
@@ -14,6 +17,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from inferencebench_llm.schemas import DatasetConfig
@@ -55,6 +59,8 @@ def load_prompts(spec: DatasetConfig, *, max_n: int | None = None) -> list[str]:
         prompts = _load_file_prompts(uri[len("file://") :])
     elif uri.startswith("hf://"):
         prompts = _load_hf_prompts(uri[len("hf://") :], spec.sampling.seed)
+    elif uri.startswith("fixtures://"):
+        prompts = _load_fixture_prompts(uri[len("fixtures://") :])
     else:
         msg = f"unsupported dataset URI scheme: {uri.split('://')[0]}://"
         raise ValueError(msg)
@@ -101,6 +107,57 @@ def _load_file_prompts(path: str) -> list[str]:
                 prompts.append(obj)
     except OSError:
         pass
+    return prompts
+
+
+def _fixtures_cache_root() -> Path:
+    """Resolve the bench-fixtures cache root.
+
+    Honours ``BENCH_FIXTURES_ROOT`` for test/power-user overrides and otherwise
+    matches the default ``bench fixtures fetch`` writes to.
+    """
+    override = os.environ.get("BENCH_FIXTURES_ROOT")
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "inferencebench" / "fixtures"
+
+
+def _load_fixture_prompts(key: str) -> list[str]:
+    """Load a ``fixtures://<key>`` dataset previously written by ``bench fixtures fetch``.
+
+    Each line is a JSON object; we pick the first plausible string field
+    (``prompt``, ``question``, ``query``, ``source``) so the perf driver can
+    feed prompts to its engines regardless of the upstream dataset shape.
+
+    Raises:
+        FileNotFoundError: If the fixture has not been fetched. The message
+            guides the user to ``bench fixtures fetch <key>``.
+    """
+    cache_path = _fixtures_cache_root() / f"{key}.jsonl"
+    if not cache_path.exists():
+        msg = (
+            f"fixture not cached: {cache_path}. "
+            f"Run `bench fixtures fetch {key}` first."
+        )
+        raise FileNotFoundError(msg)
+
+    prompts: list[str] = []
+    with cache_path.open("r", encoding="utf-8") as fp:
+        for line in fp:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                obj = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(obj, dict):
+                continue
+            for field in ("prompt", "question", "query", "source"):
+                value = obj.get(field)
+                if isinstance(value, str) and value.strip():
+                    prompts.append(value)
+                    break
     return prompts
 
 

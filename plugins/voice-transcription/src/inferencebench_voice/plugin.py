@@ -16,6 +16,7 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+import os
 import time
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -59,6 +60,14 @@ def _json_num(v: float) -> str:
 _SELF_HOSTED_ENGINES = frozenset({EngineKind.WHISPER_HTTP})
 
 
+def _fixtures_cache_root() -> Path:
+    """Resolve the bench-fixtures cache root for ``fixtures://`` dataset URIs."""
+    override = os.environ.get("BENCH_FIXTURES_ROOT")
+    if override:
+        return Path(override)
+    return Path.home() / ".cache" / "inferencebench" / "fixtures"
+
+
 def _compute_fixture_hash(items: list[dict[str, str | float]]) -> str:
     """SHA-256 over the canonical-JSON-encoded fixture rows."""
     canonical = json.dumps(items, sort_keys=True, separators=(",", ":"))
@@ -77,6 +86,18 @@ def _synthesise_hypothesis(reference: str) -> str:
     if len(tokens) <= 1:
         return "end"
     return " ".join(tokens[:-1]) + " end"
+
+
+# Metrics this plugin is expected to emit. Consumed by ``bench coverage``.
+EXPECTED_METRICS: tuple[str, ...] = (
+    "wer_mean",
+    "wer_p50",
+    "wer_p95",
+    "ok_rate",
+    "n_samples",
+    "total_audio_duration_s",
+    "total_p50_ms",
+)
 
 
 class VoiceTranscriptionPlugin:
@@ -244,7 +265,10 @@ class VoiceTranscriptionPlugin:
         return Path(__file__).parent / "datasets"
 
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
-        return self._datasets_dir() / spec.dataset.path
+        raw = spec.dataset.path
+        if raw.startswith("fixtures://"):
+            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+        return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
         raw = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
@@ -253,6 +277,13 @@ class VoiceTranscriptionPlugin:
     def _load_fixture(self, spec: BenchmarkSpec) -> list[dict[str, str | float]]:
         path = self._dataset_path(spec)
         if not path.exists():
+            if spec.dataset.path.startswith("fixtures://"):
+                key = spec.dataset.path[len("fixtures://") :]
+                msg = (
+                    f"fixture not cached: {path}. "
+                    f"Run `bench fixtures fetch {key}` first."
+                )
+                raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
         items: list[dict[str, str | float]] = []
