@@ -1,8 +1,58 @@
-# v0.0.2 — 2026-05-17
+# v0.0.2 — 2026-05-18
 
-Capabilities + scope expansion. Engine matrix grew, second plugin landed.
+First PyPI release. 4 core packages live: `inferencebench`,
+`inferencebench-envelope`, `inferencebench-harness`, `inferencebench-llm`.
+First HF corpus published: 50 signed envelopes across 9 models / 5 vendors
+under [huggingface.co/Yobitel](https://huggingface.co/Yobitel).
 
-### Added — CLI commands (now 19 total)
+### Public install
+
+```bash
+pip install inferencebench inferencebench-llm
+# or
+uv tool install inferencebench --with inferencebench-llm
+```
+
+The full plugin set (vision, voice, mt, code, quality, embeddings, plus the
+hf-publisher and leaderboard integrations) is built and tested in tree;
+PyPI publication of the remaining 8 packages is pending a rate-limit refresh
+and lands in v0.0.3. Install from clone today via `uv sync --all-packages`.
+
+### Validated against real hardware
+
+- **50 signed envelopes** on 8×H100 across Meta (Llama 8B/70B), Alibaba (Qwen
+  2.5-7B/Coder-7B/VL-7B), Mistral (7B-v0.3), Microsoft (Phi-3.5-mini),
+  DeepSeek (Coder-V2-Lite), Google (Gemma-2-9B).
+- Suites exercised: perf, factual recall, arithmetic, multi-turn persona,
+  translation chrF, code-generation pass@1, vision OCR / chart-QA.
+- Full corpus + leaderboard at <https://huggingface.co/Yobitel> and recipe at
+  [docs/recipes/multi-vendor-marathon.md](docs/recipes/multi-vendor-marathon.md).
+- Trust anchor for the corpus: `trust/cosign-2026-05-18-marathon.pub`
+  (mirrored at <https://huggingface.co/datasets/Yobitel/bench-trust-anchors>).
+
+### Capabilities + scope expansion
+
+### Added — CLI commands (26 total in this release)
+
+- `bench audit <dir>` — verify every envelope in a directory + signature check.
+- `bench attest <envelope>` — markdown/JSON attestation slip for compliance.
+- `bench bundle create/extract` — one-file shareable zip with standalone verifier.
+- `bench cache list/clear/path` — manage `~/.cache/inferencebench/fetched/`.
+- `bench ci init/validate` — generate or validate a GH Actions regression workflow.
+- `bench cluster run/status/sync` — distributed runner coordinator over `bench server`.
+- `bench coverage <dir>` — report per-envelope metric completeness.
+- `bench dashboard <dir>` — live HTTP leaderboard with auto-rescan.
+- `bench fixtures list/fetch/clear/path` — download real public datasets (FLORES,
+  HumanEval, GSM8K, TruthfulQA-MC, MS MARCO) into a local cache.
+- `bench history <dir>` — time-series of one metric across a corpus with sparkline.
+- `bench matrix <yaml>` — run one benchmark across multiple endpoints in one command.
+- `bench plugin discover` — query a curated registry of known plugins.
+- `bench profile <envelope>` — re-run at 10ms NVML / 25ms RAPL with profiling breakdown.
+- `bench schema --target {envelope,benchmark-spec,mirror-index}` — emit JSON Schema.
+- `bench server` — minimal stdlib HTTP API for distributed envelope ingestion.
+- `bench spec validate/show/lint` — schema check for community-authored YAMLs.
+- `bench tour` — 10-step end-to-end install validation.
+- `bench watch <dir>` — watcher that rebuilds the leaderboard on new envelopes.
 
 - `bench run --sweep / --rps-sweep` — multi-point sweep in a single invocation,
   one envelope per operating point.
@@ -33,15 +83,25 @@ Capabilities + scope expansion. Engine matrix grew, second plugin landed.
 
 ### Added — engines, plugins, pricing
 
-- **`inferencebench-quality` plugin** — second plugin in the workspace.
-  Two bundled benchmarks (`llm.quality.factual-mini`, `llm.quality.reasoning-mini`)
-  with deterministic exact-match / substring-match / token-F1 scoring against
-  bundled fixture answers. Emits accuracy + bootstrap CIs alongside the
-  perf/cost/energy stack.
-- **SGLang engine adapter** — OpenAI-compatible HTTP probe (`/get_server_info`
-  with `/v1/models` fallback) and ModelClient builder.
-- **llama.cpp engine adapter** — `/props` probe with `/v1/models` fallback,
-  CPU + GGUF quantized inference coverage.
+- **`inferencebench-quality` plugin** — exact/substring/F1/judge-llm scoring +
+  multi-turn `persona-consistency` benchmark with drift detection.
+- **`inferencebench-mt` plugin** — chrF, BLEU, exact-match scorers; FLORES-200
+  mini fixtures for en-fr/de/es/ja.
+- **`inferencebench-code` plugin** — pass@1 / pass@k scoring against a
+  sandboxed subprocess test runner (forbidden-import pre-screen). humaneval-mini
+  + mbpp-mini bundled.
+- **`inferencebench-voice` plugin** — Whisper-compatible audio path
+  (multipart POST to `/audio/transcriptions`); WER/CER/exact_match. Bundled
+  fleurs-mini + long-form + code-switched + accented (20 small WAVs total).
+- **`inferencebench-embeddings` plugin** — recall@k / MRR / NDCG; beir-mini +
+  long-doc + msmarco-style + query-expansion bundled.
+- **`inferencebench-vision` plugin** — OpenAI-compatible multimodal request
+  shape (text + base64 image); 5 bundled PNGs each for OCR and chart-QA.
+- **5-engine matrix**: vLLM (live-validated), SGLang, llama.cpp, TensorRT-LLM,
+  MLX (the latter four as skeletons with HTTP integration tests).
+- **Per-GPU SLO multipliers**: h200 0.6×, h100 1.0× (anchor), a100 1.5×, l4
+  2.5×, rtx-5090 1.2×, rtx-4090 1.8×, rtx-3090 3.0×, mi300x 1.2×, m-series 5×,
+  cpu 20×. Envelope carries `slo_hardware_class` + `slo_template_resolved`.
 - **Pricing registry now loaded from `prices.yaml`** at module import (with a
   hardcoded Python fallback if the YAML is missing). New `load_pricing()` and
   `set_pricing()` public functions. `bench cost --validate-prices <path>`
@@ -71,29 +131,10 @@ Capabilities + scope expansion. Engine matrix grew, second plugin landed.
 
 ### Workspace
 
-- 441 tests pass · ruff clean · mypy strict clean across 73 source files.
-- Docs site (`docs/`) refreshed: every command documented, four new recipe
-  pages, `mkdocs build --strict` clean.
-
----
-
-## Installation
-
-PyPI publishing is pending Trusted Publisher setup. Install from clone for now:
-
-```bash
-git clone https://github.com/yobitelcomm/bench
-cd bench
-uv sync --all-packages --dev --prerelease=allow
-uv run bench --help
-```
-
-## Verifying releases
-
-Every signed envelope produced by this version verifies with:
-
-```bash
-bench verify <envelope.json> --dev-public-key cosign.pub
-```
-
-For keyless Sigstore signatures (CI-produced), use `bench verify` without `--dev-public-key`.
+- 861 tests pass · ruff clean · mypy strict clean across 120 source files
+  · `mkdocs build --strict` clean.
+- 12 wheels build via `scripts/release_dry_run.py`; 4 published, 8 pending.
+- Docker image + `Dockerfile` + `docker.md` recipe for container-based usage.
+- Self-regression CI (`.github/workflows/self-regression.yml`) on every PR.
+- Plugin registry at `tools/plugin-registry/registry.json` discoverable via
+  `bench plugin discover`.
