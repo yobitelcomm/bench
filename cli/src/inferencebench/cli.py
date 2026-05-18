@@ -24,6 +24,7 @@ from inferencebench.commands import (
     compare,
     cost,
     coverage,
+    dashboard,
     diff,
     doctor,
     export,
@@ -161,6 +162,10 @@ app.command(
     name="coverage",
     help="Report metric completeness per envelope (plugin-aware EXPECTED_METRICS).",
 )(coverage.coverage)
+app.command(
+    name="dashboard",
+    help="Serve a live leaderboard over HTTP with auto-rescan on each request.",
+)(dashboard.dashboard)
 app.command(name="diff", help="Per-metric delta between two envelopes.")(diff.diff)
 app.command(
     name="server",

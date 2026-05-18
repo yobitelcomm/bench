@@ -43,6 +43,28 @@ Exit code is `0` if all checks pass, `1` otherwise. On a CPU-only host, all chec
 | Flag | Default | Description |
 |---|---|---|
 | `--strict` | off | Treat `WARN` as failure. Default only fails on `FAIL`. |
+| `--show-slo` | off | Append a table showing the detected hardware class + resolved `llm.standard` SLO thresholds for this host. |
+
+## Inspecting hardware-aware SLO thresholds
+
+`bench` ships hardware-aware SLO templates: the base numbers in `llm.standard` are anchored to an H100 (1.0x multiplier), and every other class scales them up or down. Use `--show-slo` to see what the active host's resolved thresholds are — useful when diagnosing "why did my benchmark fail its SLO":
+
+```bash
+bench doctor --show-slo
+```
+
+Example output on an RTX 4090 host (1.8x multiplier):
+
+```
+                SLO template (llm.standard)
+ Field                Value
+ Hardware class       rtx-4090
+ Description          NVIDIA RTX 4090 (consumer)
+ ttft multiplier      1.8x
+ tpot multiplier      1.8x
+ total multiplier     1.8x
+ Resolved thresholds  ttft<360ms, tpot<90ms, total<5400ms
+```
 
 ## Checks
 

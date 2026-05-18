@@ -78,9 +78,9 @@ desktop.ini
 .cache/inferencebench/
 .inferencebench/
 
-# Sigstore dev keys (never commit)
+# Sigstore dev keys (never commit private keys)
 cosign.key
-cosign.pub
+.bench/*.key
 *.pem
 !tests/fixtures/**/*.pem
 

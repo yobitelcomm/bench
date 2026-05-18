@@ -1,0 +1,131 @@
+{
+  "envelope_version": "v1",
+  "suite_id": "llm.inference.sharegpt-v3",
+  "suite_version": "0.0.1",
+  "run_id": "019e3aa5-94f0-7381-bb64-6818a4b48644",
+  "timestamp": "2026-05-18T10:33:10.641017Z",
+  "model": {
+    "id": "stub/tinyllama-cpu",
+    "revision": "abc1234",
+    "provider": "vllm",
+    "endpoint_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "engine": {
+    "name": "vllm",
+    "version": "vllm-mock-1.0",
+    "config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "image_digest": ""
+  },
+  "quantization": null,
+  "hardware_fingerprint": {
+    "fingerprint_sha256": "32114ac9dd673f27d55c456898c22bbe3b06f77a005c1a46c0a9d9adafaf2c45",
+    "dmi_uuid": "unknown",
+    "gpus": [
+      {
+        "model": "NVIDIA RTX 4000 Ada Generation Laptop GPU",
+        "pci_id": "00000000:01:00.0",
+        "serial": "unknown",
+        "vbios": "95.04.49.00.0D"
+      }
+    ],
+    "cpu": {
+      "model": "13th Gen Intel(R) Core(TM) i9-13950HX",
+      "microcode": "0x133"
+    },
+    "memory": {
+      "channels": 1,
+      "speed_mts": 1,
+      "ecc": false
+    },
+    "bios": {
+      "version": "V96 Ver. 01.11.01",
+      "resizable_bar": false,
+      "above_4g": false
+    },
+    "numa": {
+      "nodes": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31
+          ],
+          "memory_mb": 63894
+        }
+      ]
+    },
+    "driver": "595.58.03",
+    "cuda": "13.2",
+    "nccl": ""
+  },
+  "software_provenance": {
+    "image_digest": "",
+    "pip_freeze_hash": "9b75fb922e86234de5e49b99c53902c969741526c30ef13e93268f8cf6b442b6",
+    "git_commit": "6ce5b08930b389e83932a56560eeb4f8e825ad6e",
+    "nvidia_smi_q_hash": "9a5b1d967218764b9227762b734a343e8562882ebac47343b7eb7cb6c091305a"
+  },
+  "dataset": {
+    "id": "self-regression-synthetic",
+    "hash": "18167c4e637e9d9d4985c54359e0e989a0c42e63ae0e9459a0596608bb8aaeeb"
+  },
+  "seed": 42,
+  "driver_options": {},
+  "metrics": {
+    "ttft_p50_ms": 20.0,
+    "ttft_p99_ms": 20.0,
+    "tpot_p50_ms": 3.0,
+    "tpot_p99_ms": 3.0,
+    "total_p50_ms": 50.0,
+    "total_p99_ms": 50.0,
+    "req_per_s_passing": 58850.93851668657,
+    "req_per_s_all": 58850.93851668657,
+    "compliance_rate": 1.0,
+    "ok_rate": 1.0,
+    "throughput_tok_per_s": 588509.3851668657,
+    "power_avg_w": 10.3546875,
+    "power_peak_w": 10.513,
+    "energy_joules_total": 50.49772004917824,
+    "joules_per_token": 0.00001698732790695847,
+    "slo_hardware_class": "cpu",
+    "slo_template_resolved": "ttft<20000ms, total<200000ms"
+  },
+  "distributions": {},
+  "slo_template": "llm.relaxed",
+  "warnings": [],
+  "signature": {
+    "method": "dev-key",
+    "certificate": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAvKKkBvLA7CY3F7/vkMVE6ZHBt8bwkQ3/8X+vsnuYKTQ=\n-----END PUBLIC KEY-----",
+    "rekor_log_index": -1,
+    "bundle": "X4bAA8BuQuV1koi9zcOiKPLa9k4SnYcY6RMzPd35pYRb3Ue5e81OBOzYOfY9CRhH+/BAxTtlXPfpkL+YdpSJBw=="
+  }
+}

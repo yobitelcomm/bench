@@ -1,5 +1,7 @@
 # bench — InferenceBench Suite
 
+[![self-regression](https://github.com/yobitelcomm/bench/actions/workflows/self-regression.yml/badge.svg)](https://github.com/yobitelcomm/bench/actions/workflows/self-regression.yml)
+
 > Vendor-neutral, hardware-fingerprinted, Sigstore-signed AI benchmarks.
 
 ```bash

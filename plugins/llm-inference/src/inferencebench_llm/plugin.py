@@ -53,6 +53,12 @@ from inferencebench_llm.engines import (
 )
 from inferencebench_llm.pricing import ModelPricing, load_pricing, providers_for
 from inferencebench_llm.schemas import BenchmarkSpec, EngineKind, RunContext
+from inferencebench_llm.slo_profiles import (
+    HardwareClass,
+    classify,
+    format_resolved,
+    scale_slos,
+)
 
 if TYPE_CHECKING:
     from inferencebench.harness.run import RunResult
@@ -291,7 +297,14 @@ class LLMInferencePlugin:
             rapl_interval_ms=rapl_interval_ms,
         )
         raw = bench.execute()
-        slos = _SLO_TEMPLATES.get(spec.slo_template, [])
+        base_slos = _SLO_TEMPLATES.get(spec.slo_template, [])
+        # Hardware-aware SLO scaling: the base numbers are anchored to an H100
+        # (1.0x). Detect the host's hardware class and rescale before scoring
+        # goodput so that lighter hardware isn't unfairly penalised.
+        hw_fp = collect_hardware_fingerprint()
+        hw_class: HardwareClass = classify(hw_fp)
+        slos = scale_slos(base_slos, hw_class)
+        resolved_template = format_resolved(slos)
         result: RunResult = raw.compute_metrics(slos=slos)
 
         # Dump raw samples alongside the envelope so failures stay diagnosable
@@ -300,7 +313,14 @@ class LLMInferencePlugin:
         self._dump_samples(context, result.samples)
 
         envelope = self._build_envelope(
-            spec, context, engine_version, result, dataset_hash=actual_dataset_hash
+            spec,
+            context,
+            engine_version,
+            result,
+            dataset_hash=actual_dataset_hash,
+            hardware_fingerprint=hw_fp,
+            hw_class=hw_class,
+            resolved_template=resolved_template,
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -434,8 +454,13 @@ class LLMInferencePlugin:
         result: RunResult,
         *,
         dataset_hash: str | None = None,
+        hardware_fingerprint: Any | None = None,
+        hw_class: HardwareClass | None = None,
+        resolved_template: str | None = None,
     ) -> Envelope:
-        hw = collect_hardware_fingerprint()
+        hw = hardware_fingerprint if hardware_fingerprint is not None else (
+            collect_hardware_fingerprint()
+        )
         sw = collect_software_provenance()
 
         # Prefer the freshly-computed hash over the spec's declared one,
@@ -500,6 +525,14 @@ class LLMInferencePlugin:
             metrics["energy_joules_total"] = energy.total_energy_joules
         if not (energy.joules_per_token != energy.joules_per_token):  # not NaN
             metrics["joules_per_token"] = energy.joules_per_token
+
+        # Record which hardware class drove the SLO thresholds and the resolved
+        # numbers themselves — gives leaderboards a way to filter / explain why
+        # a result either passed or failed its SLO budget.
+        if hw_class is not None:
+            metrics["slo_hardware_class"] = hw_class.key
+        if resolved_template is not None:
+            metrics["slo_template_resolved"] = resolved_template
 
         # Envelope.metrics requires at least one entry — guarantee with sample count
         if not metrics:

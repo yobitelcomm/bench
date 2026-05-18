@@ -1,0 +1,53 @@
+name: self-regression
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pull-requests: write
+
+jobs:
+  bench:
+    name: bench-on-bench
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          version: "latest"
+      - name: Sync workspace
+        run: uv sync --all-packages --dev --prerelease=allow
+      - name: Generate dev key
+        run: |
+          mkdir -p .bench
+          if [ ! -f .bench/cosign.key ]; then
+            uv run python -c "from inferencebench.envelope import generate_dev_keypair; generate_dev_keypair('.bench/cosign.key')"
+          fi
+      - name: Run self-regression bench
+        run: |
+          mkdir -p .bench/results
+          uv run python scripts/self_regression_bench.py \
+            --output .bench/results \
+            --dev-key .bench/cosign.key
+      - name: Diff against baseline
+        run: |
+          NEW=$(ls -t .bench/results/*.json | head -1)
+          if [ -f .bench/baseline.json ]; then
+            uv run bench diff .bench/baseline.json "$NEW" --strict --tolerance 0.10
+          else
+            echo "::warning::no baseline at .bench/baseline.json — promoting current run"
+            cp "$NEW" .bench/baseline.json
+          fi
+      - name: Audit produced envelope
+        run: uv run bench audit .bench/results --dev-public-key .bench/cosign.pub
+      - name: Upload envelope artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: self-regression-envelope
+          path: .bench/results/
