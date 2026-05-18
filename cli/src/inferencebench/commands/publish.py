@@ -46,9 +46,9 @@ def publish(
         str,
         typer.Option(
             "--org",
-            help="HF organisation to publish under. Defaults to yobitel-bench-results.",
+            help="HF organisation to publish under. Defaults to Yobitel.",
         ),
-    ] = "yobitel-bench-results",
+    ] = "Yobitel",
     dry_run: Annotated[
         bool,
         typer.Option(

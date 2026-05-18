@@ -11,11 +11,11 @@ Expected output:
 
 ```
 Verifying envelope... OK
-Creating dataset repo... yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6
+Creating dataset repo... Yobitel/llama-4-maverick__llm-inference__01j7q5c6
 Uploading envelope.json... done
 Uploading traces.parquet... done
 Rendering README.md... done
-Published: https://huggingface.co/datasets/yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6
+Published: https://huggingface.co/datasets/Yobitel/llama-4-maverick__llm-inference__01j7q5c6
 ```
 
 ## What gets published
@@ -34,14 +34,14 @@ The README includes the headline metrics, the run configuration, a Sigstore veri
 Set `HF_TOKEN` in your environment. The token needs write access to the target organization:
 
 - For your own publishing, your personal HF token writing to your user namespace works.
-- For canonical results, the `yobitel-bench-publisher` org token writes to `yobitel-bench-results/*`. This token is held by the project maintainers.
+- For canonical results, the `yobitel-bench-publisher` org token writes to `Yobitel/*`. This token is held by the project maintainers.
 
 ## Repo naming
 
 Repos are deterministically named from the envelope:
 
 ```
-yobitel-bench-results/{model-slug}__{suite-slug}__{run-hash}
+Yobitel/{model-slug}__{suite-slug}__{run-hash}
 ```
 
 Where `run-hash` is the first 12 characters of `envelope.run_id`. UUIDv7 makes the hash naturally sortable by time.
@@ -76,7 +76,7 @@ With `--update-model-card`, the publisher adds a non-intrusive metadata entry to
 
 ```yaml
 inferencebench-verified:
-  - url: https://huggingface.co/datasets/yobitel-bench-results/...
+  - url: https://huggingface.co/datasets/Yobitel/...
     suite: llm.inference
     date: 2026-11-15
     fingerprint_sha256: 8b1a9c2f...
@@ -90,7 +90,7 @@ Anyone, anywhere, can verify a published envelope without trusting our infrastru
 
 ```bash
 pip install inferencebench
-bench verify hf://datasets/yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6/envelope.json
+bench verify hf://datasets/Yobitel/llama-4-maverick__llm-inference__01j7q5c6/envelope.json
 ```
 
 `bench verify` re-derives the content hash and checks the Sigstore signature plus the Rekor inclusion proof.

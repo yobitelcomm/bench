@@ -178,7 +178,7 @@ Options:
   --to TEXT                                hf | local. [default: hf]
   --workspace TEXT                         Local mirror root.
   --tag TEXT                               Optional tag for this publish.
-  --org TEXT                               HF organisation. [default: yobitel-bench-results]
+  --org TEXT                               HF organisation. [default: Yobitel]
   --dry-run / --no-dry-run                 Plan without touching the network.
   --raw-traces PATH                        Optional parquet of per-request traces.
   --update-model-card                      Append a backlink entry to the source model card.

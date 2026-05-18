@@ -123,7 +123,7 @@ bench publish ~/.cache/inferencebench/runs/latest --to hf
 Expected output:
 
 ```
-Published: https://huggingface.co/datasets/yobitel-bench-results/llama-4-maverick__llm-inference__01j7q5c6
+Published: https://huggingface.co/datasets/Yobitel/llama-4-maverick__llm-inference__01j7q5c6
 ```
 
 The published dataset repo contains the signed envelope, the raw traces parquet, and a rendered README with the headline metrics.

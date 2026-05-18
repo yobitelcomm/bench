@@ -11,7 +11,7 @@ bench replay <source-envelope.json> --base-url <URL> [--output DIR] [--no-verify
 ## Example: replay a published Llama envelope on your own H100
 
 ```bash
-bench fetch hf://datasets/yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+bench fetch hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
 
 bench replay ~/.cache/inferencebench/fetched/3f9c1a2b8e7d.json \
   --base-url http://localhost:8000/v1 \

@@ -5,8 +5,8 @@ Before you base a procurement decision, a regression gate, or a published claim 
 ## 1. Pull the corpus
 
 ```bash
-bench fetch hf://datasets/yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
-bench fetch hf://datasets/yobitel-bench-results/qwen-2.5-7b__chatbot-short__deadbeef0001
+bench fetch hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
+bench fetch hf://datasets/Yobitel/qwen-2.5-7b__chatbot-short__deadbeef0001
 ```
 
 Both envelopes land in `~/.cache/inferencebench/fetched/` by default. Use [`bench cache list`](../cli/bench-cache.md) to inspect.

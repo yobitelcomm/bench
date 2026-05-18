@@ -14,7 +14,7 @@ Public API:
     )
 
 The publisher uploads a signed Envelope as a Hugging Face *dataset* repo
-under ``yobitel-bench-results`` (the production org). See
+under ``Yobitel`` (the production org). See
 ``skills/hf-publishing/SKILL.md`` for the full design.
 """
 

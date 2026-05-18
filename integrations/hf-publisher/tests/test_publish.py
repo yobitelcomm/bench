@@ -53,9 +53,9 @@ class TestSlugify:
 class TestComputeRepoId:
     def test_default_org(self, envelope: Envelope) -> None:
         rid = compute_repo_id(envelope)
-        assert rid.startswith("yobitel-bench-results/")
+        assert rid.startswith("Yobitel/")
         # model-slug __ suite-slug __ run-hash(12)
-        _, _, tail = rid.partition("yobitel-bench-results/")
+        _, _, tail = rid.partition("Yobitel/")
         parts = tail.split("__")
         assert len(parts) == 3
         assert parts[0] == "meta-llama-llama-4-maverick"

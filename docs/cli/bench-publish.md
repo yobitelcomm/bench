@@ -14,16 +14,16 @@ bench publish <envelope.json> [--to hf|local] [--tag TAG] [--org ORG] [--dry-run
 export HF_TOKEN=hf_xxx
 bench publish ./results/c16-60be8efd6d21.json \
   --to hf \
-  --org yobitel-bench-results \
+  --org Yobitel \
   --tag llama-3.1-8b-conc16
 ```
 
 Expected output:
 
 ```
-OK published llm.inference.chatbot-short run to https://huggingface.co/datasets/yobitel-bench-results/...
+OK published llm.inference.chatbot-short run to https://huggingface.co/datasets/Yobitel/...
   tag:           llama-3.1-8b-conc16
-  repo_id:       yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+  repo_id:       Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
   files:         3
   verified:      True
 ```
@@ -52,7 +52,7 @@ The `index.json` carries one entry per published envelope (suite, model, content
 | `--to` | `hf` | `hf` (Hugging Face Hub) or `local` (filesystem mirror). `studio` is Phase 2+ and exits with a hint. |
 | `--workspace` | `""` | Local mirror root (`--to local`). Defaults to `./bench-mirror`. |
 | `--tag` | `""` | Optional tag recorded with the publish. |
-| `--org` | `yobitel-bench-results` | HF organisation namespace (`--to hf`). |
+| `--org` | `Yobitel` | HF organisation namespace (`--to hf`). |
 | `--dry-run` / `--no-dry-run` | off | Plan the publish without touching the network or filesystem. |
 | `--raw-traces` | none | Path to an optional parquet of per-request traces uploaded alongside. |
 | `--update-model-card` | off | Best-effort append a backlink entry to the source model card. |

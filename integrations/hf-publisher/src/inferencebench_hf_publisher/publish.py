@@ -4,7 +4,7 @@ Public surface:
 
     publish_envelope_to_hf(envelope, *, hf_token=None, raw_traces_path=None,
                            update_model_card=False,
-                           org="yobitel-bench-results", dry_run=False)
+                           org="Yobitel", dry_run=False)
         -> HfPublishResult
     HfPublishResult                   — dataclass with repo_id, url, files, verified
     HfPublishError                    — base error
@@ -72,7 +72,7 @@ class HfPublishResult:
 
     Attributes:
         repo_id: Fully-qualified dataset repo id, e.g.
-            ``yobitel-bench-results/meta-llama-llama-4-...__llm-inference__abc123def456``.
+            ``Yobitel/meta-llama-llama-4-...__llm-inference__abc123def456``.
         url: Canonical HF Hub URL for the repo.
         files_uploaded: Filenames uploaded to the repo (in upload order).
         verified: True iff the publisher confirmed the envelope round-trip
@@ -114,7 +114,7 @@ def slugify(value: str) -> str:
     return trimmed or "unknown"
 
 
-def compute_repo_id(envelope: Envelope, *, org: str = "yobitel-bench-results") -> str:
+def compute_repo_id(envelope: Envelope, *, org: str = "Yobitel") -> str:
     """Compute the deterministic dataset repo id for an envelope.
 
     Format: ``{org}/{model-slug}__{suite-slug}__{run-hash}``.
@@ -141,7 +141,7 @@ def publish_envelope_to_hf(
     hf_token: str | None = None,
     raw_traces_path: Path | None = None,
     update_model_card: bool = False,
-    org: str = "yobitel-bench-results",
+    org: str = "Yobitel",
     dry_run: bool = False,
 ) -> HfPublishResult:
     """Publish one envelope to Hugging Face Hub as a dataset repo.
@@ -156,7 +156,7 @@ def publish_envelope_to_hf(
             the model card YAML. Failures are logged and ignored (the model
             card backlink is optional per SKILL.md).
         org: HF organisation to publish under. Defaults to the production
-            ``yobitel-bench-results`` org; tests / staging override.
+            ``Yobitel`` org; tests / staging override.
         dry_run: If True, skip all network calls and return the planned
             ``HfPublishResult`` with ``verified=False``.
 

@@ -224,11 +224,11 @@ def test_fetch_hf_scheme_monkeypatched(
 
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_hf_hub_download)
 
-    uri = "hf://datasets/yobitel-bench-results/llama-4-test"
+    uri = "hf://datasets/Yobitel/llama-4-test"
     result = runner.invoke(app, ["fetch", uri])
     assert result.exit_code == 0, result.output
 
-    assert seen["repo_id"] == "yobitel-bench-results/llama-4-test"
+    assert seen["repo_id"] == "Yobitel/llama-4-test"
     assert seen["filename"] == "envelope.json"
     assert seen["repo_type"] == "dataset"
 
@@ -259,10 +259,10 @@ def test_fetch_hf_scheme_with_explicit_filename(
 
     monkeypatch.setattr(huggingface_hub, "hf_hub_download", fake_hf_hub_download)
 
-    uri = "hf://datasets/yobitel-bench-results/llama-4-test/results/run-42.json"
+    uri = "hf://datasets/Yobitel/llama-4-test/results/run-42.json"
     result = runner.invoke(app, ["fetch", uri])
     assert result.exit_code == 0, result.output
-    assert seen["repo_id"] == "yobitel-bench-results/llama-4-test"
+    assert seen["repo_id"] == "Yobitel/llama-4-test"
     assert seen["filename"] == "results/run-42.json"
     assert isolated_cache.exists()
 

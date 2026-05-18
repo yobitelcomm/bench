@@ -46,7 +46,7 @@ The plugin uses a pricing snapshot taken at run time. Provider-side promotional 
 
 ## Where do published results live?
 
-On Hugging Face Hub. Every `bench publish --to hf` creates a dataset repo under `yobitel-bench-results/`. The static leaderboard at `yobitelcomm.github.io/bench` renders from this corpus.
+On Hugging Face Hub. Every `bench publish --to hf` creates a dataset repo under `Yobitel/`. The static leaderboard at `yobitelcomm.github.io/bench` renders from this corpus.
 
 ## Is the methodology fixed?
 

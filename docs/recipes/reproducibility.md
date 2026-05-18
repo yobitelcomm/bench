@@ -7,7 +7,7 @@ Reproducibility is the product's moat. Anyone with a signed envelope and access 
 Grab the envelope you want to scrutinise. Hugging Face Hub, an HTTPS mirror, or a local file all work:
 
 ```bash
-bench fetch hf://datasets/yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+bench fetch hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
 ```
 
 The fetched payload is validated against the `Envelope` schema before the command declares success. The local cache lives at `~/.cache/inferencebench/fetched/`.

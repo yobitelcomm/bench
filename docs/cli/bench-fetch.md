@@ -11,13 +11,13 @@ bench fetch <uri> [--out PATH] [--force]
 ## Example: pull an envelope from Hugging Face
 
 ```bash
-bench fetch hf://datasets/yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+bench fetch hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
 ```
 
 Expected output:
 
 ```
-OK  fetched hf://datasets/yobitel-bench-results/llama-3.1-8b__chatbot-short__abcdef123456
+OK  fetched hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
   local_path:       /home/abishek/.cache/inferencebench/fetched/3f9c1a2b8e7d.json
   content_hash:     60be8efd6d21...
   suite_id:         llm.inference.chatbot-short

@@ -1,6 +1,6 @@
 # inferencebench-hf-publisher
 
-Publishes signed InferenceBench envelopes to the [Hugging Face Hub](https://huggingface.co/) as dataset repos under the `yobitel-bench-results` organisation. This is the public, citable, verifiable home of every result emitted by `bench publish --to hf`.
+Publishes signed InferenceBench envelopes to the [Hugging Face Hub](https://huggingface.co/) as dataset repos under the `Yobitel` organisation. This is the public, citable, verifiable home of every result emitted by `bench publish --to hf`.
 
 ## Status
 
