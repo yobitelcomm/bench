@@ -39,7 +39,8 @@ err_console = Console(stderr=True)
 
 _INSTALL_HINT = (
     "The 'datasets' package is required to fetch fixtures. "
-    "Install it with: pip install datasets"
+    "Install it with: pip install 'inferencebench[fixtures]'  "
+    "(or directly: pip install datasets)"
 )
 
 

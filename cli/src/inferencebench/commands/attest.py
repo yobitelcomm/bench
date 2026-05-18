@@ -372,9 +372,11 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         f"- **Model**: `{subject['model_id']}` "
         f"(revision `{subject['model_revision']}`)"
     )
-    lines.append(
-        f"- **Engine**: `{subject['engine']} v{subject['engine_version']}`"
+    ev = subject["engine_version"]
+    engine_str = (
+        f"{subject['engine']} {ev}" if ev == "unknown" else f"{subject['engine']} v{ev}"
     )
+    lines.append(f"- **Engine**: `{engine_str}`")
     lines.append(
         "- **Hardware fingerprint (sha256, short)**: "
         f"`{subject['hardware_fingerprint_sha256_short']}`"

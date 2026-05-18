@@ -37,7 +37,12 @@ dependencies = [
 [project.optional-dependencies]
 publish = ["inferencebench-hf-publisher"]
 leaderboard = ["inferencebench-leaderboard"]
-all = ["inferencebench-hf-publisher", "inferencebench-leaderboard"]
+fixtures = ["datasets~=4.0"]
+all = [
+    "inferencebench-hf-publisher",
+    "inferencebench-leaderboard",
+    "datasets~=4.0",
+]
 
 [project.scripts]
 bench = "inferencebench.cli:app"
