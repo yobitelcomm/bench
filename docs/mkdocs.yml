@@ -76,6 +76,7 @@ nav:
       - Audit a published corpus: recipes/audit.md
       - CI integration: recipes/ci-integration.md
       - Multi-vendor matrix: recipes/multi-vendor-matrix.md
+      - Multi-vendor marathon (9 models): recipes/multi-vendor-marathon.md
       - Run in a container: recipes/docker.md
   - Concepts:
       - Signed envelope: concepts/envelope.md
