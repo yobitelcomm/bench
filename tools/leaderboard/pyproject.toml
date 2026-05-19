@@ -42,7 +42,6 @@ inferencebench-envelope = { workspace = true }
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/inferencebench_leaderboard"]
-
-[tool.hatch.build.targets.wheel.force-include]
-"src/inferencebench_leaderboard/templates" = "inferencebench_leaderboard/templates"
-"src/inferencebench_leaderboard/static" = "inferencebench_leaderboard/static"
+# templates/ and static/ live inside src/inferencebench_leaderboard so they are
+# already picked up by the package include. A separate force-include would
+# duplicate every entry in the wheel zip — PyPI rejects with 400.
