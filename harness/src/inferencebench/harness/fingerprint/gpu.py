@@ -75,7 +75,11 @@ def collect_nvidia_runtime() -> tuple[str, str, str]:
     try:
         import pynvml
 
-        pynvml.nvmlInit()
+        try:
+            pynvml.nvmlInit()
+        except Exception:
+            # No NVML library / no NVIDIA driver — runtime info just stays empty.
+            return "", "", os.environ.get("INFERENCEBENCH_NCCL_VERSION", "")
         try:
             driver = _decode(pynvml.nvmlSystemGetDriverVersion())
         except Exception:
