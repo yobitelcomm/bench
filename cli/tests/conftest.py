@@ -38,7 +38,7 @@ def _patch_cli_consoles() -> None:
     """
     wide = Console(width=240, no_color=True, force_terminal=False)
     wide_err = Console(width=240, no_color=True, force_terminal=False, stderr=True)
-    import inferencebench.cli  # noqa: PLC0415  — deferred to make pytest import order deterministic
+    import inferencebench.cli
 
     for mod in list(sys.modules.values()):
         if (
