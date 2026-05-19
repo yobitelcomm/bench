@@ -149,7 +149,7 @@ jobs:
           name: dist-${{ inputs.package }}
           path: dist/
       - name: Sigstore sign (keyless OIDC)
-        uses: sigstore/gh-action-sigstore-python@v3
+        uses: sigstore/gh-action-sigstore-python@v3.3.0
         with:
           inputs: ./dist/*.tar.gz ./dist/*.whl
           upload-signing-artifacts: true
