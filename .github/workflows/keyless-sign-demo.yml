@@ -1,0 +1,79 @@
+name: keyless-sign-demo
+
+# Manually-dispatched workflow that exercises the Sigstore keyless signing path
+# end-to-end via GitHub Actions' OIDC token. Re-signs ONE envelope from the
+# marathon corpus with sigstore-cosign instead of dev-key, uploads it to a
+# dataset repo under https://huggingface.co/Yobitel for third-party verification.
+#
+# Run it from the Actions tab → Run workflow.
+#
+# This is the proof point for the keyless path: anyone can verify the produced
+# envelope via `bench verify --require-issuer https://token.actions.githubusercontent.com
+# --require-identity-pattern "repo:yobitelcomm/bench:.*"` and the signature
+# binds the envelope to a specific GH Actions run.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_envelope_url:
+        description: "HF dataset URL of the envelope to re-sign"
+        required: true
+        type: string
+        default: "hf://datasets/Yobitel/qwen-qwen2-5-7b-instruct__llm-inference-chatbot-short__019e3b395d04"
+      target_repo:
+        description: "HF dataset repo to upload the keyless-signed envelope to"
+        required: true
+        type: string
+        default: "Yobitel/keyless-signed-demo"
+
+permissions:
+  contents: read
+  id-token: write  # required for the Sigstore OIDC exchange
+
+jobs:
+  sign:
+    name: re-sign with sigstore keyless
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      COLUMNS: "240"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages --dev --prerelease=allow
+
+      - name: Fetch source envelope
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run bench fetch "${{ inputs.source_envelope_url }}"
+          ls -la ~/.cache/inferencebench/fetched/
+
+      - name: Re-sign keyless + upload
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: uv run python scripts/keyless_sign_envelope.py \
+            --source-uri "${{ inputs.source_envelope_url }}" \
+            --target-repo "${{ inputs.target_repo }}"
+
+      - name: Verify the keyless-signed envelope
+        run: |
+          # The script writes the keyless-signed copy next to the original
+          # in the fetch cache. Verify with the strict policy any third
+          # party would use.
+          NEW=$(ls -t ~/.cache/inferencebench/fetched/keyless-*.json | head -1)
+          uv run bench verify "$NEW" \
+            --require-issuer https://token.actions.githubusercontent.com \
+            --require-identity-pattern 'repo:yobitelcomm/bench:.*'
+
+      - name: Upload artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyless-signed-envelope
+          path: ~/.cache/inferencebench/fetched/keyless-*.json

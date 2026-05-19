@@ -31,12 +31,20 @@ from inferencebench.envelope.models import Envelope
 
 @dataclass(frozen=True, slots=True)
 class VerificationResult:
-    """Outcome of `verify_envelope`. Always has `ok` set; `reason` populated on failure."""
+    """Outcome of `verify_envelope`. Always has `ok` set; `reason` populated on failure.
+
+    For keyless (Sigstore) signatures, ``signer_identity`` and ``signer_issuer``
+    are extracted from the cert's SAN OtherName when verification succeeds.
+    Callers should inspect these to enforce who-signed-what policy (we cannot
+    encode every user's policy here).
+    """
 
     ok: bool
     method: str
     reason: str = ""
     rekor_log_index: int = -1
+    signer_identity: str = ""
+    signer_issuer: str = ""
 
 
 def verify_envelope(
@@ -212,8 +220,11 @@ def _verify_keyless(envelope: Envelope) -> VerificationResult:
 
     try:
         verifier = Verifier.production()
-        # Phase 1: any-identity policy. Phase 2+ tightens this to require the
-        # GitHub workflow identity matching yobitelcomm/bench.
+        # Permissive identity policy at this layer. Callers enforce who-signed
+        # constraints by inspecting ``VerificationResult.signer_identity`` and
+        # ``signer_issuer`` after this returns ``ok=True``. Production callers
+        # MUST check those fields against an allow-list (e.g. the bench CI
+        # workflow OIDC subject) — accepting any signer is a security bug.
         policy = AnyOf([Identity(identity="*")])
         verifier.verify_artifact(content_hash, bundle, policy)
     except Exception as exc:
@@ -223,9 +234,64 @@ def _verify_keyless(envelope: Envelope) -> VerificationResult:
             reason=f"Sigstore verification failed: {exc}",
         )
 
+    identity, issuer = _extract_signer_identity(bundle.signing_certificate)
+
     return VerificationResult(
         ok=True,
         method="sigstore-cosign",
         reason="",
         rekor_log_index=sig.rekor_log_index,
+        signer_identity=identity,
+        signer_issuer=issuer,
     )
+
+
+def _extract_signer_identity(cert: object) -> tuple[str, str]:
+    """Best-effort extraction of (identity, issuer) from a Fulcio-issued cert.
+
+    Sigstore embeds the OIDC identity in the cert's SAN (OtherName) and the
+    issuer in the X.509 extension at OID 1.3.6.1.4.1.57264.1.1 (or .8 in
+    newer revisions). Returns empty strings if extraction fails — verify
+    still succeeded; callers see the lack of identity and can decide whether
+    to trust the envelope despite the missing field.
+    """
+    identity = ""
+    issuer = ""
+    try:
+        from cryptography import x509  # lazy import keeps the verify-path light
+
+        # OtherName SAN holds the identity (email, URL, etc.)
+        try:
+            san_ext = cert.extensions.get_extension_for_class(x509.SubjectAlternativeName).value  # type: ignore[attr-defined]
+            for n in san_ext:
+                if isinstance(n, x509.RFC822Name):
+                    identity = n.value
+                    break
+                if isinstance(n, x509.UniformResourceIdentifier):
+                    identity = n.value
+                    break
+                if isinstance(n, x509.OtherName):
+                    raw = n.value
+                    identity = raw.decode("utf-8", errors="replace").strip("\x00\x16")
+                    break
+        except Exception:
+            pass
+
+        # Fulcio issuer OID. New schemes use .8; old schemes use .1.
+        for oid_str in ("1.3.6.1.4.1.57264.1.8", "1.3.6.1.4.1.57264.1.1"):
+            try:
+                ext = cert.extensions.get_extension_for_oid(x509.ObjectIdentifier(oid_str)).value  # type: ignore[attr-defined]
+                if hasattr(ext, "value"):
+                    raw_v = ext.value
+                else:
+                    raw_v = ext
+                if isinstance(raw_v, bytes):
+                    issuer = raw_v.decode("utf-8", errors="replace")
+                else:
+                    issuer = str(raw_v)
+                break
+            except Exception:
+                continue
+    except Exception:
+        pass
+    return identity, issuer

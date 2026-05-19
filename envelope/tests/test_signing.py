@@ -312,3 +312,114 @@ def test_keyless_without_oidc_token_raises(monkeypatch: pytest.MonkeyPatch) -> N
     # This test verifies the surface: with no env var, SigningError is raised.
     with pytest.raises(SigningError):
         signing_mod._sign_keyless("a" * 64)
+
+
+def test_keyless_dispatches_to_sign_keyless_helper(monkeypatch: pytest.MonkeyPatch) -> None:
+    """``sign_envelope(mode=KEYLESS)`` invokes ``_sign_keyless`` with the envelope's content_hash.
+
+    We don't exercise the real Sigstore network calls (those need a Fulcio
+    instance + an OIDC token) — we only verify the dispatch contract so a
+    future refactor doesn't silently bypass the keyless branch.
+    """
+    import inferencebench.envelope.signing as signing_mod
+
+    captured: dict[str, str] = {}
+
+    def fake_sign_keyless(content_hash: str) -> Signature:
+        captured["content_hash"] = content_hash
+        return Signature(
+            method="sigstore-cosign",
+            certificate="-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----",
+            rekor_log_index=12345,
+            bundle="ZmFrZS1idW5kbGU=",  # b"fake-bundle" b64
+        )
+
+    monkeypatch.setattr(signing_mod, "_sign_keyless", fake_sign_keyless)
+
+    envelope = _unsigned_envelope()
+    signed = sign_envelope(envelope, mode=SigningMode.KEYLESS)
+    assert signed.signature is not None
+    assert signed.signature.method == "sigstore-cosign"
+    assert signed.signature.rekor_log_index == 12345
+    assert captured["content_hash"] == envelope.content_hash()
+    # The dispatch must preserve content hash and not mutate the envelope.
+    assert envelope.signature is None
+    assert signed.content_hash() == envelope.content_hash()
+
+
+def test_keyless_verify_dispatches_and_surfaces_identity(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """``verify_envelope`` of a sigstore-cosign envelope dispatches to the keyless verifier
+    and propagates ``signer_identity`` / ``signer_issuer`` from the cert.
+    """
+    import inferencebench.envelope.verify as verify_mod
+
+    envelope = _unsigned_envelope().model_copy(
+        update={
+            "signature": Signature(
+                method="sigstore-cosign",
+                certificate="-----BEGIN CERTIFICATE-----\nFAKE\n-----END CERTIFICATE-----",
+                rekor_log_index=99999,
+                bundle="ZmFrZS1idW5kbGU=",
+            ),
+        }
+    )
+
+    def fake_verify_keyless(_env: Envelope) -> verify_mod.VerificationResult:
+        return verify_mod.VerificationResult(
+            ok=True,
+            method="sigstore-cosign",
+            rekor_log_index=99999,
+            signer_identity="repo:yobitelcomm/bench:ref:refs/heads/main",
+            signer_issuer="https://token.actions.githubusercontent.com",
+        )
+
+    monkeypatch.setattr(verify_mod, "_verify_keyless", fake_verify_keyless)
+
+    result = verify_envelope(envelope)
+    assert result.ok
+    assert result.method == "sigstore-cosign"
+    assert result.signer_identity == "repo:yobitelcomm/bench:ref:refs/heads/main"
+    assert result.signer_issuer == "https://token.actions.githubusercontent.com"
+    assert result.rekor_log_index == 99999
+
+
+def test_unsigned_envelope_has_no_identity_surface() -> None:
+    """An unsigned envelope's VerificationResult should not claim any identity."""
+    from inferencebench.envelope.verify import VerificationResult, verify_envelope
+
+    envelope = _unsigned_envelope()
+    result = verify_envelope(envelope)
+    assert not result.ok
+    assert isinstance(result, VerificationResult)
+    assert result.signer_identity == ""
+    assert result.signer_issuer == ""
+
+
+def _unsigned_envelope() -> Envelope:
+    """Helper: build a complete unsigned envelope for the keyless dispatch tests."""
+    return Envelope(
+        envelope_version="v1",
+        suite_id="llm.inference",
+        suite_version="1.0.0",
+        run_id="01934567-89ab-7000-8000-000000000077",
+        timestamp=datetime(2026, 5, 19, 18, 0, 0, tzinfo=UTC),
+        model=ModelConfig(
+            id="meta-llama/Llama-3.1-8B-Instruct",
+            revision="abc1234",
+            provider="vllm",
+            endpoint_hash="0" * 64,
+        ),
+        engine=EngineConfig(name="vllm", version="0.21.0", config_hash="0" * 64),
+        hardware_fingerprint=_hw_fp(),
+        software_provenance=SoftwareProvenance(
+            pip_freeze_hash="b" * 64,
+            git_commit="deadbeef1234567",
+        ),
+        dataset=DatasetSpec(id="x", hash="1" * 64),
+        seed=42,
+        quantization=Quantization(format="bf16"),
+        metrics={"n_samples": 1.0},
+        slo_template="llm.standard",
+    )
