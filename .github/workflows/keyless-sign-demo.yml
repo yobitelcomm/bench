@@ -57,7 +57,8 @@ jobs:
       - name: Re-sign keyless + upload
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
-        run: uv run python scripts/keyless_sign_envelope.py \
+        run: |
+          uv run python scripts/keyless_sign_envelope.py \
             --source-uri "${{ inputs.source_envelope_url }}" \
             --target-repo "${{ inputs.target_repo }}"
 
