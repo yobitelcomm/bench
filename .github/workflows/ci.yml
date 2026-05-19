@@ -23,7 +23,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages --dev --prerelease=allow
       - name: Ruff check
         run: uv run ruff check .
       - name: Ruff format check
@@ -38,7 +38,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages --dev --prerelease=allow
       - name: Mypy
         run: uv run mypy
 
@@ -51,7 +51,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages --dev --prerelease=allow
       - name: Pytest (unit + integration, CPU only)
         run: uv run pytest -m "not gpu and not paid and not slow" --cov --cov-report=xml --cov-report=term
       - uses: codecov/codecov-action@v4
@@ -82,7 +82,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages --dev --prerelease=allow
       - name: Reject GPL / AGPL / SSPL dependencies
         run: |
           uv run pip-licenses --format=json --output-file=licenses.json

@@ -23,7 +23,7 @@ jobs:
       - uses: astral-sh/setup-uv@v3
         with:
           enable-cache: true
-      - run: uv sync --all-extras --dev
+      - run: uv sync --all-packages --dev --prerelease=allow
       - name: Pytest (slow + integration, CPU)
         run: uv run pytest -m "slow or integration" -v
 
