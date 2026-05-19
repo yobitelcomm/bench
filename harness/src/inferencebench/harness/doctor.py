@@ -327,7 +327,7 @@ def _try_import_nvml() -> tuple[bool, Any]:
         return False, None
     try:
         pynvml.nvmlInit()
-    except pynvml.NVMLError:
+    except Exception:
         return False, None
     return True, pynvml
 

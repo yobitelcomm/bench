@@ -47,13 +47,13 @@ class NVMLSampler(Sampler):
             return
         try:
             pynvml.nvmlInit()
-        except pynvml.NVMLError:
+        except Exception:
             self._nvml = None
             return
         self._nvml = pynvml
         try:
             n = pynvml.nvmlDeviceGetCount()
-        except pynvml.NVMLError:
+        except Exception:
             self._handles = []
             return
         indices = self._device_indices if self._device_indices is not None else list(range(n))
@@ -61,7 +61,7 @@ class NVMLSampler(Sampler):
         for i in indices:
             try:
                 self._handles.append(pynvml.nvmlDeviceGetHandleByIndex(i))
-            except pynvml.NVMLError:
+            except Exception:
                 continue
 
     def _teardown(self) -> None:

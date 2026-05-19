@@ -85,6 +85,10 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     needs: [resolve]
+    env:
+      # Force Rich help-text to render wide so substring assertions on flag
+      # names don't fail when Typer wraps the help table in CI's narrow terminal.
+      COLUMNS: "240"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v3

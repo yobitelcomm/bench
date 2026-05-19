@@ -20,15 +20,15 @@ def collect_gpus() -> list[GPU]:
 
     try:
         pynvml.nvmlInit()
-    except pynvml.NVMLError:
+    except Exception:
         return []
 
     try:
         count = pynvml.nvmlDeviceGetCount()
-    except pynvml.NVMLError:
+    except Exception:
         try:
             pynvml.nvmlShutdown()
-        except pynvml.NVMLError:
+        except Exception:
             pass
         return []
 
@@ -41,11 +41,11 @@ def collect_gpus() -> list[GPU]:
             pci_id = _decode(pci.busId) if hasattr(pci, "busId") else ""
             try:
                 serial = _decode(pynvml.nvmlDeviceGetSerial(handle))
-            except pynvml.NVMLError:
+            except Exception:
                 serial = "unknown"
             try:
                 vbios = _decode(pynvml.nvmlDeviceGetVbiosVersion(handle))
-            except pynvml.NVMLError:
+            except Exception:
                 vbios = "unknown"
             gpus.append(
                 GPU(
@@ -55,12 +55,12 @@ def collect_gpus() -> list[GPU]:
                     vbios=vbios or "unknown",
                 )
             )
-        except pynvml.NVMLError:
+        except Exception:
             continue
 
     try:
         pynvml.nvmlShutdown()
-    except pynvml.NVMLError:
+    except Exception:
         pass
 
     return gpus
@@ -78,7 +78,7 @@ def collect_nvidia_runtime() -> tuple[str, str, str]:
         pynvml.nvmlInit()
         try:
             driver = _decode(pynvml.nvmlSystemGetDriverVersion())
-        except pynvml.NVMLError:
+        except Exception:
             driver = ""
         try:
             cuda_int = pynvml.nvmlSystemGetCudaDriverVersion()
@@ -86,12 +86,12 @@ def collect_nvidia_runtime() -> tuple[str, str, str]:
             major = cuda_int // 1000
             minor = (cuda_int % 1000) // 10
             cuda = f"{major}.{minor}"
-        except pynvml.NVMLError:
+        except Exception:
             cuda = ""
         finally:
             try:
                 pynvml.nvmlShutdown()
-            except pynvml.NVMLError:
+            except Exception:
                 pass
     except ImportError:
         pass
