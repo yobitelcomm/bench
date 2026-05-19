@@ -85,6 +85,29 @@ def test_classify_rtx_4090_fingerprint() -> None:
     assert classify(fp) == _class("rtx-4090")
 
 
+def test_classify_rtx_ada_laptop_fingerprint() -> None:
+    """RTX 4000/5000/3000 Ada Laptop GPU — common in mobile workstations."""
+    fp = _fp(gpus=[_gpu("NVIDIA RTX 4000 Ada Generation Laptop GPU")])
+    assert classify(fp) == _class("rtx-ada-laptop")
+    fp = _fp(gpus=[_gpu("NVIDIA RTX 5000 Ada Generation Laptop GPU")])
+    assert classify(fp) == _class("rtx-ada-laptop")
+
+
+def test_classify_rtx_ada_workstation_fingerprint() -> None:
+    """RTX 5000/6000 Ada desktop workstation cards (not laptop variants)."""
+    fp = _fp(gpus=[_gpu("NVIDIA RTX 6000 Ada Generation")])
+    assert classify(fp) == _class("rtx-ada-workstation")
+    fp = _fp(gpus=[_gpu("NVIDIA RTX 5000 Ada Generation")])
+    assert classify(fp) == _class("rtx-ada-workstation")
+
+
+def test_classify_rtx_4080_4070_consumer_ada() -> None:
+    fp = _fp(gpus=[_gpu("NVIDIA GeForce RTX 4080")])
+    assert classify(fp) == _class("rtx-4080")
+    fp = _fp(gpus=[_gpu("NVIDIA GeForce RTX 4070")])
+    assert classify(fp) == _class("rtx-4070")
+
+
 def test_classify_no_gpu_apple_cpu_returns_m_series() -> None:
     fp = _fp(gpus=[], cpu_model="Apple M3 Pro")
     assert classify(fp) == _class("m-series")

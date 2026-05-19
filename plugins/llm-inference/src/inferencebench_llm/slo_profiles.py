@@ -36,7 +36,23 @@ HARDWARE_CLASSES: tuple[HardwareClass, ...] = (
     HardwareClass("l4", "NVIDIA L4 (server inference)", 2.5, 2.5, 2.5),
     HardwareClass("rtx-5090", "NVIDIA RTX 5090 (consumer 2026)", 1.2, 1.2, 1.2),
     HardwareClass("rtx-4090", "NVIDIA RTX 4090 (consumer)", 1.8, 1.8, 1.8),
+    HardwareClass("rtx-4080", "NVIDIA RTX 4080 (consumer Ada)", 2.2, 2.2, 2.2),
+    HardwareClass("rtx-4070", "NVIDIA RTX 4070 (consumer Ada)", 2.8, 2.8, 2.8),
     HardwareClass("rtx-3090", "NVIDIA RTX 3090 (consumer)", 3.0, 3.0, 3.0),
+    HardwareClass(
+        "rtx-ada-workstation",
+        "NVIDIA RTX Ada Workstation (5000/6000 desktop)",
+        2.0,
+        2.0,
+        2.0,
+    ),
+    HardwareClass(
+        "rtx-ada-laptop",
+        "NVIDIA RTX Ada Laptop (3000/4000/5000 mobile)",
+        5.0,
+        5.0,
+        5.0,
+    ),
     HardwareClass("mi300x", "AMD MI300X (data center)", 1.2, 1.2, 1.2),
     HardwareClass("m-series", "Apple Silicon (M1/M2/M3/M4)", 5.0, 5.0, 5.0),
     HardwareClass("cpu", "CPU-only", 20.0, 20.0, 20.0),
@@ -53,7 +69,22 @@ _GPU_MATCHERS: tuple[tuple[str, tuple[str, ...]], ...] = (
     ("l4", ("l4",)),
     ("rtx-5090", ("rtx 5090", "rtx-5090", "rtx5090")),
     ("rtx-4090", ("rtx 4090", "rtx-4090", "rtx4090")),
+    ("rtx-4080", ("rtx 4080", "rtx-4080", "rtx4080")),
+    ("rtx-4070", ("rtx 4070", "rtx-4070", "rtx4070")),
     ("rtx-3090", ("rtx 3090", "rtx-3090", "rtx3090")),
+    # Ada Laptop GPUs report names like "RTX 4000 Ada Generation Laptop GPU".
+    # Match the "ada" + "laptop" combo first so it wins over the workstation rule.
+    ("rtx-ada-laptop", ("ada generation laptop", "ada laptop")),
+    (
+        "rtx-ada-workstation",
+        (
+            "rtx 5000 ada",
+            "rtx 6000 ada",
+            "rtx 4500 ada",
+            "rtx 4000 ada",
+            "ada generation",
+        ),
+    ),
     ("mi300x", ("mi300x",)),
 )
 
