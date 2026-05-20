@@ -190,7 +190,7 @@ def _verify_keyless(envelope: Envelope) -> VerificationResult:
     try:
         from sigstore.models import Bundle
         from sigstore.verify import Verifier
-        from sigstore.verify.policy import AnyOf, Identity
+        from sigstore.verify.policy import UnsafeNoOp
     except ImportError as exc:
         return VerificationResult(
             ok=False,
@@ -220,12 +220,13 @@ def _verify_keyless(envelope: Envelope) -> VerificationResult:
 
     try:
         verifier = Verifier.production()
-        # Permissive identity policy at this layer. Callers enforce who-signed
-        # constraints by inspecting ``VerificationResult.signer_identity`` and
-        # ``signer_issuer`` after this returns ``ok=True``. Production callers
-        # MUST check those fields against an allow-list (e.g. the bench CI
-        # workflow OIDC subject) — accepting any signer is a security bug.
-        policy = AnyOf([Identity(identity="*")])
+        # Permissive identity policy at this layer: UnsafeNoOp accepts any
+        # signer. Callers enforce who-signed constraints by inspecting
+        # ``VerificationResult.signer_identity`` / ``signer_issuer`` after
+        # this returns ``ok=True``. Production callers MUST check those
+        # fields against an allow-list — accepting any signer here is a
+        # security bug at the consumer layer.
+        policy = UnsafeNoOp()
         verifier.verify_artifact(content_hash, bundle, policy)
     except Exception as exc:
         return VerificationResult(
