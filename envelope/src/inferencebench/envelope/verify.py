@@ -278,7 +278,8 @@ def _extract_signer_identity(cert: object) -> tuple[str, str]:
         except Exception:
             pass
 
-        # Fulcio issuer OID. New schemes use .8; old schemes use .1.
+        # Fulcio issuer OID. New schemes use .8 (ASN.1 UTF8String-encoded);
+        # old schemes use .1 (raw bytes). Try .8 first.
         for oid_str in ("1.3.6.1.4.1.57264.1.8", "1.3.6.1.4.1.57264.1.1"):
             try:
                 ext = cert.extensions.get_extension_for_oid(x509.ObjectIdentifier(oid_str)).value  # type: ignore[attr-defined]
@@ -287,9 +288,19 @@ def _extract_signer_identity(cert: object) -> tuple[str, str]:
                 else:
                     raw_v = ext
                 if isinstance(raw_v, bytes):
-                    issuer = raw_v.decode("utf-8", errors="replace")
+                    raw_s = raw_v.decode("utf-8", errors="replace")
                 else:
-                    issuer = str(raw_v)
+                    raw_s = str(raw_v)
+                # The .8 OID is ASN.1 UTF8String-encoded: tag 0x0c, length
+                # byte, then the actual string. Strip the leading 2 bytes if
+                # they look like a UTF8String header.
+                if (
+                    len(raw_s) >= 2
+                    and ord(raw_s[0]) == 0x0C
+                    and ord(raw_s[1]) == len(raw_s) - 2
+                ):
+                    raw_s = raw_s[2:]
+                issuer = raw_s
                 break
             except Exception:
                 continue

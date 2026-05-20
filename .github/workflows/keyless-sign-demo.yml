@@ -66,11 +66,14 @@ jobs:
         run: |
           # The script writes the keyless-signed copy next to the original
           # in the fetch cache. Verify with the strict policy any third
-          # party would use.
+          # party would use. The SAN identity Sigstore embeds is the GH
+          # workflow URI (not the repo:<owner>/<repo>: form that older
+          # Fulcio used) — match the workflow path to anchor trust to this
+          # specific .github/workflows/keyless-sign-demo.yml file.
           NEW=$(ls -t ~/.cache/inferencebench/fetched/keyless-*.json | head -1)
           uv run bench verify "$NEW" \
             --require-issuer https://token.actions.githubusercontent.com \
-            --require-identity-pattern 'repo:yobitelcomm/bench:.*'
+            --require-identity-pattern 'github\.com/yobitelcomm/bench/'
 
       - name: Upload artifact
         if: always()
