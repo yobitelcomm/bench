@@ -133,8 +133,7 @@ def cache_clear(
         typer.Option(
             "--older-than",
             help=(
-                "Only delete cache files older than N days. With no flag, "
-                "deletes every cache file."
+                "Only delete cache files older than N days. With no flag, deletes every cache file."
             ),
         ),
     ] = -1,
@@ -165,8 +164,7 @@ def cache_clear(
 
     if not targets:
         console.print(
-            f"[yellow]nothing matches[/yellow]  "
-            f"(older-than={older_than}d, cache root: {root})"
+            f"[yellow]nothing matches[/yellow]  (older-than={older_than}d, cache root: {root})"
         )
         return
 
@@ -174,10 +172,7 @@ def cache_clear(
         confirm_label = (
             f"Delete {len(targets)} cache file(s) from {root}?"
             if older_than < 0
-            else (
-                f"Delete {len(targets)} cache file(s) older than "
-                f"{older_than}d from {root}?"
-            )
+            else (f"Delete {len(targets)} cache file(s) older than {older_than}d from {root}?")
         )
         if not typer.confirm(confirm_label):
             console.print("[yellow]cancelled[/yellow]")

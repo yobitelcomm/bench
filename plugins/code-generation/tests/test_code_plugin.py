@@ -78,9 +78,7 @@ def test_get_benchmark_mbpp_mini_resolves() -> None:
     plugin_dir = Path(plugin._benchmarks_dir()).parent
     fixture_path = plugin_dir / "datasets" / "mbpp-mini.jsonl"
     assert fixture_path.exists()
-    lines = [
-        line for line in fixture_path.read_text(encoding="utf-8").splitlines() if line.strip()
-    ]
+    lines = [line for line in fixture_path.read_text(encoding="utf-8").splitlines() if line.strip()]
     assert len(lines) == 5
 
 
@@ -191,9 +189,7 @@ def test_run_broken_code_yields_zero_pass_at_1_but_ok_rate_one(
     assert envelope.metrics.get("n_samples") == 5.0
 
 
-def test_run_forbidden_import_recorded_in_samples(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_forbidden_import_recorded_in_samples(make_mock_modelclient, tmp_path: Path) -> None:
     """Mock returns code that imports subprocess → all fail with forbidden_import."""
 
     def responder(prompt: str) -> str:
@@ -216,9 +212,7 @@ def test_run_forbidden_import_recorded_in_samples(
 # --------------------------------------------------------------------------- #
 # End-to-end CLI smoke: bench summary <dir>                                   #
 # --------------------------------------------------------------------------- #
-def test_envelope_passes_through_bench_summary(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_envelope_passes_through_bench_summary(make_mock_modelclient, tmp_path: Path) -> None:
     """Write a code envelope to disk and run ``bench summary`` over it."""
 
     def responder(prompt: str) -> str:
@@ -234,9 +228,7 @@ def test_envelope_passes_through_bench_summary(
     # Drop the envelope as a JSON file in a fresh directory.
     envelope_dir = tmp_path / "envelopes"
     envelope_dir.mkdir()
-    (envelope_dir / "code.json").write_text(
-        envelope.model_dump_json(), encoding="utf-8"
-    )
+    (envelope_dir / "code.json").write_text(envelope.model_dump_json(), encoding="utf-8")
 
     from inferencebench.cli import app  # local import — keeps top-level fast
 
@@ -249,9 +241,7 @@ def test_envelope_passes_through_bench_summary(
 # --------------------------------------------------------------------------- #
 # Spec round-trip / sample-jsonl format                                       #
 # --------------------------------------------------------------------------- #
-def test_run_writes_samples_jsonl_with_pass_flag(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_writes_samples_jsonl_with_pass_flag(make_mock_modelclient, tmp_path: Path) -> None:
     def responder(prompt: str) -> str:
         ep = _entry_point_for(prompt)
         return _fence(_CORRECT_SOLUTIONS.get(ep, ""))

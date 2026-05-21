@@ -28,9 +28,7 @@ runner = CliRunner()
 # --------------------------------------------------------------------------- #
 # Helpers                                                                     #
 # --------------------------------------------------------------------------- #
-def _signed_envelope_on_disk(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> tuple[Path, Path]:
+def _signed_envelope_on_disk(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> tuple[Path, Path]:
     """Write a signed envelope.json to tmp; return (envelope_path, pubkey_path)."""
     priv, pub = dev_keypair
     env = make_envelope(model_id="meta-llama/Llama-4", metrics={"ttft_p50_ms": 12.3})
@@ -183,16 +181,12 @@ def test_bundle_extract_roundtrips(
     extract_result = runner.invoke(
         app, ["bundle", "extract", str(bundle_zip), "--out", str(extract_dir)]
     )
-    assert extract_result.exit_code == 0, extract_result.stdout + (
-        extract_result.stderr or ""
-    )
+    assert extract_result.exit_code == 0, extract_result.stdout + (extract_result.stderr or "")
 
     loaded = Envelope.model_validate(
         json.loads((extract_dir / "envelope.json").read_text(encoding="utf-8"))
     )
-    original = Envelope.model_validate(
-        json.loads(env_path.read_text(encoding="utf-8"))
-    )
+    original = Envelope.model_validate(json.loads(env_path.read_text(encoding="utf-8")))
     assert loaded.content_hash() == original.content_hash()
 
 
@@ -315,9 +309,7 @@ def test_standalone_verify_script_keyless_message(
     env_path = write_envelope_json(tmp_path / "envelope.json", fake_signed)
 
     bundle_zip = tmp_path / "k.bundle.zip"
-    result = runner.invoke(
-        app, ["bundle", "create", str(env_path), "--out", str(bundle_zip)]
-    )
+    result = runner.invoke(app, ["bundle", "create", str(env_path), "--out", str(bundle_zip)])
     assert result.exit_code == 0
 
     extract_dir = tmp_path / "k"

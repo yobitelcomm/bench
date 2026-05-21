@@ -46,9 +46,7 @@ def _hardware_fp() -> HardwareFingerprint:
         "cuda": "12.6",
         "nccl": "2.22.3",
     }
-    placeholder = HardwareFingerprint.model_construct(
-        fingerprint_sha256="0" * 64, numa={}, **body
-    )
+    placeholder = HardwareFingerprint.model_construct(fingerprint_sha256="0" * 64, numa={}, **body)
     real = placeholder.compute_fingerprint_sha256()
     return HardwareFingerprint(fingerprint_sha256=real, numa={}, **body)
 
@@ -155,9 +153,7 @@ def envelope_corpus(tmp_path: Path) -> Path:
 @pytest.fixture
 def corpus_with_garbage(envelope_corpus: Path) -> Path:
     """Same corpus, plus one non-JSON file and one validation-failure file."""
-    (envelope_corpus / "broken-syntax.json").write_text(
-        "{ this is not json", encoding="utf-8"
-    )
+    (envelope_corpus / "broken-syntax.json").write_text("{ this is not json", encoding="utf-8")
     (envelope_corpus / "broken-schema.json").write_text(
         json.dumps({"envelope_version": "v1", "suite_id": "x"}),
         encoding="utf-8",

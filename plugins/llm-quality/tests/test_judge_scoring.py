@@ -116,9 +116,7 @@ def test_judge_returns_zero_on_empty_reply() -> None:
 
 
 def test_judge_returns_zero_on_freeform_text() -> None:
-    judge = _StubModelClient(
-        responder=lambda _p: "The model's answer looks correct"
-    )
+    judge = _StubModelClient(responder=lambda _p: "The model's answer looks correct")
     ctx = ScoreContext(
         reference="Paris",
         hypothesis="Paris",

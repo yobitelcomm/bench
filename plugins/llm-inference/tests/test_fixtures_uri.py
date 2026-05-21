@@ -24,9 +24,7 @@ def _spec(uri: str, n: int = 3, seed: int = 42) -> DatasetConfig:
     )
 
 
-def test_fixtures_uri_loads_cached_prompts(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_fixtures_uri_loads_cached_prompts(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """A cached fixtures jsonl resolves through the ``fixtures://`` scheme."""
     cache = tmp_path / "fx"
     cache.mkdir()

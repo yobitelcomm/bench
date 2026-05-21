@@ -22,9 +22,7 @@ def _read_markdown(out_path: Path) -> str:
     return out_path.read_text(encoding="utf-8")
 
 
-def test_attest_markdown_has_all_sections(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> None:
+def test_attest_markdown_has_all_sections(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> None:
     priv, _pub = dev_keypair
     envelope = make_envelope(
         model_id="meta-llama/Llama-3.1-8B-Instruct",
@@ -55,9 +53,7 @@ def test_attest_markdown_has_all_sections(
     assert "bench verify" in text
 
 
-def test_attest_organization_in_header(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> None:
+def test_attest_organization_in_header(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> None:
     priv, _pub = dev_keypair
     envelope = make_envelope(
         model_id="m",
@@ -83,9 +79,7 @@ def test_attest_organization_in_header(
     assert "Acme" in text
 
 
-def test_attest_json_format_is_parseable(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> None:
+def test_attest_json_format_is_parseable(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> None:
     priv, _pub = dev_keypair
     envelope = make_envelope(
         model_id="m",
@@ -116,15 +110,11 @@ def test_attest_signed_envelope_renders_signature_method(
     tmp_path: Path, dev_keypair: tuple[Path, Path]
 ) -> None:
     priv, _pub = dev_keypair
-    envelope = make_envelope(
-        model_id="m", metrics={"throughput_tok_per_s": 1.0}
-    )
+    envelope = make_envelope(model_id="m", metrics={"throughput_tok_per_s": 1.0})
     env_path = write_signed_envelope_json(tmp_path / "env.json", envelope, dev_key=priv)
     out_path = tmp_path / "attest.md"
 
-    result = runner.invoke(
-        app, ["attest", str(env_path), "--out", str(out_path)]
-    )
+    result = runner.invoke(app, ["attest", str(env_path), "--out", str(out_path)])
     assert result.exit_code == 0, result.output
     text = _read_markdown(out_path)
     assert "dev-key" in text
@@ -132,15 +122,11 @@ def test_attest_signed_envelope_renders_signature_method(
 
 
 def test_attest_unsigned_envelope_renders_warning(tmp_path: Path) -> None:
-    envelope = make_envelope(
-        model_id="m", metrics={"throughput_tok_per_s": 1.0}
-    )
+    envelope = make_envelope(model_id="m", metrics={"throughput_tok_per_s": 1.0})
     env_path = write_envelope_json(tmp_path / "env.json", envelope)
     out_path = tmp_path / "attest.md"
 
-    result = runner.invoke(
-        app, ["attest", str(env_path), "--out", str(out_path)]
-    )
+    result = runner.invoke(app, ["attest", str(env_path), "--out", str(out_path)])
     assert result.exit_code == 0, result.output
     text = _read_markdown(out_path)
     assert "unsigned" in text.lower()
@@ -152,9 +138,7 @@ def test_attest_json_content_hash_matches_envelope(
     tmp_path: Path, dev_keypair: tuple[Path, Path]
 ) -> None:
     priv, _pub = dev_keypair
-    envelope = make_envelope(
-        model_id="m", metrics={"throughput_tok_per_s": 1.0}
-    )
+    envelope = make_envelope(model_id="m", metrics={"throughput_tok_per_s": 1.0})
     env_path = write_signed_envelope_json(tmp_path / "env.json", envelope, dev_key=priv)
     out_path = tmp_path / "attest.json"
 

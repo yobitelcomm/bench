@@ -54,9 +54,7 @@ def _hw_fp() -> HardwareFingerprint:
         "cuda": "12.6",
         "nccl": "2.22.3",
     }
-    placeholder = HardwareFingerprint.model_construct(
-        fingerprint_sha256="0" * 64, numa={}, **body
-    )
+    placeholder = HardwareFingerprint.model_construct(fingerprint_sha256="0" * 64, numa={}, **body)
     real = placeholder.compute_fingerprint_sha256()
     return HardwareFingerprint(fingerprint_sha256=real, numa={}, **body)
 
@@ -127,9 +125,7 @@ def _build(
         lambda: _sw_prov(),
     )
     spec = plugin.get_benchmark("llm.inference.sharegpt-v3")
-    return plugin._build_envelope(
-        spec, ctx, "0.7.2", result, dataset_hash="0" * 64
-    )
+    return plugin._build_envelope(spec, ctx, "0.7.2", result, dataset_hash="0" * 64)
 
 
 # --------------------------------------------------------------------------- #
@@ -154,9 +150,7 @@ def test_provider_cost_path_tagged_provider(
 # --------------------------------------------------------------------------- #
 # Registry-cost path                                                          #
 # --------------------------------------------------------------------------- #
-def test_registry_cost_path_picks_cheapest(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_registry_cost_path_picks_cheapest(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """No provider cost + known model → cheapest registered blended rate."""
     plugin = LLMInferencePlugin()
     samples = [_sample(tokens_in=500, tokens_out=1000, cost_usd=0.0)]
@@ -249,9 +243,7 @@ def test_cheapest_blended_rate_selection_synthetic(
         assert model == "fake/Model-X"
         return fake_entries
 
-    monkeypatch.setattr(
-        "inferencebench_llm.plugin.providers_for", fake_providers_for
-    )
+    monkeypatch.setattr("inferencebench_llm.plugin.providers_for", fake_providers_for)
 
     result = _registry_reference_cost("fake/Model-X")
     assert result is not None

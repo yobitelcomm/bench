@@ -258,9 +258,7 @@ def _print_summary_table(rows: list[dict[str, Any]]) -> None:
             status_cell = "[red]✗[/red]"
         metrics = row.get("metrics", {})
         ok_rate = metrics.get("ok_rate")
-        ok_cell = (
-            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
-        )
+        ok_cell = f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
         if isinstance(ok_rate, int | float) and ok_rate < 0.95:
             ok_cell = f"[red]{ok_cell}[/red]"
         envelope_cell = row.get("envelope_name") or "-"
@@ -292,9 +290,7 @@ def _build_run_extra(
     return extra
 
 
-def _make_summary_row(
-    target_name: str, point: int, status: str
-) -> dict[str, Any]:
+def _make_summary_row(target_name: str, point: int, status: str) -> dict[str, Any]:
     return {
         "target": target_name,
         "point": point,
@@ -335,8 +331,7 @@ def _execute_pair(
         engine_kind = engine_kind_cls(target["engine"])
     except ValueError as exc:
         err_console.print(
-            f"[red]target {target_name!r}: unknown engine "
-            f"{target['engine']!r}: {exc}[/red]"
+            f"[red]target {target_name!r}: unknown engine {target['engine']!r}: {exc}[/red]"
         )
         return "error", _make_summary_row(target_name, point, "error")
 
@@ -353,17 +348,13 @@ def _execute_pair(
             extra=extra,
         )
     except Exception as exc:
-        err_console.print(
-            f"[red]target {target_name!r}: invalid run context:[/red] {exc}"
-        )
+        err_console.print(f"[red]target {target_name!r}: invalid run context:[/red] {exc}")
         return "error", _make_summary_row(target_name, point, "error")
 
     try:
         envelope = plugin.run(spec, ctx)
     except Exception as exc:
-        err_console.print(
-            f"[red]target {target_name!r} c{point} failed:[/red] {exc}"
-        )
+        err_console.print(f"[red]target {target_name!r} c{point} failed:[/red] {exc}")
         err_console.print("[red]" + traceback.format_exc() + "[/red]")
         return "error", _make_summary_row(target_name, point, "error")
 
@@ -490,9 +481,7 @@ def matrix(
                 continue
 
             any_envelope = True
-            progress.update(
-                tid, completed=1, description=f"{target_name} c{point} ok"
-            )
+            progress.update(tid, completed=1, description=f"{target_name} c{point} ok")
 
     _print_summary_table(summary_rows)
 

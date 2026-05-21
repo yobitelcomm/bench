@@ -25,9 +25,11 @@ runner = CliRunner()
 
 
 def _load_bundled_registry() -> dict[str, object]:
-    raw = resources.files("inferencebench").joinpath(
-        "data/plugin-registry.json"
-    ).read_text(encoding="utf-8")
+    raw = (
+        resources.files("inferencebench")
+        .joinpath("data/plugin-registry.json")
+        .read_text(encoding="utf-8")
+    )
     return json.loads(raw)  # type: ignore[no-any-return]
 
 
@@ -87,9 +89,7 @@ def test_discover_default_shows_all_seven_plugins(
         assert name in out, f"missing plugin {name} in output:\n{out}"
 
 
-def test_discover_modality_llm_filter(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_discover_modality_llm_filter(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """``--modality llm`` keeps only the llm.* plugins."""
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
     result = runner.invoke(app, ["plugin", "discover", "--modality", "llm", "--json"])
@@ -184,9 +184,7 @@ def test_discover_registry_loads_custom_path(
         ),
         encoding="utf-8",
     )
-    result = runner.invoke(
-        app, ["plugin", "discover", "--registry", str(custom), "--json"]
-    )
+    result = runner.invoke(app, ["plugin", "discover", "--registry", str(custom), "--json"])
     assert result.exit_code == 0, result.stdout + (result.stderr or "")
     doc = json.loads(result.stdout)
     assert [p["name"] for p in doc["plugins"]] == ["custom.test"]
@@ -199,18 +197,14 @@ def test_discover_registry_bad_path_exits_2(
     """A nonexistent ``--registry`` path produces a clear error and exit 2."""
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
     missing = tmp_path / "does-not-exist.json"
-    result = runner.invoke(
-        app, ["plugin", "discover", "--registry", str(missing)]
-    )
+    result = runner.invoke(app, ["plugin", "discover", "--registry", str(missing)])
     assert result.exit_code == 2
     combined = result.stdout + (result.stderr or "")
     assert "failed to load registry" in combined
     assert "not found" in combined
 
 
-def test_discover_rejects_invalid_modality(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_discover_rejects_invalid_modality(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
     result = runner.invoke(app, ["plugin", "discover", "--modality", "video"])
     assert result.exit_code == 2
@@ -221,9 +215,7 @@ def test_discover_installed_and_available_mutually_exclusive(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
     monkeypatch.setenv("BENCH_CACHE_ROOT", str(tmp_path / "cache"))
-    result = runner.invoke(
-        app, ["plugin", "discover", "--installed", "--available"]
-    )
+    result = runner.invoke(app, ["plugin", "discover", "--installed", "--available"])
     assert result.exit_code == 2
     combined = result.stdout + (result.stderr or "")
     assert "mutually exclusive" in combined

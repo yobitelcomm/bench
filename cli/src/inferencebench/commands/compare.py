@@ -117,29 +117,22 @@ def compare(
     renders the result as a Rich table (default), JSON, or Pareto-only table.
     """
     if len(run_ids) < 2:
-        err_console.print(
-            "[red]bench compare requires at least 2 envelope paths.[/red]"
-        )
+        err_console.print("[red]bench compare requires at least 2 envelope paths.[/red]")
         raise typer.Exit(code=2)
 
     if report not in {"table", "json", "pareto"}:
         err_console.print(
-            f"[red]Unknown --report value:[/red] {report} "
-            "(expected one of: table, json, pareto)"
+            f"[red]Unknown --report value:[/red] {report} (expected one of: table, json, pareto)"
         )
         raise typer.Exit(code=2)
 
-    envelopes: list[tuple[str, Envelope]] = [
-        (uri, _load_envelope(uri)) for uri in run_ids
-    ]
+    envelopes: list[tuple[str, Envelope]] = [(uri, _load_envelope(uri)) for uri in run_ids]
 
     if verify:
         for uri, env in envelopes:
             result = verify_envelope(env)
             if not result.ok:
-                err_console.print(
-                    f"[bold red]FAIL[/bold red]  {uri}: {result.reason}"
-                )
+                err_console.print(f"[bold red]FAIL[/bold red]  {uri}: {result.reason}")
                 raise typer.Exit(code=1)
 
     pareto_flags = _compute_all_pareto(envelopes)
@@ -160,12 +153,9 @@ def _load_envelope(uri: str) -> Envelope:
     """Load an envelope from a URI. Phase 1: local file paths only."""
     if uri.startswith(("hf://", "https://", "s3://")):
         err_console.print(
-            f"[red]URI scheme not yet supported in v0.0.0:[/red] "
-            f"{uri.split('://')[0]}://"
+            f"[red]URI scheme not yet supported in v0.0.0:[/red] {uri.split('://')[0]}://"
         )
-        err_console.print(
-            "Phase 1 supports local file paths only. Download the envelope first."
-        )
+        err_console.print("Phase 1 supports local file paths only. Download the envelope first.")
         raise typer.Exit(code=2)
 
     path = Path(uri)
@@ -304,8 +294,7 @@ def _emit_table(
 
     if only_pareto and rendered == 0:
         err_console.print(
-            "[yellow]No envelopes on any Pareto frontier "
-            "(missing metrics in all inputs?).[/yellow]"
+            "[yellow]No envelopes on any Pareto frontier (missing metrics in all inputs?).[/yellow]"
         )
 
     console.print(table)
@@ -326,15 +315,12 @@ def _emit_json(
                 "model_id": env.model.id,
                 "engine": {"name": env.engine.name, "version": env.engine.version},
                 "metrics": {k: v for k, v in env.metrics.items()},
-                "pareto": {
-                    label: pareto_flags[label][idx] for label in pareto_flags
-                },
+                "pareto": {label: pareto_flags[label][idx] for label in pareto_flags},
             }
         )
 
     pareto_block: dict[str, list[int]] = {
-        label: [i for i, on in enumerate(flags) if on]
-        for label, flags in pareto_flags.items()
+        label: [i for i, on in enumerate(flags) if on] for label, flags in pareto_flags.items()
     }
 
     payload = {"runs": runs, "pareto": pareto_block}

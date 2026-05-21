@@ -101,9 +101,7 @@ def list_benchmarks(
     if plugin_filter:
         eps = [ep for ep in eps if ep.name == plugin_filter]
         if not eps:
-            err_console.print(
-                f"[red]No plugin registered for:[/red] [bold]{plugin_filter}[/bold]"
-            )
+            err_console.print(f"[red]No plugin registered for:[/red] [bold]{plugin_filter}[/bold]")
             raise typer.Exit(code=1)
 
     if not eps:
@@ -124,8 +122,7 @@ def list_benchmarks(
             specs = list(plugin.list_benchmarks())
         except Exception as exc:  # pragma: no cover - defensive
             err_console.print(
-                f"[yellow]warning:[/yellow] failed to introspect plugin "
-                f"'{ep.name}': {exc}"
+                f"[yellow]warning:[/yellow] failed to introspect plugin '{ep.name}': {exc}"
             )
             payload["plugins"][ep.name] = {
                 "version": "",

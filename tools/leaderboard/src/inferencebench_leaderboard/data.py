@@ -136,8 +136,10 @@ def compute_pareto(
         for j, (xj, yj) in enumerate(entries):
             if i == j or xj is None or yj is None:
                 continue
-            if better_or_equal(xj, xi, x_direction) and better_or_equal(yj, yi, y_direction) and (
-                strictly_better(xj, xi, x_direction) or strictly_better(yj, yi, y_direction)
+            if (
+                better_or_equal(xj, xi, x_direction)
+                and better_or_equal(yj, yi, y_direction)
+                and (strictly_better(xj, xi, x_direction) or strictly_better(yj, yi, y_direction))
             ):
                 dominated = True
                 break

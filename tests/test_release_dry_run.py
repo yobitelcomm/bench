@@ -71,10 +71,7 @@ def _make_fake_workspace(root: Path) -> list[Path]:
         d.mkdir(parents=True, exist_ok=True)
         py = d / "pyproject.toml"
         py.write_text(
-            '[project]\n'
-            f'name = "fake-{d.name}"\n'
-            'version = "0.0.0"\n'
-            'description = "x"\n',
+            f'[project]\nname = "fake-{d.name}"\nversion = "0.0.0"\ndescription = "x"\n',
             encoding="utf-8",
         )
         written.append(py)
@@ -152,12 +149,7 @@ def _build_synthetic_wheel(dest_dir: Path, *, with_metadata_fields: bool = True)
     record_lines = []
     for fname, data in files.items():
         digest = hashlib.sha256(data).digest()
-        b64 = (
-            __import__("base64")
-            .urlsafe_b64encode(digest)
-            .rstrip(b"=")
-            .decode("ascii")
-        )
+        b64 = __import__("base64").urlsafe_b64encode(digest).rstrip(b"=").decode("ascii")
         record_lines.append(f"{fname},sha256={b64},{len(data)}")
     record_lines.append(f"{dist_info}/RECORD,,")
     record = ("\n".join(record_lines) + "\n").encode()

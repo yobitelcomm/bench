@@ -107,9 +107,7 @@ def test_fetch_https_uses_urlopen_monkeypatch(
         assert url.startswith("https://")
         return _FakeUrlResp(payload)
 
-    monkeypatch.setattr(
-        "inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen
-    )
+    monkeypatch.setattr("inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen)
 
     uri = "https://example.com/results/envelope.json"
     result = runner.invoke(app, ["fetch", uri])
@@ -132,9 +130,7 @@ def test_fetch_cache_hit_skips_redownload(
         assert url.startswith("https://")
         return _FakeUrlResp(payload)
 
-    monkeypatch.setattr(
-        "inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen
-    )
+    monkeypatch.setattr("inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen)
 
     uri = "https://example.com/cached.json"
     first = runner.invoke(app, ["fetch", uri])
@@ -162,9 +158,7 @@ def test_fetch_force_redownloads(
         assert url.startswith("https://")
         return _FakeUrlResp(payload)
 
-    monkeypatch.setattr(
-        "inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen
-    )
+    monkeypatch.setattr("inferencebench.commands.fetch.urllib.request.urlopen", fake_urlopen)
 
     uri = "https://example.com/force.json"
     first = runner.invoke(app, ["fetch", uri])
@@ -273,9 +267,7 @@ def test_fetch_explicit_out_path_writes_there(
     isolated_cache: Path,
 ) -> None:
     out = tmp_path / "explicit" / "env.json"
-    result = runner.invoke(
-        app, ["fetch", str(signed_envelope_on_disk), "--out", str(out)]
-    )
+    result = runner.invoke(app, ["fetch", str(signed_envelope_on_disk), "--out", str(out)])
     assert result.exit_code == 0, result.output
     assert out.exists()
     # Default cache should not be used when --out is provided.

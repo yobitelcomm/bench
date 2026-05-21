@@ -151,8 +151,7 @@ def diff(
     """
     if report not in {"table", "json"}:
         err_console.print(
-            f"[red]Unknown --report value:[/red] {report} "
-            "(expected one of: table, json)"
+            f"[red]Unknown --report value:[/red] {report} (expected one of: table, json)"
         )
         raise typer.Exit(code=2)
 
@@ -163,9 +162,7 @@ def diff(
         for uri, env in ((baseline_path, baseline), (candidate_path, candidate)):
             result = verify_envelope(env)
             if not result.ok:
-                err_console.print(
-                    f"[bold red]FAIL[/bold red]  {uri}: {result.reason}"
-                )
+                err_console.print(f"[bold red]FAIL[/bold red]  {uri}: {result.reason}")
                 raise typer.Exit(code=1)
 
     context_match = _context_match(baseline, candidate)
@@ -189,12 +186,9 @@ def _load_envelope(uri: str) -> Envelope:
     """Load an envelope from a URI. Phase 1: local file paths only."""
     if uri.startswith(("hf://", "https://", "s3://")):
         err_console.print(
-            f"[red]URI scheme not yet supported in v0.0.0:[/red] "
-            f"{uri.split('://')[0]}://"
+            f"[red]URI scheme not yet supported in v0.0.0:[/red] {uri.split('://')[0]}://"
         )
-        err_console.print(
-            "Phase 1 supports local file paths only. Download the envelope first."
-        )
+        err_console.print("Phase 1 supports local file paths only. Download the envelope first.")
         raise typer.Exit(code=2)
 
     path = Path(uri)
@@ -284,9 +278,7 @@ def _classify(
     elif delta_abs == 0:
         return delta_abs, delta_rel, "no_change"
 
-    candidate_better = (
-        (delta_abs < 0) if direction == "lower" else (delta_abs > 0)
-    )
+    candidate_better = (delta_abs < 0) if direction == "lower" else (delta_abs > 0)
     verdict: Verdict = "improvement" if candidate_better else "regression"
     return delta_abs, delta_rel, verdict
 
@@ -303,9 +295,7 @@ def _compute_rows(
     for name in names:
         b = _as_float(baseline.metrics.get(name))
         c = _as_float(candidate.metrics.get(name))
-        delta_abs, delta_rel, verdict = _classify(
-            name, b, c, tolerance=tolerance
-        )
+        delta_abs, delta_rel, verdict = _classify(name, b, c, tolerance=tolerance)
         rows.append(
             {
                 "name": name,
@@ -449,9 +439,7 @@ def _emit_table(
             if isinstance(v, dict) and not v["match"]
         ]
         console.print(
-            "[yellow]warning: baseline and candidate differ on: "
-            + ", ".join(diffs)
-            + "[/yellow]"
+            "[yellow]warning: baseline and candidate differ on: " + ", ".join(diffs) + "[/yellow]"
         )
         console.print(
             "[yellow]diffing across different contexts is supported, but "

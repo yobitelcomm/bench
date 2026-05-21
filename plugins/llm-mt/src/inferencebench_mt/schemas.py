@@ -37,9 +37,7 @@ class DatasetConfig(BaseModel):
         str,
         Field(
             min_length=1,
-            description=(
-                "Path to the fixture JSONL relative to the plugin's datasets/ directory."
-            ),
+            description=("Path to the fixture JSONL relative to the plugin's datasets/ directory."),
         ),
     ]
 

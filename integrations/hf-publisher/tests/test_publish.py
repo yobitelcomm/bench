@@ -192,9 +192,12 @@ class TestPublishHappyPath:
         assert result.files_uploaded == ["envelope.json", "traces.parquet", "README.md"]
 
     def test_missing_traces_file_raises(self, envelope: Envelope, tmp_path: Path) -> None:
-        with mock.patch("inferencebench_hf_publisher.publish.HfApi"), pytest.raises(
-            HfPublishError,
-            match="raw_traces_path does not exist",
+        with (
+            mock.patch("inferencebench_hf_publisher.publish.HfApi"),
+            pytest.raises(
+                HfPublishError,
+                match="raw_traces_path does not exist",
+            ),
         ):
             publish_envelope_to_hf(envelope, raw_traces_path=tmp_path / "missing.parquet")
 

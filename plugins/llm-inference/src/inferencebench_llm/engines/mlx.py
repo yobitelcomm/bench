@@ -47,8 +47,7 @@ class MLXEngine(Engine):
         """
         if not context.base_url:
             msg = (
-                "MLX engine requires --endpoint / context.base_url "
-                "(e.g. http://localhost:8000/v1)."
+                "MLX engine requires --endpoint / context.base_url (e.g. http://localhost:8000/v1)."
             )
             raise EngineUnavailableError(msg)
 

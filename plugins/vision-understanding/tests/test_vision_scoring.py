@@ -37,10 +37,7 @@ def test_exact_match_rejects_substring() -> None:
 # substring_match                                                             #
 # --------------------------------------------------------------------------- #
 def test_substring_match_hit() -> None:
-    assert (
-        substring_match(_ctx("The text reads APRIL 17 across the top.", "april 17"))
-        == 1.0
-    )
+    assert substring_match(_ctx("The text reads APRIL 17 across the top.", "april 17")) == 1.0
 
 
 def test_substring_match_case_insensitive() -> None:

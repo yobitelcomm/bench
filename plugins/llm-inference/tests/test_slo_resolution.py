@@ -71,9 +71,7 @@ def _rtx_4090_fingerprint() -> HardwareFingerprint:
         "cuda": "12.4",
         "nccl": "",
     }
-    placeholder = HardwareFingerprint.model_construct(
-        fingerprint_sha256="0" * 64, numa={}, **body
-    )
+    placeholder = HardwareFingerprint.model_construct(fingerprint_sha256="0" * 64, numa={}, **body)
     real = placeholder.compute_fingerprint_sha256()
     return HardwareFingerprint(fingerprint_sha256=real, numa={}, **body)
 

@@ -78,18 +78,14 @@ def _tour_hardware_fingerprint() -> HardwareFingerprint:
                 vbios="96.00.74.00.01",
             )
         ],
-        "cpu": CPU(
-            model="Intel(R) Xeon(R) Platinum 8480C", microcode="0x2b000571"
-        ),
+        "cpu": CPU(model="Intel(R) Xeon(R) Platinum 8480C", microcode="0x2b000571"),
         "memory": Memory(channels=12, speed_mts=4800, ecc=True),
         "bios": BIOS(version="3.4a", resizable_bar=True, above_4g=True),
         "driver": "560.35.03",
         "cuda": "12.6",
         "nccl": "2.22.3",
     }
-    placeholder = HardwareFingerprint.model_construct(
-        fingerprint_sha256="0" * 64, numa={}, **body
-    )
+    placeholder = HardwareFingerprint.model_construct(fingerprint_sha256="0" * 64, numa={}, **body)
     real = placeholder.compute_fingerprint_sha256()
     return HardwareFingerprint(fingerprint_sha256=real, numa={}, **body)
 
@@ -174,9 +170,7 @@ def _step_plugin_init() -> _StepResult:
                     ok=False,
                     detail="scaffolded pyproject.toml missing",
                 )
-            return _StepResult(
-                "bench plugin init", ok=True, detail="bench-tour-demo scaffolded"
-            )
+            return _StepResult("bench plugin init", ok=True, detail="bench-tour-demo scaffolded")
         finally:
             os.chdir(cwd)
 
@@ -185,13 +179,9 @@ def _step_generate_keypair(dev_key: Path) -> _StepResult:
     """Generate a dev keypair if one doesn't already exist."""
     pub_path = dev_key.with_suffix(".pub")
     if dev_key.exists() and pub_path.exists():
-        return _StepResult(
-            "generate dev keypair", ok=True, detail=f"reused {dev_key.name}"
-        )
+        return _StepResult("generate dev keypair", ok=True, detail=f"reused {dev_key.name}")
     generate_dev_keypair(dev_key, force=dev_key.exists() or pub_path.exists())
-    return _StepResult(
-        "generate dev keypair", ok=True, detail=f"wrote {dev_key.name} + .pub"
-    )
+    return _StepResult("generate dev keypair", ok=True, detail=f"wrote {dev_key.name} + .pub")
 
 
 def _step_build_envelope(out_dir: Path, dev_key: Path) -> tuple[_StepResult, Path]:
@@ -220,12 +210,8 @@ def _step_verify_envelope(envelope_path: Path, dev_key: Path) -> _StepResult:
     envelope = Envelope.model_validate(raw)
     result = verify_envelope(envelope, dev_public_key_path=pub_path)
     if not result.ok:
-        return _StepResult(
-            "bench verify", ok=False, detail=result.reason or "verification failed"
-        )
-    return _StepResult(
-        "bench verify", ok=True, detail=f"method={result.method}"
-    )
+        return _StepResult("bench verify", ok=False, detail=result.reason or "verification failed")
+    return _StepResult("bench verify", ok=True, detail=f"method={result.method}")
 
 
 def _step_summary(out_dir: Path) -> _StepResult:
@@ -246,10 +232,7 @@ def _step_summary(out_dir: Path) -> _StepResult:
     return _StepResult(
         "bench summary",
         ok=True,
-        detail=(
-            f"{len(envelopes)} envelopes, {len(suites)} suite(s), "
-            f"{skipped} skipped"
-        ),
+        detail=(f"{len(envelopes)} envelopes, {len(suites)} suite(s), {skipped} skipped"),
     )
 
 
@@ -258,16 +241,12 @@ def _step_export_markdown(envelope_path: Path, out_dir: Path) -> _StepResult:
     from inferencebench.commands.export import _filter_metrics, _render_markdown
     from inferencebench.envelope import Envelope
 
-    envelope = Envelope.model_validate(
-        json.loads(envelope_path.read_text(encoding="utf-8"))
-    )
+    envelope = Envelope.model_validate(json.loads(envelope_path.read_text(encoding="utf-8")))
     metrics = _filter_metrics(envelope.metrics, keep=None)
     rendered = _render_markdown(envelope, metrics)
     md_path = out_dir / "tour-envelope.md"
     md_path.write_text(rendered, encoding="utf-8")
-    return _StepResult(
-        "bench export --format markdown", ok=True, detail=f"→ {md_path.name}"
-    )
+    return _StepResult("bench export --format markdown", ok=True, detail=f"→ {md_path.name}")
 
 
 def _step_bundle_create(envelope_path: Path, out_dir: Path, dev_key: Path) -> _StepResult:
@@ -307,10 +286,7 @@ def _step_leaderboard(out_dir: Path) -> _StepResult:
     return _StepResult(
         "bench leaderboard --build",
         ok=True,
-        detail=(
-            f"{result.envelopes_loaded} envelopes, "
-            f"{len(result.categories)} categor(y/ies)"
-        ),
+        detail=(f"{result.envelopes_loaded} envelopes, {len(result.categories)} categor(y/ies)"),
     )
 
 
@@ -324,12 +300,8 @@ def _step_audit(out_dir: Path, dev_key: Path) -> _StepResult:
     target = out_dir / "tour-envelope.json"
     row = _audit_one(target, pub_path)
     if not row["ok"]:
-        return _StepResult(
-            "bench audit", ok=False, detail=row.get("reason", "audit failure")
-        )
-    return _StepResult(
-        "bench audit", ok=True, detail=f"verified {row['content_hash_short']}"
-    )
+        return _StepResult("bench audit", ok=False, detail=row.get("reason", "audit failure"))
+    return _StepResult("bench audit", ok=True, detail=f"verified {row['content_hash_short']}")
 
 
 # --------------------------------------------------------------------------- #
@@ -387,15 +359,10 @@ def tour(
     def _run(step_name: str, fn: Callable[[], _StepResult]) -> _StepResult:
         """Wrap a step in a Rich Status; capture failures into the summary table."""
         try:
-            with Status(
-                f"[bold]{step_name}[/bold] running…", console=err_console
-            ):
+            with Status(f"[bold]{step_name}[/bold] running…", console=err_console):
                 return fn()
         except Exception as exc:
-            err_console.print(
-                f"[red]{step_name} failed:[/red] {exc}\n"
-                + traceback.format_exc()
-            )
+            err_console.print(f"[red]{step_name} failed:[/red] {exc}\n" + traceback.format_exc())
             return _StepResult(step_name, ok=False, detail=str(exc)[:80])
 
     # 1. bench list
@@ -415,12 +382,9 @@ def tour(
         results.append(step)
     except Exception as exc:
         err_console.print(
-            f"[red]build + sign envelope failed:[/red] {exc}\n"
-            + traceback.format_exc()
+            f"[red]build + sign envelope failed:[/red] {exc}\n" + traceback.format_exc()
         )
-        results.append(
-            _StepResult("build + sign fake envelope", ok=False, detail=str(exc)[:80])
-        )
+        results.append(_StepResult("build + sign fake envelope", ok=False, detail=str(exc)[:80]))
 
     # 5. bench verify
     if envelope_path is not None:
@@ -459,9 +423,7 @@ def tour(
             )
         )
     else:
-        results.append(
-            _StepResult("bench bundle create", ok=False, detail="no envelope")
-        )
+        results.append(_StepResult("bench bundle create", ok=False, detail="no envelope"))
 
     # 9. bench leaderboard --build
     results.append(_run("bench leaderboard --build", lambda: _step_leaderboard(out)))
@@ -492,8 +454,7 @@ def _print_summary_table(results: list[_StepResult], out_dir: Path) -> None:
         f"Outputs in [cyan]{out_dir.resolve()}[/cyan]"
     )
     console.print(
-        "Next: open the markdown summary, "
-        "share the bundle zip, or browse the rendered site."
+        "Next: open the markdown summary, share the bundle zip, or browse the rendered site."
     )
     # Timestamp helps users correlate tour runs with later artefacts.
     console.print(f"[dim]tour completed at {datetime.now(UTC).isoformat()}[/dim]")

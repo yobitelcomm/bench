@@ -84,9 +84,7 @@ def render_chart(bars: list[tuple[str, int]], out_path: Path) -> None:
     bar_w = plot_w // (n * 2)
 
     # Y axis + X axis
-    draw.line(
-        [(left_pad, top_pad), (left_pad, height - bottom_pad)], fill=0, width=1
-    )
+    draw.line([(left_pad, top_pad), (left_pad, height - bottom_pad)], fill=0, width=1)
     draw.line(
         [
             (left_pad, height - bottom_pad),
@@ -100,16 +98,12 @@ def render_chart(bars: list[tuple[str, int]], out_path: Path) -> None:
         bx = left_pad + bar_w + i * (2 * bar_w)
         bh = int((value / max_v) * (plot_h - 10))
         by_top = height - bottom_pad - bh
-        draw.rectangle(
-            [bx, by_top, bx + bar_w, height - bottom_pad], fill=80, outline=0
-        )
+        draw.rectangle([bx, by_top, bx + bar_w, height - bottom_pad], fill=80, outline=0)
         # Value label just above the bar.
         v_text = str(value)
         v_bbox = draw.textbbox((0, 0), v_text, font=font)
         v_w = v_bbox[2] - v_bbox[0]
-        draw.text(
-            (bx + (bar_w - v_w) // 2, by_top - 14), v_text, fill=0, font=font
-        )
+        draw.text((bx + (bar_w - v_w) // 2, by_top - 14), v_text, fill=0, font=font)
         # Category label below the bar.
         l_bbox = draw.textbbox((0, 0), label, font=font)
         l_w = l_bbox[2] - l_bbox[0]

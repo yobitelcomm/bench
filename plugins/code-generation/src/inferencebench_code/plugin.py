@@ -177,8 +177,7 @@ class CodeGenerationPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8000/v1)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8000/v1)"
             )
         if not self._dataset_path(spec).exists():
             warnings.append(f"fixture not found: {spec.dataset.path}")
@@ -257,9 +256,7 @@ class CodeGenerationPlugin:
             tests = item["tests"]
             t_arrival = time.perf_counter() * 1000.0
             try:
-                result: CompletionResult = client.complete(
-                    prompt, stream=True, max_tokens=512
-                )
+                result: CompletionResult = client.complete(prompt, stream=True, max_tokens=512)
             except Exception as exc:
                 samples.append(
                     Sample(
@@ -283,9 +280,7 @@ class CodeGenerationPlugin:
 
             extracted = extract_python_code(result.text)
             solution = _ensure_signature_present(prompt, extracted)
-            run_result: RunResult = run_unit_tests(
-                solution, tests, timeout_s=timeout_s
-            )
+            run_result: RunResult = run_unit_tests(solution, tests, timeout_s=timeout_s)
             passed_flags.append(run_result.passed)
             timeout_flags.append(run_result.timeout)
 
@@ -333,9 +328,7 @@ class CodeGenerationPlugin:
             return "timeout"
         if result.stderr.startswith("forbidden_import"):
             return result.stderr.split("\n", 1)[0]
-        last_lines = [
-            line.strip() for line in result.stderr.strip().splitlines() if line.strip()
-        ]
+        last_lines = [line.strip() for line in result.stderr.strip().splitlines() if line.strip()]
         return last_lines[-1] if last_lines else "exit_nonzero"
 
     # ------------------------------------------------------------ samples #
@@ -362,15 +355,24 @@ class CodeGenerationPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"passed":' + ("true" if passed else "false")
-                        + ',"timeout":' + ("true" if timeout_flag else "false")
-                        + ',"ttft_ms":' + _json_num(s.ttft_ms)
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"passed":'
+                        + ("true" if passed else "false")
+                        + ',"timeout":'
+                        + ("true" if timeout_flag else "false")
+                        + ',"ttft_ms":'
+                        + _json_num(s.ttft_ms)
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + duration_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + "}\n"
                     )
         except OSError:
@@ -386,7 +388,7 @@ class CodeGenerationPlugin:
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
@@ -398,10 +400,7 @@ class CodeGenerationPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
@@ -467,9 +466,7 @@ class CodeGenerationPlugin:
                 metrics["pass_at_1_p95"] = mean_pass
 
         if timeout_flags:
-            metrics["timeout_rate"] = float(sum(timeout_flags)) / float(
-                len(timeout_flags)
-            )
+            metrics["timeout_rate"] = float(sum(timeout_flags)) / float(len(timeout_flags))
 
         # Latency aggregates — useful for "quality at what cost" comparisons.
         ttft_vals = [s.ttft_ms for s in ok_samples if math.isfinite(s.ttft_ms)]
@@ -485,9 +482,7 @@ class CodeGenerationPlugin:
 
         cost_total = sum(s.cost_usd for s in ok_samples)
         if tokens_out_total and cost_total > 0:
-            metrics["cost_usd_per_million_tokens"] = (
-                cost_total / tokens_out_total
-            ) * 1e6
+            metrics["cost_usd_per_million_tokens"] = (cost_total / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
 
         builder = EnvelopeBuilder(

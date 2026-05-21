@@ -83,8 +83,10 @@ class LlamaCppEngine(Engine):
 
         system_info = payload.get("system_info")
         model_path = payload.get("model_path")
-        if isinstance(system_info, str) and system_info and (
-            "llama.cpp" in system_info or isinstance(model_path, str)
+        if (
+            isinstance(system_info, str)
+            and system_info
+            and ("llama.cpp" in system_info or isinstance(model_path, str))
         ):
             # First 60 chars of system_info is the best liveness signal
             # llama.cpp provides without a git hash. It's not a version per

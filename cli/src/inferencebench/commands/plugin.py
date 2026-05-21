@@ -107,31 +107,17 @@ def init_plugin(
     src_pkg_dir.mkdir(parents=True)
     tests_dir.mkdir(parents=True)
 
-    (target / "pyproject.toml").write_text(
-        _PYPROJECT_TEMPLATE.format(**subs), encoding="utf-8"
-    )
-    (target / "README.md").write_text(
-        _README_TEMPLATE.format(**subs), encoding="utf-8"
-    )
-    (src_pkg_dir / "__init__.py").write_text(
-        _INIT_TEMPLATE.format(**subs), encoding="utf-8"
-    )
-    (src_pkg_dir / "schemas.py").write_text(
-        _SCHEMAS_TEMPLATE.format(**subs), encoding="utf-8"
-    )
-    (src_pkg_dir / "plugin.py").write_text(
-        _PLUGIN_TEMPLATE.format(**subs), encoding="utf-8"
-    )
-    (tests_dir / "test_plugin.py").write_text(
-        _TEST_TEMPLATE.format(**subs), encoding="utf-8"
-    )
+    (target / "pyproject.toml").write_text(_PYPROJECT_TEMPLATE.format(**subs), encoding="utf-8")
+    (target / "README.md").write_text(_README_TEMPLATE.format(**subs), encoding="utf-8")
+    (src_pkg_dir / "__init__.py").write_text(_INIT_TEMPLATE.format(**subs), encoding="utf-8")
+    (src_pkg_dir / "schemas.py").write_text(_SCHEMAS_TEMPLATE.format(**subs), encoding="utf-8")
+    (src_pkg_dir / "plugin.py").write_text(_PLUGIN_TEMPLATE.format(**subs), encoding="utf-8")
+    (tests_dir / "test_plugin.py").write_text(_TEST_TEMPLATE.format(**subs), encoding="utf-8")
 
     console.print(f"[green]Scaffolded plugin[/green] [bold]{name}[/bold] at {target}")
     console.print("Next steps:")
     console.print(f"  [bold]pip install -e ./plugins/{name}[/bold]")
-    console.print(
-        f"  [bold]bench run {name}.smoke --signing-mode dev --dev-key cosign.key[/bold]"
-    )
+    console.print(f"  [bold]bench run {name}.smoke --signing-mode dev --dev-key cosign.key[/bold]")
 
 
 # --------------------------------------------------------------------------- #
@@ -532,9 +518,11 @@ def _cache_registry_path() -> Path:
 
 def _bundled_registry_text() -> str:
     """Return the registry JSON shipped inside the CLI wheel."""
-    return resources.files("inferencebench").joinpath(
-        f"data/{_REGISTRY_RESOURCE}"
-    ).read_text(encoding="utf-8")
+    return (
+        resources.files("inferencebench")
+        .joinpath(f"data/{_REGISTRY_RESOURCE}")
+        .read_text(encoding="utf-8")
+    )
 
 
 def _parse_registry(raw: str, *, source: str) -> dict[str, Any]:
@@ -658,9 +646,7 @@ def discover_plugins(
         str | None,
         typer.Option(
             "--modality",
-            help=(
-                "Filter by modality: llm, voice, code, embeddings, mt, other."
-            ),
+            help=("Filter by modality: llm, voice, code, embeddings, mt, other."),
         ),
     ] = None,
     status: Annotated[
@@ -717,14 +703,11 @@ def discover_plugins(
         raise typer.Exit(code=2)
     if status is not None and status not in _VALID_STATUSES:
         err_console.print(
-            f"[red]invalid --status:[/red] {status!r} "
-            f"(valid: {', '.join(sorted(_VALID_STATUSES))})"
+            f"[red]invalid --status:[/red] {status!r} (valid: {', '.join(sorted(_VALID_STATUSES))})"
         )
         raise typer.Exit(code=2)
     if installed and available:
-        err_console.print(
-            "[red]--installed and --available are mutually exclusive.[/red]"
-        )
+        err_console.print("[red]--installed and --available are mutually exclusive.[/red]")
         raise typer.Exit(code=2)
 
     refreshed_source: str | None = None
@@ -773,14 +756,11 @@ def discover_plugins(
         return
 
     if not filtered:
-        console.print(
-            f"[yellow]no plugins match the given filters[/yellow]  (source: {source})"
-        )
+        console.print(f"[yellow]no plugins match the given filters[/yellow]  (source: {source})")
         return
 
     title = (
-        f"InferenceBench plugin registry "
-        f"(updated {data.get('updated_iso', '?')}, source: {source})"
+        f"InferenceBench plugin registry (updated {data.get('updated_iso', '?')}, source: {source})"
     )
     table = Table(title=title, show_header=True, header_style="bold")
     table.add_column("name", style="cyan")

@@ -266,8 +266,7 @@ class LLMQualityPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8000/v1)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8000/v1)"
             )
         if not self._dataset_path(spec).exists():
             warnings.append(f"fixture not found: {spec.dataset.path}")
@@ -296,9 +295,7 @@ class LLMQualityPlugin:
                     judge_max_questions = int(raw_cap)
                 except ValueError:
                     judge_max_questions = None
-            judge_throttle = JudgeThrottle(
-                _coerce_judge_rps(context.extra.get("judge_rps"))
-            )
+            judge_throttle = JudgeThrottle(_coerce_judge_rps(context.extra.get("judge_rps")))
 
         judge_errors: list[str] = []
         judge_cost_usd: list[float] = []
@@ -378,9 +375,7 @@ class LLMQualityPlugin:
             reference = item["answer"]
             t_arrival = time.perf_counter() * 1000.0
             try:
-                result: CompletionResult = client.complete(
-                    question, stream=True, max_tokens=128
-                )
+                result: CompletionResult = client.complete(question, stream=True, max_tokens=128)
             except Exception as exc:
                 samples.append(
                     Sample(
@@ -452,9 +447,7 @@ class LLMQualityPlugin:
         return samples, scores, n_judged
 
     # ------------------------------------------------------- multi-turn #
-    def _run_multi_turn(
-        self, spec: BenchmarkSpec, context: RunContext
-    ) -> Envelope:
+    def _run_multi_turn(self, spec: BenchmarkSpec, context: RunContext) -> Envelope:
         """Execute a multi-turn persona-consistency benchmark.
 
         Each fixture row is one conversation case. We send the system prompt
@@ -473,9 +466,7 @@ class LLMQualityPlugin:
         judge_throttle: JudgeThrottle | None = None
         if spec.scoring == "judge_llm_persona":
             judge_client = self._build_judge_client(spec, context)
-            judge_throttle = JudgeThrottle(
-                _coerce_judge_rps(context.extra.get("judge_rps"))
-            )
+            judge_throttle = JudgeThrottle(_coerce_judge_rps(context.extra.get("judge_rps")))
 
         samples: list[Sample] = []
         scores: list[float] = []
@@ -490,16 +481,12 @@ class LLMQualityPlugin:
             system_prompt = str(case["system_prompt"])
             raw_markers = case["markers"]
             markers: list[str] = (
-                [str(m) for m in raw_markers]
-                if isinstance(raw_markers, list)
-                else []
+                [str(m) for m in raw_markers] if isinstance(raw_markers, list) else []
             )
             case_id = str(case.get("case_id") or f"case-{idx}")
             raw_turns = case["turns"]
             turn_questions: list[str] = (
-                [str(t) for t in raw_turns]
-                if isinstance(raw_turns, list)
-                else []
+                [str(t) for t in raw_turns] if isinstance(raw_turns, list) else []
             )
 
             t_arrival = time.perf_counter() * 1000.0
@@ -512,9 +499,7 @@ class LLMQualityPlugin:
             ok = True
             error_msg: str | None = None
             for t_idx, question in enumerate(turn_questions):
-                prompt_text = _render_multi_turn_prompt(
-                    collected_turns, question
-                )
+                prompt_text = _render_multi_turn_prompt(collected_turns, question)
                 try:
                     result: CompletionResult = client.complete(
                         prompt_text,
@@ -576,9 +561,7 @@ class LLMQualityPlugin:
                 )
                 n_judged += 1
             else:
-                persona_result = persona_consistency(
-                    collected_turns, markers=markers
-                )
+                persona_result = persona_consistency(collected_turns, markers=markers)
                 score = float(persona_result.score)
                 if persona_result.drift_first_miss_turn is not None:
                     n_drifted += 1
@@ -623,12 +606,8 @@ class LLMQualityPlugin:
             n_drifted=n_drifted,
             dataset_hash=fixture_hash,
             n_judged=n_judged if spec.scoring == "judge_llm_persona" else None,
-            judge_errors=(
-                judge_errors if spec.scoring == "judge_llm_persona" else None
-            ),
-            judge_cost_usd=(
-                judge_cost_usd if spec.scoring == "judge_llm_persona" else None
-            ),
+            judge_errors=(judge_errors if spec.scoring == "judge_llm_persona" else None),
+            judge_cost_usd=(judge_cost_usd if spec.scoring == "judge_llm_persona" else None),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -664,14 +643,22 @@ class LLMQualityPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"ttft_ms":' + _json_num(s.ttft_ms)
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_in":' + str(s.tokens_in)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"ttft_ms":'
+                        + _json_num(s.ttft_ms)
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_in":'
+                        + str(s.tokens_in)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + score_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + (',"error":' + _json_str(s.error) if s.error else "")
                         + "}\n"
                     )
@@ -679,9 +666,7 @@ class LLMQualityPlugin:
             pass  # diagnostics-only — never block the run
 
     # ---------------------------------------------------------- judge #
-    def _build_judge_client(
-        self, spec: BenchmarkSpec, context: RunContext
-    ) -> ModelClient:
+    def _build_judge_client(self, spec: BenchmarkSpec, context: RunContext) -> ModelClient:
         """Construct the judge :class:`ModelClient`.
 
         Model id precedence: spec.judge_model > extra['judge_model'] >
@@ -712,7 +697,7 @@ class LLMQualityPlugin:
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
@@ -724,10 +709,7 @@ class LLMQualityPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
@@ -754,9 +736,7 @@ class LLMQualityPlugin:
             raise ValueError(msg)
         return items
 
-    def _load_multi_turn_fixture(
-        self, spec: BenchmarkSpec
-    ) -> list[dict[str, object]]:
+    def _load_multi_turn_fixture(self, spec: BenchmarkSpec) -> list[dict[str, object]]:
         """Load and validate a multi-turn persona fixture.
 
         Expected per-row shape::
@@ -777,10 +757,7 @@ class LLMQualityPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
@@ -793,11 +770,7 @@ class LLMQualityPlugin:
                 obj = json.loads(line)
                 if not isinstance(obj, dict):
                     continue
-                if (
-                    "system_prompt" not in obj
-                    or "turns" not in obj
-                    or "markers" not in obj
-                ):
+                if "system_prompt" not in obj or "turns" not in obj or "markers" not in obj:
                     continue
                 turns_raw = obj["turns"]
                 if not isinstance(turns_raw, list):
@@ -885,9 +858,7 @@ class LLMQualityPlugin:
         judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0
         combined_cost = cost_total + judge_cost_total
         if tokens_out_total and combined_cost > 0:
-            metrics["cost_usd_per_million_tokens"] = (
-                combined_cost / tokens_out_total
-            ) * 1e6
+            metrics["cost_usd_per_million_tokens"] = (combined_cost / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
             if judge_cost_total > 0:
                 metrics["judge_cost_usd_total"] = judge_cost_total
@@ -1004,9 +975,7 @@ class LLMQualityPlugin:
         judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0
         combined_cost = cost_total + judge_cost_total
         if tokens_out_total and combined_cost > 0:
-            metrics["cost_usd_per_million_tokens"] = (
-                combined_cost / tokens_out_total
-            ) * 1e6
+            metrics["cost_usd_per_million_tokens"] = (combined_cost / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
             if judge_cost_total > 0:
                 metrics["judge_cost_usd_total"] = judge_cost_total

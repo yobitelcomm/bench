@@ -13,11 +13,7 @@ import pytest
 from PIL import Image
 
 IMAGES_DIR = (
-    Path(__file__).resolve().parents[1]
-    / "src"
-    / "inferencebench_vision"
-    / "datasets"
-    / "images"
+    Path(__file__).resolve().parents[1] / "src" / "inferencebench_vision" / "datasets" / "images"
 )
 
 EXPECTED_IMAGES = [

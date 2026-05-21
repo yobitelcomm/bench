@@ -84,9 +84,7 @@ def _build_multipart_body(
 
     def _field(name: str, value: str) -> None:
         parts.append(b"--" + boundary_b + _CRLF)
-        parts.append(
-            f'Content-Disposition: form-data; name="{name}"'.encode("ascii") + _CRLF
-        )
+        parts.append(f'Content-Disposition: form-data; name="{name}"'.encode("ascii") + _CRLF)
         parts.append(_CRLF)
         parts.append(value.encode("utf-8"))
         parts.append(_CRLF)
@@ -94,10 +92,9 @@ def _build_multipart_body(
     # file part — first so faulty servers that stream-parse see it early.
     parts.append(b"--" + boundary_b + _CRLF)
     parts.append(
-        (
-            f'Content-Disposition: form-data; name="file"; '
-            f'filename="{audio_filename}"'
-        ).encode("ascii")
+        (f'Content-Disposition: form-data; name="file"; filename="{audio_filename}"').encode(
+            "ascii"
+        )
         + _CRLF
     )
     parts.append(b"Content-Type: audio/wav" + _CRLF)

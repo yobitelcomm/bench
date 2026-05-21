@@ -46,12 +46,9 @@ def _load_envelope(uri: str) -> Envelope:
     """Load an envelope from a local path. Phase 1: local paths only."""
     if uri.startswith(("hf://", "https://", "s3://")):
         err_console.print(
-            f"[red]URI scheme not yet supported in v0.0.0:[/red] "
-            f"{uri.split('://')[0]}://"
+            f"[red]URI scheme not yet supported in v0.0.0:[/red] {uri.split('://')[0]}://"
         )
-        err_console.print(
-            "Phase 1 supports local file paths only. Download the envelope first."
-        )
+        err_console.print("Phase 1 supports local file paths only. Download the envelope first.")
         raise typer.Exit(code=2)
 
     path = Path(uri)
@@ -150,9 +147,7 @@ def _print_replay_summary(
             _fmt_metric(replay.metrics.get(key)),
         )
     console.print(metrics_table)
-    console.print(
-        "[dim]Use [bold]bench compare[/bold] for the full Pareto-aware diff.[/dim]"
-    )
+    console.print("[dim]Use [bold]bench compare[/bold] for the full Pareto-aware diff.[/dim]")
 
 
 # --------------------------------------------------------------------------- #
@@ -219,8 +214,7 @@ def replay(
         result = verify_envelope(source)
         if not result.ok:
             err_console.print(
-                f"[bold red]FAIL[/bold red] source envelope failed verification: "
-                f"{result.reason}"
+                f"[bold red]FAIL[/bold red] source envelope failed verification: {result.reason}"
             )
             err_console.print(
                 "[red]Refusing to replay an unverified envelope.[/red] "
@@ -272,9 +266,7 @@ def replay(
     try:
         engine_kind = engine_kind_cls(source.engine.name)
     except ValueError as exc:
-        err_console.print(
-            f"[red]Unknown engine in source envelope:[/red] {source.engine.name}"
-        )
+        err_console.print(f"[red]Unknown engine in source envelope:[/red] {source.engine.name}")
         raise typer.Exit(code=1) from exc
 
     output_dir = Path(output) if output else Path.cwd() / "replay-results"

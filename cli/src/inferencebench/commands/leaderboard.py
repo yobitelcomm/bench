@@ -74,9 +74,7 @@ def leaderboard(
         raise typer.Exit(code=2)
 
     if envelopes_dir is None or out_dir is None:
-        err_console.print(
-            "[red]--build requires both --envelopes <dir> and --out <dir>.[/red]"
-        )
+        err_console.print("[red]--build requires both --envelopes <dir> and --out <dir>.[/red]")
         raise typer.Exit(code=2)
     if not envelopes_dir.exists() or not envelopes_dir.is_dir():
         err_console.print(f"[red]Envelopes directory not found:[/red] {envelopes_dir}")

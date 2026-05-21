@@ -115,21 +115,16 @@ def _resolve_entries(
         )
     except ImportError as exc:
         err_console.print(
-            "[red]bench cost requires the inferencebench-llm plugin "
-            "to be installed.[/red]"
+            "[red]bench cost requires the inferencebench-llm plugin to be installed.[/red]"
         )
         err_console.print("  pip install inferencebench-llm")
         raise typer.Exit(code=2) from exc
 
-    custom_registry = (
-        _load_custom_registry(prices_file, load_pricing) if prices_file else None
-    )
+    custom_registry = _load_custom_registry(prices_file, load_pricing) if prices_file else None
     requested = _parse_providers(providers)
 
     if custom_registry is not None:
-        candidate_providers = (
-            requested if requested else sorted({p for p, _ in custom_registry})
-        )
+        candidate_providers = requested if requested else sorted({p for p, _ in custom_registry})
         entries = _lookup_in(custom_registry, candidate_providers, model)
     else:
         candidate_providers = requested if requested else all_providers()
@@ -179,9 +174,7 @@ def _render_cost_table(
     table.add_column("Provider")
     table.add_column("Input $/Mtok", justify="right")
     table.add_column("Output $/Mtok", justify="right")
-    table.add_column(
-        f"Blended ({_ratio_label(input_token_share)}) $/Mtok", justify="right"
-    )
+    table.add_column(f"Blended ({_ratio_label(input_token_share)}) $/Mtok", justify="right")
     table.add_column("Notes")
 
     for entry, blended in rows:
@@ -228,20 +221,14 @@ def _load_custom_registry(
     """Load a user-supplied pricing YAML or exit with a clear error message."""
     path = Path(prices_file)
     if not path.is_file():
-        err_console.print(
-            f"[red]--prices-file not found:[/red] {path}"
-        )
+        err_console.print(f"[red]--prices-file not found:[/red] {path}")
         raise typer.Exit(code=2)
     try:
         registry = load_pricing(path)  # type: ignore[operator]
     except (ValueError, OSError) as exc:
-        err_console.print(
-            f"[red]Failed to load --prices-file {path}:[/red] {exc}"
-        )
+        err_console.print(f"[red]Failed to load --prices-file {path}:[/red] {exc}")
         raise typer.Exit(code=2) from exc
-    err_console.print(
-        f"[yellow]Using custom pricing from {path}[/yellow]"
-    )
+    err_console.print(f"[yellow]Using custom pricing from {path}[/yellow]")
     # mypy: load_pricing is opaque here, but at runtime returns the right type.
     return registry  # type: ignore[no-any-return]
 
@@ -276,9 +263,7 @@ def _emit_not_found_bundled(
     models_for: object,  # callable provider -> list[str]
 ) -> None:
     """Render a red error + similar-model suggestions for an unknown model."""
-    err_console.print(
-        f"[red]No pricing entry found for model:[/red] [bold]{model}[/bold]"
-    )
+    err_console.print(f"[red]No pricing entry found for model:[/red] [bold]{model}[/bold]")
 
     providers_list: list[str] = all_providers()  # type: ignore[operator]
     all_models = sorted(
@@ -292,9 +277,7 @@ def _emit_not_found_custom(
     registry: dict[tuple[str, str], ModelPricing],
 ) -> None:
     """Same as :func:`_emit_not_found_bundled` but for a user-supplied registry."""
-    err_console.print(
-        f"[red]No pricing entry found for model:[/red] [bold]{model}[/bold]"
-    )
+    err_console.print(f"[red]No pricing entry found for model:[/red] [bold]{model}[/bold]")
     all_models = sorted({m for _, m in registry})
     _print_suggestions(model, all_models)
 
@@ -306,9 +289,7 @@ def _print_suggestions(model: str, all_models: list[str]) -> None:
         for s in suggestions:
             err_console.print(f"  • {s}")
     else:
-        err_console.print(
-            "[yellow]Registered models:[/yellow] " + ", ".join(all_models)
-        )
+        err_console.print("[yellow]Registered models:[/yellow] " + ", ".join(all_models))
 
 
 def _run_validate_prices(prices_file: str) -> None:
@@ -320,9 +301,7 @@ def _run_validate_prices(prices_file: str) -> None:
     try:
         from inferencebench_llm.pricing import validate_pricing_file
     except ImportError as exc:
-        err_console.print(
-            "[red]--validate-prices requires the inferencebench-llm plugin.[/red]"
-        )
+        err_console.print("[red]--validate-prices requires the inferencebench-llm plugin.[/red]")
         raise typer.Exit(code=2) from exc
 
     path = Path(prices_file)
@@ -336,19 +315,13 @@ def _run_validate_prices(prices_file: str) -> None:
         raise typer.Exit(code=1) from exc
 
     if stats.skipped == 0 and stats.valid > 0:
-        console.print(
-            f"[green]{stats.valid} entries valid, {stats.skipped} skipped[/green]"
-        )
+        console.print(f"[green]{stats.valid} entries valid, {stats.skipped} skipped[/green]")
         return
 
     if stats.valid == 0:
-        err_console.print(
-            f"[red]{stats.valid} entries valid, {stats.skipped} skipped[/red]"
-        )
+        err_console.print(f"[red]{stats.valid} entries valid, {stats.skipped} skipped[/red]")
     else:
-        err_console.print(
-            f"[yellow]{stats.valid} entries valid, {stats.skipped} skipped[/yellow]"
-        )
+        err_console.print(f"[yellow]{stats.valid} entries valid, {stats.skipped} skipped[/yellow]")
     for err in stats.errors:
         err_console.print(f"  • {err}")
     raise typer.Exit(code=1)

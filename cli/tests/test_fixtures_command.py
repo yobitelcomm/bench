@@ -87,7 +87,7 @@ def test_fixtures_fetch_writes_jsonl_and_shows_cached(
     rows: list[dict[str, object]] = [
         {
             "task_id": "HumanEval/0",
-            "prompt": "def add(a, b):\n    \"\"\"add a and b\"\"\"\n",
+            "prompt": 'def add(a, b):\n    """add a and b"""\n',
             "test": "def check(c): assert c(1,2) == 3",
             "canonical_solution": "    return a + b",
             "entry_point": "add",

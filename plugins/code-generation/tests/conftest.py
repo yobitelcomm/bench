@@ -24,7 +24,9 @@ def make_mock_modelclient(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None
     Usage::
 
         def test_x(make_mock_modelclient):
-            make_mock_modelclient(lambda prompt: "```python\\ndef add(a, b):\\n    return a + b\\n```")
+            make_mock_modelclient(
+                lambda prompt: "```python\\ndef add(a, b):\\n    return a + b\\n```"
+            )
 
     The factory takes a ``prompt -> text`` callable. Timings, tokens, and cost
     are deterministic (5 ms TTFT, 25 ms total, 16 tokens in, 64 tokens out, $0).

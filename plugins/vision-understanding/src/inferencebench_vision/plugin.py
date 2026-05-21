@@ -150,8 +150,7 @@ class VisionUnderstandingPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8000/v1)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8000/v1)"
             )
         if not self._dataset_path(spec).exists():
             warnings.append(f"fixture not found: {spec.dataset.path}")
@@ -341,14 +340,22 @@ class VisionUnderstandingPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"ttft_ms":' + _json_num(s.ttft_ms)
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_in":' + str(s.tokens_in)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"ttft_ms":'
+                        + _json_num(s.ttft_ms)
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_in":'
+                        + str(s.tokens_in)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + score_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + (',"error":' + _json_str(s.error) if s.error else "")
                         + "}\n"
                     )
@@ -356,9 +363,7 @@ class VisionUnderstandingPlugin:
             pass  # diagnostics-only — never block the run
 
     # ---------------------------------------------------------- judge #
-    def _build_judge_client(
-        self, spec: BenchmarkSpec, context: RunContext
-    ) -> ModelClient:
+    def _build_judge_client(self, spec: BenchmarkSpec, context: RunContext) -> ModelClient:
         """Construct the (text-only) judge :class:`ModelClient`.
 
         Model id precedence: spec.judge_model > extra['judge_model'] >
@@ -385,7 +390,7 @@ class VisionUnderstandingPlugin:
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
@@ -397,10 +402,7 @@ class VisionUnderstandingPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
@@ -413,11 +415,7 @@ class VisionUnderstandingPlugin:
                 obj = json.loads(line)
                 if not isinstance(obj, dict):
                     continue
-                if (
-                    "image_path" not in obj
-                    or "question" not in obj
-                    or "answer" not in obj
-                ):
+                if "image_path" not in obj or "question" not in obj or "answer" not in obj:
                     continue
                 items.append(
                     {
@@ -453,9 +451,7 @@ class VisionUnderstandingPlugin:
         n_ok = len(ok_samples)
         metrics["n_samples"] = float(len(samples))
         metrics["n_ok"] = float(n_ok)
-        metrics["ok_rate"] = (
-            float(n_ok) / float(len(samples)) if samples else 0.0
-        )
+        metrics["ok_rate"] = float(n_ok) / float(len(samples)) if samples else 0.0
 
         if scores:
             mean_acc = sum(scores) / len(scores)
@@ -485,9 +481,7 @@ class VisionUnderstandingPlugin:
         judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0
         combined_cost = cost_total + judge_cost_total
         if tokens_out_total and combined_cost > 0:
-            metrics["cost_usd_per_million_tokens"] = (
-                combined_cost / tokens_out_total
-            ) * 1e6
+            metrics["cost_usd_per_million_tokens"] = (combined_cost / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
             if judge_cost_total > 0:
                 metrics["judge_cost_usd_total"] = judge_cost_total

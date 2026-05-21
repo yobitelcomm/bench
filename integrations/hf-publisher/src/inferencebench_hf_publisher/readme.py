@@ -102,9 +102,7 @@ def _hardware_class(envelope: Envelope) -> str:
 
 def _frontmatter(envelope: Envelope, *, signature_verified: bool) -> str:
     """Render the YAML frontmatter block (without surrounding ``---`` markers)."""
-    rekor_log_index = (
-        envelope.signature.rekor_log_index if envelope.signature is not None else -1
-    )
+    rekor_log_index = envelope.signature.rekor_log_index if envelope.signature is not None else -1
     tags = _frontmatter_tags(envelope)
     tag_lines = "\n".join(f"- {tag}" for tag in tags)
     return (
@@ -143,12 +141,8 @@ def render_envelope_readme(envelope: Envelope) -> str:
     Returns:
         Markdown source ready to be uploaded as ``README.md`` to the dataset repo.
     """
-    signature_verified = (
-        envelope.signature is not None and envelope.signature.rekor_log_index >= 0
-    )
-    rekor_log_index = (
-        envelope.signature.rekor_log_index if envelope.signature is not None else -1
-    )
+    signature_verified = envelope.signature is not None and envelope.signature.rekor_log_index >= 0
+    rekor_log_index = envelope.signature.rekor_log_index if envelope.signature is not None else -1
 
     hw = envelope.hardware_fingerprint
     gpu_model = hw.gpus[0].model if hw.gpus else "cpu-only"
@@ -165,9 +159,7 @@ def render_envelope_readme(envelope: Envelope) -> str:
     if not metric_rows:
         metric_rows.append("| (no metrics emitted) | — | — |")
 
-    suite_methodology_url = (
-        f"https://yobitelcomm.github.io/bench/suites/{envelope.suite_id}"
-    )
+    suite_methodology_url = f"https://yobitelcomm.github.io/bench/suites/{envelope.suite_id}"
 
     frontmatter = _frontmatter(envelope, signature_verified=signature_verified)
 

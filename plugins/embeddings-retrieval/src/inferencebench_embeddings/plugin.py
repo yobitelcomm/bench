@@ -60,9 +60,7 @@ def _fixtures_cache_root() -> Path:
     return Path.home() / ".cache" / "inferencebench" / "fixtures"
 
 
-def _compute_fixture_hash(
-    queries: list[dict[str, object]], corpus: list[dict[str, str]]
-) -> str:
+def _compute_fixture_hash(queries: list[dict[str, object]], corpus: list[dict[str, str]]) -> str:
     """SHA-256 over the canonical-JSON-encoded queries + corpus."""
     canonical = json.dumps(
         {"queries": queries, "corpus": corpus},
@@ -139,8 +137,7 @@ class EmbeddingsRetrievalPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8080)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8080)"
             )
         if not self._queries_path(spec).exists():
             warnings.append(f"queries fixture not found: {spec.dataset.path}")
@@ -240,13 +237,20 @@ class EmbeddingsRetrievalPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_in":' + str(s.tokens_in)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_in":'
+                        + str(s.tokens_in)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + score_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + "}\n"
                     )
         except OSError:
@@ -262,13 +266,13 @@ class EmbeddingsRetrievalPlugin:
     def _queries_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _corpus_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.corpus_path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:

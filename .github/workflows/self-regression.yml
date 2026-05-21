@@ -23,10 +23,11 @@ jobs:
       - name: Sync workspace
         run: uv sync --all-packages --dev --prerelease=allow
       - name: Generate dev key
+        # .pub is committed but .key is gitignored; force=True regenerates the pair.
         run: |
           mkdir -p .bench
           if [ ! -f .bench/cosign.key ]; then
-            uv run python -c "from inferencebench.envelope import generate_dev_keypair; generate_dev_keypair('.bench/cosign.key')"
+            uv run python -c "from inferencebench.envelope import generate_dev_keypair; generate_dev_keypair('.bench/cosign.key', force=True)"
           fi
       - name: Run self-regression bench
         run: |
@@ -35,10 +36,18 @@ jobs:
             --output .bench/results \
             --dev-key .bench/cosign.key
       - name: Diff against baseline
+        # --strict only when hardware fingerprint matches; cross-hardware diffs are informational.
         run: |
           NEW=$(ls -t .bench/results/*.json | head -1)
           if [ -f .bench/baseline.json ]; then
-            uv run bench diff .bench/baseline.json "$NEW" --strict --tolerance 0.10
+            BASELINE_FP=$(uv run python -c "import json; print(json.load(open('.bench/baseline.json'))['hardware_fingerprint']['fingerprint_sha256'])")
+            NEW_FP=$(uv run python -c "import json,sys; print(json.load(open(sys.argv[1]))['hardware_fingerprint']['fingerprint_sha256'])" "$NEW")
+            if [ "$BASELINE_FP" = "$NEW_FP" ]; then
+              uv run bench diff .bench/baseline.json "$NEW" --strict --tolerance 0.10
+            else
+              echo "::warning::baseline hardware (${BASELINE_FP:0:12}) differs from runner (${NEW_FP:0:12}); diff is informational"
+              uv run bench diff .bench/baseline.json "$NEW" --tolerance 0.10
+            fi
           else
             echo "::warning::no baseline at .bench/baseline.json — promoting current run"
             cp "$NEW" .bench/baseline.json

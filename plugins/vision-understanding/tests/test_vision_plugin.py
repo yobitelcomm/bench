@@ -201,9 +201,7 @@ def test_run_produces_signed_envelope_with_high_accuracy(
     assert envelope.metrics.get("accuracy_p50") is not None
 
 
-def test_run_partial_accuracy_with_mixed_answers(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_partial_accuracy_with_mixed_answers(make_mock_modelclient, tmp_path: Path) -> None:
     """First 3 rows answered correctly, last 2 wrong → accuracy = 0.6."""
     answers = _ocr_answers()
     correct_files = ["ocr-01.png", "ocr-02.png", "ocr-03.png"]
@@ -239,9 +237,7 @@ def test_run_partial_accuracy_with_mixed_answers(
     assert envelope.metrics.get("ok_rate") == 1.0
 
 
-def test_run_writes_samples_jsonl(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_writes_samples_jsonl(make_mock_modelclient, tmp_path: Path) -> None:
     make_mock_modelclient(lambda _image, _question: "april 17")
 
     private_key_path = tmp_path / "cosign.key"
@@ -267,9 +263,7 @@ def test_run_writes_samples_jsonl(
     assert len(lines) == 5  # one per fixture row
 
 
-def test_run_envelope_accepted_by_bench_summary(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_envelope_accepted_by_bench_summary(make_mock_modelclient, tmp_path: Path) -> None:
     """End-to-end: write the envelope JSON to a tmp dir, run ``bench summary``."""
     answers = _ocr_answers()
 

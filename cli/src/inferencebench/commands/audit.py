@@ -158,8 +158,7 @@ def _print_table(rows: list[dict[str, Any]], path: Path) -> None:
     console.print(table)
     n_ok = sum(1 for r in rows if r["ok"])
     console.print(
-        f"[bold]{n_ok}[/bold] / {len(rows)} envelopes verified "
-        f"({len(rows) - n_ok} failed)"
+        f"[bold]{n_ok}[/bold] / {len(rows)} envelopes verified ({len(rows) - n_ok} failed)"
     )
 
 

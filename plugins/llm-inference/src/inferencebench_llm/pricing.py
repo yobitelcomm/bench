@@ -237,28 +237,20 @@ def _load_bundled() -> dict[tuple[str, str], ModelPricing]:
         resource = files("inferencebench_llm") / "prices.yaml"
         with as_file(resource) as path:
             if not path.is_file():
-                logger.warning(
-                    "Bundled prices.yaml missing; using _BUILTIN_FALLBACK"
-                )
+                logger.warning("Bundled prices.yaml missing; using _BUILTIN_FALLBACK")
                 return dict(_BUILTIN_FALLBACK)
             text = path.read_text(encoding="utf-8")
     except (FileNotFoundError, ModuleNotFoundError, OSError) as exc:
-        logger.warning(
-            "Could not read bundled prices.yaml (%s); using _BUILTIN_FALLBACK", exc
-        )
+        logger.warning("Could not read bundled prices.yaml (%s); using _BUILTIN_FALLBACK", exc)
         return dict(_BUILTIN_FALLBACK)
     try:
         payload = yaml.safe_load(text)
     except yaml.YAMLError as exc:
-        logger.warning(
-            "Bundled prices.yaml is malformed (%s); using _BUILTIN_FALLBACK", exc
-        )
+        logger.warning("Bundled prices.yaml is malformed (%s); using _BUILTIN_FALLBACK", exc)
         return dict(_BUILTIN_FALLBACK)
     registry, _stats = _build_registry_from_yaml(payload, source="<bundled prices.yaml>")
     if not registry:
-        logger.warning(
-            "Bundled prices.yaml produced an empty registry; using _BUILTIN_FALLBACK"
-        )
+        logger.warning("Bundled prices.yaml produced an empty registry; using _BUILTIN_FALLBACK")
         return dict(_BUILTIN_FALLBACK)
     return registry
 

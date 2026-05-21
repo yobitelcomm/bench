@@ -19,6 +19,11 @@ Public API:
 from __future__ import annotations
 
 import base64
+import contextlib
+import io
+import logging
+import sys
+from collections.abc import Iterator
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -27,6 +32,54 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from inferencebench.envelope.models import Envelope
+
+# Stderr lines sigstore-python emits during normal keyless verify that look
+# alarming but are harmless for our use:
+#   * "Failed to load a trusted root key: unsupported key type: 7" — newer TUF
+#     root has key types this cryptography build doesn't support, but the OTHER
+#     trusted root keys verify the root metadata successfully.
+#   * "unsafe (no-op) verification policy used! no verification performed!" —
+#     we use UnsafeNoOp deliberately and enforce signer_identity/signer_issuer
+#     ourselves on the returned VerificationResult. The wording is sigstore's,
+#     not ours; it scares first-time users into thinking nothing was checked.
+# We filter exactly these lines and re-emit everything else, so a future genuine
+# sigstore warning is still surfaced.
+_SIGSTORE_STDERR_NOISE = (
+    "Failed to load a trusted root key: unsupported key type:",
+    "unsafe (no-op) verification policy used! no verification performed!",
+)
+
+# Loggers that emit "Key <hex> failed to verify root" at WARNING during TUF
+# root metadata loading. Each one keeps trying the next root key until enough
+# verify; the failures are expected, not an error.
+_SIGSTORE_NOISY_LOGGERS = ("tuf", "securesystemslib", "sigstore")
+
+
+@contextlib.contextmanager
+def _quiet_sigstore_chatter() -> Iterator[None]:
+    """Silence sigstore-python's known-harmless verify chatter for the duration of a block.
+
+    Captures sys.stderr, filters known-harmless lines, re-emits anything else.
+    Also temporarily raises the level on python-tuf / securesystemslib /
+    sigstore loggers from WARNING to ERROR so the "Key <hex> failed to verify
+    root" log lines don't reach the terminal during normal TUF root loading.
+    """
+    buf = io.StringIO()
+    saved_levels: dict[str, int] = {}
+    for name in _SIGSTORE_NOISY_LOGGERS:
+        logger = logging.getLogger(name)
+        saved_levels[name] = logger.level
+        logger.setLevel(logging.ERROR)
+    try:
+        with contextlib.redirect_stderr(buf):
+            yield
+    finally:
+        for name, lvl in saved_levels.items():
+            logging.getLogger(name).setLevel(lvl)
+        for line in buf.getvalue().splitlines():
+            if any(noise in line for noise in _SIGSTORE_STDERR_NOISE):
+                continue
+            sys.stderr.write(line + "\n")
 
 
 @dataclass(frozen=True, slots=True)
@@ -219,15 +272,16 @@ def _verify_keyless(envelope: Envelope) -> VerificationResult:
     content_hash = envelope.content_hash().encode("utf-8")
 
     try:
-        verifier = Verifier.production()
         # Permissive identity policy at this layer: UnsafeNoOp accepts any
         # signer. Callers enforce who-signed constraints by inspecting
         # ``VerificationResult.signer_identity`` / ``signer_issuer`` after
         # this returns ``ok=True``. Production callers MUST check those
         # fields against an allow-list — accepting any signer here is a
         # security bug at the consumer layer.
-        policy = UnsafeNoOp()
-        verifier.verify_artifact(content_hash, bundle, policy)
+        with _quiet_sigstore_chatter():
+            verifier = Verifier.production()
+            policy = UnsafeNoOp()
+            verifier.verify_artifact(content_hash, bundle, policy)
     except Exception as exc:
         return VerificationResult(
             ok=False,
@@ -294,11 +348,7 @@ def _extract_signer_identity(cert: object) -> tuple[str, str]:
                 # The .8 OID is ASN.1 UTF8String-encoded: tag 0x0c, length
                 # byte, then the actual string. Strip the leading 2 bytes if
                 # they look like a UTF8String header.
-                if (
-                    len(raw_s) >= 2
-                    and ord(raw_s[0]) == 0x0C
-                    and ord(raw_s[1]) == len(raw_s) - 2
-                ):
+                if len(raw_s) >= 2 and ord(raw_s[0]) == 0x0C and ord(raw_s[1]) == len(raw_s) - 2:
                     raw_s = raw_s[2:]
                 issuer = raw_s
                 break

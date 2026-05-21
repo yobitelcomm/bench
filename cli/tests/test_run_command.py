@@ -173,9 +173,7 @@ def test_run_help_lists_judge_flags() -> None:
     assert "--judge-max-questions" in result.stdout
 
 
-def _capture_extra_via_fake_run(
-    monkeypatch: pytest.MonkeyPatch, captured: dict[str, Any]
-) -> None:
+def _capture_extra_via_fake_run(monkeypatch: pytest.MonkeyPatch, captured: dict[str, Any]) -> None:
     """Patch the llm-inference plugin so we can inspect ``ctx.extra``.
 
     The plugin discovery path goes through the real entry-point registry;

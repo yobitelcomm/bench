@@ -65,9 +65,7 @@ class HTTPStubServer:
         # ``threading.Lock`` is enough — request volume in tests is low and
         # contention is bounded by the single ServeThread we spawn.
         self._lock = threading.Lock()
-        self.routes: dict[
-            tuple[str, str], tuple[int, dict[str, str], bytes]
-        ] = {}
+        self.routes: dict[tuple[str, str], tuple[int, dict[str, str], bytes]] = {}
         self.requests: list[tuple[str, str, bytes]] = []
         self._server: ThreadingHTTPServer | None = None
         self._thread: threading.Thread | None = None
@@ -131,9 +129,7 @@ class HTTPStubServer:
         with self._lock:
             self.requests.append((method, path, body))
 
-    def _lookup_route(
-        self, method: str, path: str
-    ) -> tuple[int, dict[str, str], bytes] | None:
+    def _lookup_route(self, method: str, path: str) -> tuple[int, dict[str, str], bytes] | None:
         with self._lock:
             return self.routes.get((method.upper(), path))
 
@@ -249,8 +245,7 @@ def _llamacpp_routes() -> list[tuple[str, str, int, dict[str, str], dict[str, An
             {},
             {
                 "system_info": (
-                    "llama.cpp AVX2 1 | AVX_VNNI 0 | AVX512 0 | AVX512_VBMI 0 | "
-                    "BUILD_TIME 2026-04"
+                    "llama.cpp AVX2 1 | AVX_VNNI 0 | AVX512 0 | AVX512_VBMI 0 | BUILD_TIME 2026-04"
                 ),
                 "model_path": "/models/foo.gguf",
                 "n_ctx": 4096,

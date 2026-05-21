@@ -83,8 +83,7 @@ def server(
     actual_host = address[0] if isinstance(address[0], str) else address[0].decode()
     actual_port = address[1]
     console.print(
-        f"[bold green]bench server[/bold green] listening on "
-        f"http://{actual_host}:{actual_port}"
+        f"[bold green]bench server[/bold green] listening on http://{actual_host}:{actual_port}"
     )
     console.print(f"  store:           {store.resolve()}")
     pub_label = (
@@ -193,8 +192,7 @@ class _Handler(BaseHTTPRequestHandler):
         """
         status = args[1] if len(args) > 1 else "?"
         sys.stderr.write(
-            f"[bench server] {self.address_string()} - "
-            f"{self.command} {self.path} -> {status}\n"
+            f"[bench server] {self.address_string()} - {self.command} {self.path} -> {status}\n"
         )
         sys.stderr.flush()
 
@@ -279,9 +277,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             length = int(length_header or "0")
         except ValueError:
-            self._send_json(
-                HTTPStatus.BAD_REQUEST, {"error": "invalid Content-Length"}
-            )
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": "invalid Content-Length"})
             return
         if length <= 0:
             self._send_json(HTTPStatus.BAD_REQUEST, {"error": "empty body"})
@@ -292,9 +288,7 @@ class _Handler(BaseHTTPRequestHandler):
         try:
             parsed = json.loads(raw_body.decode("utf-8"))
         except (json.JSONDecodeError, UnicodeDecodeError) as exc:
-            self._send_json(
-                HTTPStatus.BAD_REQUEST, {"error": f"invalid JSON: {exc}"}
-            )
+            self._send_json(HTTPStatus.BAD_REQUEST, {"error": f"invalid JSON: {exc}"})
             return
 
         try:
@@ -321,17 +315,14 @@ class _Handler(BaseHTTPRequestHandler):
                 HTTPStatus.UNAUTHORIZED,
                 {
                     "error": (
-                        "server has no --dev-public-key configured; "
-                        "dev-key envelopes are rejected"
+                        "server has no --dev-public-key configured; dev-key envelopes are rejected"
                     )
                 },
             )
             return
 
         try:
-            result = verify_envelope(
-                envelope, dev_public_key_path=self.server.dev_public_key
-            )
+            result = verify_envelope(envelope, dev_public_key_path=self.server.dev_public_key)
         except (ValueError, OSError) as exc:
             self._send_json(
                 HTTPStatus.UNAUTHORIZED,

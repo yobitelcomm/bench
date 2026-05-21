@@ -24,9 +24,7 @@ from inferencebench_quality.scoring import (
 class _StubJudgeClient:
     """Minimal ``ModelClient`` stand-in returning a canned text reply."""
 
-    def __init__(
-        self, reply: str = "5", *, raises: Exception | None = None
-    ) -> None:
+    def __init__(self, reply: str = "5", *, raises: Exception | None = None) -> None:
         self.reply = reply
         self.raises = raises
         self.prompts: list[str] = []

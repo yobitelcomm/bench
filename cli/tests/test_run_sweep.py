@@ -92,9 +92,7 @@ def _install_fake_run(
 # --------------------------------------------------------------------------- #
 # Tests                                                                       #
 # --------------------------------------------------------------------------- #
-def test_sweep_dispatches_per_point(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_sweep_dispatches_per_point(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """`--sweep 1,2` runs the benchmark twice and writes two envelopes."""
     dev_key = _dev_key(tmp_path)
     calls = _install_fake_run(monkeypatch)
@@ -162,9 +160,7 @@ def test_sweep_single_point_still_uses_sweep_path(
     assert files[0].startswith("c4-"), files
 
 
-def test_rps_sweep_dispatches_per_point(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_rps_sweep_dispatches_per_point(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """`--rps-sweep 1,2` runs twice with open_loop driver."""
     dev_key = _dev_key(tmp_path)
     calls = _install_fake_run(monkeypatch)
@@ -323,9 +319,7 @@ def test_invalid_rps_sweep_value_errors_gracefully(tmp_path: Path) -> None:
     assert "invalid" in combined.lower()
 
 
-def test_sweep_writes_n_envelopes(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_sweep_writes_n_envelopes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """N points → N envelope files in the output directory."""
     dev_key = _dev_key(tmp_path)
     _install_fake_run(monkeypatch)
@@ -365,9 +359,7 @@ def test_sweep_help_lists_new_flags() -> None:
         assert flag in result.stdout, f"missing flag: {flag}"
 
 
-def test_sweep_failure_exits_nonzero(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_sweep_failure_exits_nonzero(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """If any sweep point throws, the command exits 1 after running the rest."""
     dev_key = _dev_key(tmp_path)
     calls = _install_fake_run(monkeypatch, fail_points=("4",))
@@ -402,9 +394,7 @@ def test_sweep_failure_exits_nonzero(
     assert any(f.startswith("c16-") for f in files), files
 
 
-def test_sweep_low_ok_rate_exits_nonzero(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_sweep_low_ok_rate_exits_nonzero(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """If any point's ok_rate < 0.95 the command exits 1."""
     dev_key = _dev_key(tmp_path)
     _install_fake_run(monkeypatch, ok_rate=0.5)

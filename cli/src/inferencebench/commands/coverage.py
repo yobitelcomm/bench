@@ -184,9 +184,7 @@ def _build_rows(
         else:
             _, expected = resolved
         found, missing = _split_present_missing(env, expected)
-        coverage_pct = (
-            100.0 * len(found) / len(expected) if expected else 100.0
-        )
+        coverage_pct = 100.0 * len(found) / len(expected) if expected else 100.0
         rows.append(
             {
                 "filename": path.name,
@@ -203,9 +201,7 @@ def _build_rows(
     return rows
 
 
-def _split_present_missing(
-    env: Envelope, expected: tuple[str, ...]
-) -> tuple[list[str], list[str]]:
+def _split_present_missing(env: Envelope, expected: tuple[str, ...]) -> tuple[list[str], list[str]]:
     """Bucket ``expected`` into (present-and-non-None, missing-or-None)."""
     found: list[str] = []
     missing: list[str] = []

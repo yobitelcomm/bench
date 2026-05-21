@@ -72,9 +72,7 @@ def test_render_site_empty_dir(tmp_path: Path) -> None:
     assert (out / "index.html").exists()
 
 
-def test_category_page_contains_filter_input(
-    envelope_corpus: Path, tmp_path: Path
-) -> None:
+def test_category_page_contains_filter_input(envelope_corpus: Path, tmp_path: Path) -> None:
     """Rendered category page exposes the client-side filter input + script."""
     out = tmp_path / "site"
     render_site(envelope_corpus, out)
@@ -83,7 +81,7 @@ def test_category_page_contains_filter_input(
     # JS executes; filter.js attaches the input event handler.
     assert 'class="ib-filter"' in llm
     assert 'type="search"' in llm
-    assert 'static/filter.js' in llm
+    assert "static/filter.js" in llm
 
 
 def test_filter_js_written_to_disk(envelope_corpus: Path, tmp_path: Path) -> None:
