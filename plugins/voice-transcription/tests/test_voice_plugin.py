@@ -232,7 +232,7 @@ def test_run_librispeech_mini_with_whisper_style_hypothesis_yields_zero_wer(
         "ls-001.wav": "Inquired Shaggy, in the metal forest.",
         "ls-002.wav": "As for etchings, they are of two kinds, British and foreign.",
         "ls-003.wav": "He eats and sleeps very steadily, replied the new king.",
-        "ls-004.wav": "I hope he doesn’t work too hard, said Shaggy.",
+        "ls-004.wav": "I hope he doesn’t work too hard, said Shaggy.",  # noqa: RUF001 — U+2019 is intentional, mirrors Whisper output
         "ls-005.wav": "Not exactly, returned Kaliko.",
     }
     seen = _patch_transcribe_returning(monkeypatch, whisper_style, total_ms=120.0)

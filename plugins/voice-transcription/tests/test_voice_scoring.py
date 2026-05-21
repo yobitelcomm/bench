@@ -106,7 +106,7 @@ def test_wer_handles_apostrophes_across_normalization() -> None:
     # Whisper occasionally emits Unicode right-single-quote (U+2019)
     # where the LibriSpeech reference uses ASCII apostrophe.
     ref = "I HOPE HE DOESN'T WORK TOO HARD SAID SHAGGY"
-    hyp = "I hope he doesn’t work too hard, said Shaggy."
+    hyp = "I hope he doesn’t work too hard, said Shaggy."  # noqa: RUF001 — U+2019 is intentional
     assert wer(ref, hyp) == 0.0
 
 

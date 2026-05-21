@@ -35,9 +35,7 @@ def _iter_envelopes(source_dir: Path) -> list[Path]:
     if not source_dir.exists():
         print(f"FATAL: source_dir does not exist: {source_dir}", file=sys.stderr)
         sys.exit(2)
-    files = sorted(
-        p for p in source_dir.glob("*.json") if not p.name.startswith("keyless-")
-    )
+    files = sorted(p for p in source_dir.glob("*.json") if not p.name.startswith("keyless-"))
     if not files:
         print(f"FATAL: no envelope JSONs in {source_dir}", file=sys.stderr)
         sys.exit(2)
@@ -45,7 +43,7 @@ def _iter_envelopes(source_dir: Path) -> list[Path]:
 
 
 def _sign_one(source_path: Path, out_dir: Path) -> Path | None:
-    """Sign a single envelope keyless and write the result. Returns the output path or None on failure."""
+    """Sign one envelope keyless; return the output path, or None on failure."""
     from inferencebench.envelope import Envelope, SigningMode, sign_envelope
 
     try:
@@ -74,8 +72,7 @@ def _sign_one(source_path: Path, out_dir: Path) -> Path | None:
     out_path = out_dir / f"keyless-{signed.content_hash()[:12]}.json"
     out_path.write_text(signed.model_dump_json(indent=2), encoding="utf-8")
     print(
-        f"  OK   {source_path.name} -> {out_path.name} "
-        f"rekor={signed.signature.rekor_log_index}",
+        f"  OK   {source_path.name} -> {out_path.name} rekor={signed.signature.rekor_log_index}",
         file=sys.stderr,
     )
     return out_path
@@ -116,7 +113,7 @@ def _upload_batch(target_repo: str, files: list[Path]) -> int:
                 if attempt == 2:
                     print(f"  UPLOAD FAIL {path.name}: {exc}", file=sys.stderr)
                 else:
-                    time.sleep(2 ** attempt)
+                    time.sleep(2**attempt)
     return uploaded
 
 

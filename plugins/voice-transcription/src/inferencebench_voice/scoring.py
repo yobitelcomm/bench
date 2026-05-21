@@ -18,7 +18,7 @@ import re
 # doesn't substitute against "doesn't" in the ref. Apostrophes are stripped too
 # because LibriSpeech / FLEURS references encode "doesn't" with a real
 # apostrophe but Whisper occasionally returns a Unicode curly one (U+2019).
-_PUNCT_RE = re.compile(r"[.,!?;:\"'`‘’“”()\[\]\-]+")
+_PUNCT_RE = re.compile(r"[.,!?;:\"'`‘’“”()\[\]\-]+")  # noqa: RUF001 — curly quotes are the point
 
 
 def _normalize_text(s: str) -> str:
@@ -52,8 +52,8 @@ def _levenshtein(a: list[str], b: list[str]) -> int:
         for j, bj in enumerate(b, start=1):
             cost = 0 if ai == bj else 1
             curr[j] = min(
-                prev[j] + 1,        # deletion
-                curr[j - 1] + 1,    # insertion
+                prev[j] + 1,  # deletion
+                curr[j - 1] + 1,  # insertion
                 prev[j - 1] + cost,  # substitution
             )
         prev, curr = curr, prev

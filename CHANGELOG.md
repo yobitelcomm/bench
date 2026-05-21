@@ -7,11 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- **Keyless mirror of the v0.0.2 marathon corpus is live** at
+  [huggingface.co/datasets/Yobitel/marathon-keyless-v0.0.2](https://huggingface.co/datasets/Yobitel/marathon-keyless-v0.0.2)
+  — all 50 envelopes re-signed via Sigstore keyless OIDC through the
+  [`keyless-sign-marathon.yml`](.github/workflows/keyless-sign-marathon.yml)
+  workflow. Verifiers can now anchor trust to the GitHub Actions OIDC subject
+  (`signer_identity` = the workflow file URI) instead of a human-controlled key.
+
+### Changed
+
+- `bench verify` no longer surfaces sigstore-python's TUF-root chatter and
+  `UnsafeNoOp` policy warnings on a successful verify. Two `sys.stderr` lines
+  and five `tuf`-logger lines per verify previously preceded the `OK` and
+  scared first-time users into thinking nothing was checked. They're now
+  filtered by a deny-list at the envelope module boundary; any *unknown*
+  stderr from sigstore-python still passes through so genuine future
+  warnings are not swallowed.
+
+### Fixed
+
+- CI lint, license, coverage, and gitleaks jobs (all 4 broken on `main` since
+  #3 merged). gitleaks-action@v2 swapped for the upstream Apache-2.0 binary
+  (the action started gating on a paid license); `pip-licenses` invoked via
+  `uvx` so it doesn't need to be a project dep; `--cov-branch` passed
+  explicitly so xdist workers don't mix statement and branch coverage shapes.
+
+### Pending
+
 - 8 remaining wheel uploads to PyPI (`-hf-publisher`, `-leaderboard`, `-quality`,
   `-mt`, `-code`, `-voice`, `-embeddings`, `-vision`) — pending PyPI's
   new-project-creation rate-limit refresh; ship target v0.0.3.
-- Sigstore keyless re-sign of the marathon corpus via the release.yml workflow,
-  once Trusted Publisher OIDC is configured on pypi.org.
 
 ## [0.0.2] — 2026-05-18
 
