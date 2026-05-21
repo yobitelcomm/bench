@@ -62,8 +62,7 @@ def _load_yaml(path: Path) -> dict[str, Any]:
         raise typer.Exit(code=2) from exc
     if not isinstance(raw, dict):
         err_console.print(
-            f"[red]Spec file must be a mapping at the top level, got "
-            f"{type(raw).__name__}.[/red]"
+            f"[red]Spec file must be a mapping at the top level, got {type(raw).__name__}.[/red]"
         )
         raise typer.Exit(code=2)
     return raw
@@ -89,8 +88,7 @@ def _resolve_benchmark_spec(ep: EntryPoint) -> type[BaseModel]:
         raise RuntimeError(msg) from exc
     if not isinstance(spec_cls, type) or not issubclass(spec_cls, BaseModel):
         msg = (
-            f"Plugin '{ep.name}' exposes BenchmarkSpec but it is not a "
-            "pydantic BaseModel subclass."
+            f"Plugin '{ep.name}' exposes BenchmarkSpec but it is not a pydantic BaseModel subclass."
         )
         raise RuntimeError(msg)
     return spec_cls
@@ -177,9 +175,7 @@ def validate(
         )
         raise typer.Exit(code=1)
 
-    console.print(
-        "[green]ok[/green] spec validates under at least one plugin schema."
-    )
+    console.print("[green]ok[/green] spec validates under at least one plugin schema.")
 
 
 # --------------------------------------------------------------------------- #
@@ -282,9 +278,7 @@ def lint(
     console.print(table)
 
 
-def _collect_lint_warnings(
-    spec: BaseModel | None, raw: dict[str, Any]
-) -> list[tuple[str, str]]:
+def _collect_lint_warnings(spec: BaseModel | None, raw: dict[str, Any]) -> list[tuple[str, str]]:
     """Return ``(check_name, warning)`` pairs for every soft heuristic that fires.
 
     Reads from the parsed spec when available (so we benefit from pydantic's

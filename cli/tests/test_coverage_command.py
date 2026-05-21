@@ -90,9 +90,7 @@ def test_coverage_missing_three_metrics_reports_correct_counts(
     # Below the default 0.8 threshold (12/15 = 80% exactly) only if we drop
     # one more — but at exactly 80% the gate should *not* fire. To make the
     # exit-1 assertion deterministic we use a higher threshold here.
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--threshold", "0.95"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--threshold", "0.95"])
     assert result.exit_code == 1, result.output
     assert "partial.json" in result.output
     assert "80.0%" in result.output
@@ -143,9 +141,7 @@ def test_coverage_json_emits_structured_form(tmp_path: Path) -> None:
         suite_id="llm.inference.sharegpt-v3",
         metrics=metrics,
     )
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert "envelopes" in payload
@@ -190,9 +186,7 @@ def test_coverage_sorts_rows_worst_first(tmp_path: Path) -> None:
         metrics=bad,
         run_id="01934567-89ab-7000-8000-0000000000a2",
     )
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--threshold", "0.0"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--threshold", "0.0"])
     assert result.exit_code == 0, result.output
     bad_idx = result.output.find("bad.json")
     good_idx = result.output.find("good.json")
@@ -208,9 +202,7 @@ def test_coverage_unknown_suite_id_has_empty_expected(tmp_path: Path) -> None:
         suite_id="alien.suite.foo",
         metrics={"some_metric": 1.0},
     )
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     [row] = payload["envelopes"]
@@ -233,9 +225,7 @@ def test_coverage_skips_invalid_envelopes(tmp_path: Path) -> None:
         metrics=_full_llm_inference_metrics(),
     )
     (tmp_path / "junk.json").write_text(json.dumps({"hello": "world"}))
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     filenames = [r["filename"] for r in payload["envelopes"]]
@@ -259,9 +249,7 @@ def test_coverage_voice_suite_uses_voice_expected_metrics(tmp_path: Path) -> Non
         suite_id="voice.transcription.long-form",
         metrics=full_voice,
     )
-    result = runner.invoke(
-        app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"]
-    )
+    result = runner.invoke(app, ["coverage", str(tmp_path), "--json", "--threshold", "0.0"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     [row] = payload["envelopes"]

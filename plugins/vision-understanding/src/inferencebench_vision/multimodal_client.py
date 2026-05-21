@@ -55,9 +55,7 @@ def _encode_data_url(image_path: Path) -> str:
     return f"data:{mime};base64,{b64}"
 
 
-def build_multimodal_messages(
-    image_path: Path, question: str
-) -> list[dict[str, Any]]:
+def build_multimodal_messages(image_path: Path, question: str) -> list[dict[str, Any]]:
     """Build the OpenAI-style multimodal ``messages`` payload.
 
     Exposed as a free function (rather than tucked inside the client) so the
@@ -143,12 +141,8 @@ class MultimodalClient:
             raise ClientError(msg) from exc
 
         usage = getattr(response, "usage", None)
-        provider_tokens_in = (
-            getattr(usage, "prompt_tokens", None) if usage else None
-        )
-        provider_tokens_out = (
-            getattr(usage, "completion_tokens", None) if usage else None
-        )
+        provider_tokens_in = getattr(usage, "prompt_tokens", None) if usage else None
+        provider_tokens_out = getattr(usage, "completion_tokens", None) if usage else None
         provider_cost = getattr(response, "_hidden_params", {}).get("response_cost")
 
         total_ms = (t1 - t0) * 1000.0

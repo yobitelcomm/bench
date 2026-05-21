@@ -33,9 +33,7 @@ SECTION_RE = re.compile(
 )
 
 
-def extract_section(
-    changelog_text: str, version: str | None
-) -> tuple[str, str]:
+def extract_section(changelog_text: str, version: str | None) -> tuple[str, str]:
     """Return ``(resolved_version, section_markdown)`` for the requested version.
 
     If ``version`` is None, return the latest non-Unreleased entry.
@@ -70,8 +68,7 @@ def extract_section(
                 if m.group("version").strip().lower() != "unreleased"
             )
             msg = (
-                f"version {version!r} not found in CHANGELOG.md. "
-                f"Available: {available or '(none)'}"
+                f"version {version!r} not found in CHANGELOG.md. Available: {available or '(none)'}"
             )
             raise ValueError(msg)
 
@@ -80,9 +77,7 @@ def extract_section(
 
     # Body runs from the end of this header line up to the next ``## [...]``.
     body_start = target.end()
-    next_section = next(
-        (m for m in matches if m.start() > target.start()), None
-    )
+    next_section = next((m for m in matches if m.start() > target.start()), None)
     body_end = next_section.start() if next_section is not None else len(changelog_text)
     body = changelog_text[body_start:body_end].strip("\n")
 
@@ -106,8 +101,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         prog="release_notes.py",
         description=(
-            "Extract a single version's section from CHANGELOG.md as "
-            "GitHub-Release-ready markdown."
+            "Extract a single version's section from CHANGELOG.md as GitHub-Release-ready markdown."
         ),
     )
     parser.add_argument(

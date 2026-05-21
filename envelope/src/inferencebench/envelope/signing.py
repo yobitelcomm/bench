@@ -59,9 +59,7 @@ class EnvelopeAlreadySignedError(SigningError):
 # --------------------------------------------------------------------------- #
 # Dev-key keypair management                                                  #
 # --------------------------------------------------------------------------- #
-def generate_dev_keypair(
-    private_key_path: Path | str, *, force: bool = False
-) -> tuple[Path, Path]:
+def generate_dev_keypair(private_key_path: Path | str, *, force: bool = False) -> tuple[Path, Path]:
     """Generate an ed25519 keypair for dev-mode signing.
 
     Writes the private key (PEM, unencrypted) to ``private_key_path`` and the

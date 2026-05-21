@@ -303,9 +303,7 @@ def bundle_create(
     bundle_path = out if out is not None else Path.cwd() / f"{content_hash[:12]}.bundle.zip"
     bundle_path.parent.mkdir(parents=True, exist_ok=True)
 
-    sample_files: list[Path] = (
-        _matching_samples(envelope_path) if include_samples else []
-    )
+    sample_files: list[Path] = _matching_samples(envelope_path) if include_samples else []
 
     sig_info = _signature_info(envelope)
 
@@ -335,9 +333,7 @@ def bundle_create(
 
         if include_public_key is not None:
             if not include_public_key.exists():
-                err_console.print(
-                    f"[red]Public key not found:[/red] {include_public_key}"
-                )
+                err_console.print(f"[red]Public key not found:[/red] {include_public_key}")
                 raise typer.Exit(code=2)
             zf.writestr("cosign.pub", include_public_key.read_bytes())
             files_in_zip.append("cosign.pub")
@@ -397,9 +393,7 @@ def bundle_extract(
         raise typer.Exit(code=2)
 
     try:
-        envelope = Envelope.model_validate(
-            json.loads(envelope_path.read_text(encoding="utf-8"))
-        )
+        envelope = Envelope.model_validate(json.loads(envelope_path.read_text(encoding="utf-8")))
     except Exception as exc:
         err_console.print(f"[red]Envelope schema validation failed:[/red] {exc}")
         raise typer.Exit(code=2) from exc

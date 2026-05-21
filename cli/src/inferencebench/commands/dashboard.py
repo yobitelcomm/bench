@@ -67,9 +67,7 @@ def dashboard(
 ) -> None:
     """Serve the leaderboard over HTTP with live rescanning of envelopes."""
     if not envelopes_dir.exists() or not envelopes_dir.is_dir():
-        err_console.print(
-            f"[red]Envelopes directory not found:[/red] {envelopes_dir}"
-        )
+        err_console.print(f"[red]Envelopes directory not found:[/red] {envelopes_dir}")
         raise typer.Exit(code=2)
 
     try:
@@ -92,8 +90,7 @@ def dashboard(
     actual_port = address[1]
 
     console.print(
-        f"[bold green]bench dashboard[/bold green] listening on "
-        f"http://{actual_host}:{actual_port}"
+        f"[bold green]bench dashboard[/bold green] listening on http://{actual_host}:{actual_port}"
     )
     console.print(f"  envelopes:          {envelopes_dir.resolve()}")
     console.print(f"  rebuild_interval_s: {rebuild_interval_s}")
@@ -139,9 +136,7 @@ class _DashboardServer(ThreadingHTTPServer):
         super().__init__(server_address, handler_class)
         self.envelopes_dir: Path = envelopes_dir
         self.rebuild_interval_s: float = rebuild_interval_s
-        self._cache_root = Path(
-            tempfile.mkdtemp(prefix="bench-dashboard-")
-        )
+        self._cache_root = Path(tempfile.mkdtemp(prefix="bench-dashboard-"))
         self.cache_dir: Path = self._cache_root / "site"
         self.cache_dir.mkdir(parents=True, exist_ok=True)
         self._lock = threading.Lock()
@@ -154,9 +149,7 @@ class _DashboardServer(ThreadingHTTPServer):
         """Re-render into ``cache_dir``. Caller must hold ``self._lock``."""
         from inferencebench_leaderboard import render_site
 
-        result = render_site(
-            self.envelopes_dir, self.cache_dir, base_url="/"
-        )
+        result = render_site(self.envelopes_dir, self.cache_dir, base_url="/")
         self._last_render_monotonic = time.monotonic()
         self.last_render_iso = datetime.now(UTC).isoformat()
         self.envelopes_count = result.envelopes_loaded
@@ -248,9 +241,7 @@ class _Handler(BaseHTTPRequestHandler):
         parameter is part of the upstream contract but we render our own line.
         """
         status = args[1] if len(args) > 1 else "?"
-        sys.stderr.write(
-            f"[bench dashboard] {self.command} {self.path} {status}\n"
-        )
+        sys.stderr.write(f"[bench dashboard] {self.command} {self.path} {status}\n")
         sys.stderr.flush()
 
     # ----- routing -------------------------------------------------------- #
@@ -307,9 +298,7 @@ class _Handler(BaseHTTPRequestHandler):
             candidate = candidate / "index.html"
 
         if not candidate.is_file():
-            self._send_json(
-                HTTPStatus.NOT_FOUND, {"error": f"not found: {path}"}
-            )
+            self._send_json(HTTPStatus.NOT_FOUND, {"error": f"not found: {path}"})
             return
 
         self._send_file(HTTPStatus.OK, candidate)

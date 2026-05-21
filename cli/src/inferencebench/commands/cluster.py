@@ -190,8 +190,7 @@ def cluster_run(
         transient=False,
     ) as progress:
         task_ids = {
-            (t["name"], p): progress.add_task(f"{t['name']} c{p}", total=1)
-            for t, p in pairs
+            (t["name"], p): progress.add_task(f"{t['name']} c{p}", total=1) for t, p in pairs
         }
         for target, point in pairs:
             target_name = target["name"]
@@ -212,15 +211,11 @@ def cluster_run(
             summary_rows.append(row)
 
             if status == "skip":
-                progress.update(
-                    tid, completed=1, description=f"{target_name} c{point} skip"
-                )
+                progress.update(tid, completed=1, description=f"{target_name} c{point} skip")
                 continue
             if status == "error":
                 any_error = True
-                progress.update(
-                    tid, completed=1, description=f"{target_name} c{point} fail"
-                )
+                progress.update(tid, completed=1, description=f"{target_name} c{point} fail")
                 if not continue_on_error:
                     _print_summary_table(summary_rows)
                     raise typer.Exit(code=1)
@@ -251,15 +246,11 @@ def cluster_run(
                         )
                         post_failed += 1
 
-            progress.update(
-                tid, completed=1, description=f"{target_name} c{point} ok"
-            )
+            progress.update(tid, completed=1, description=f"{target_name} c{point} ok")
 
     _print_summary_table(summary_rows)
     if server_url:
-        console.print(
-            f"[bold]POST summary:[/bold] {posted} succeeded, {post_failed} failed."
-        )
+        console.print(f"[bold]POST summary:[/bold] {posted} succeeded, {post_failed} failed.")
 
     if not any_envelope:
         err_console.print("[red]Cluster run produced no envelopes.[/red]")
@@ -296,9 +287,7 @@ def cluster_status(
 
     entries = payload.get("entries", [])
     if not isinstance(entries, list):
-        err_console.print(
-            f"[red]Malformed response from {url}:[/red] 'entries' is not a list."
-        )
+        err_console.print(f"[red]Malformed response from {url}:[/red] 'entries' is not a list.")
         raise typer.Exit(code=1)
 
     table = Table(title=f"Envelopes @ {server_url}")
@@ -347,9 +336,7 @@ def cluster_sync(
         err_console.print(f"[red]Cannot reach {list_url}:[/red] {payload}")
         raise typer.Exit(code=1)
     if status != 200 or not isinstance(payload, dict):
-        err_console.print(
-            f"[red]Unexpected response from {list_url}:[/red] status={status}"
-        )
+        err_console.print(f"[red]Unexpected response from {list_url}:[/red] status={status}")
         raise typer.Exit(code=1)
 
     entries = payload.get("entries", [])
@@ -393,16 +380,12 @@ def cluster_sync(
             get_url = server_url.rstrip("/") + f"/envelopes/{content_hash}"
             status_one, body = _get_json(get_url)
             if status_one == 0:
-                err_console.print(
-                    f"[yellow]warning:[/yellow] could not reach {get_url}: {body}"
-                )
+                err_console.print(f"[yellow]warning:[/yellow] could not reach {get_url}: {body}")
                 failed += 1
                 progress.update(task_id, advance=1)
                 continue
             if status_one != 200 or not isinstance(body, dict):
-                err_console.print(
-                    f"[yellow]warning:[/yellow] {get_url} -> {status_one}"
-                )
+                err_console.print(f"[yellow]warning:[/yellow] {get_url} -> {status_one}")
                 failed += 1
                 progress.update(task_id, advance=1)
                 continue

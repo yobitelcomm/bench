@@ -69,8 +69,7 @@ def test_list_json_emits_documented_structure() -> None:
     assert _BUNDLED_BENCHMARKS.issubset(ids)
     # Spec dicts should include the expected canonical fields.
     sample = next(
-        b for b in plugin_entry["benchmarks"]
-        if b["benchmark_id"] == "llm.inference.sharegpt-v3"
+        b for b in plugin_entry["benchmarks"] if b["benchmark_id"] == "llm.inference.sharegpt-v3"
     )
     for key in ("modality", "kind", "dataset", "driver"):
         assert key in sample, f"missing key in spec dict: {key}"

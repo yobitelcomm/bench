@@ -71,8 +71,7 @@ def attest(
     """Render a third-party-readable attestation slip for an envelope."""
     if format not in _FORMATS:
         err_console.print(
-            f"[red]Unknown --format value:[/red] {format} "
-            "(expected one of: markdown, json)"
+            f"[red]Unknown --format value:[/red] {format} (expected one of: markdown, json)"
         )
         raise typer.Exit(code=2)
 
@@ -162,9 +161,7 @@ def _build_payload(
         "engine_version": envelope.engine.version,
         "hardware_fingerprint_sha256": hw_fp,
         "hardware_fingerprint_sha256_short": hw_fp[:12],
-        "software_provenance_pip_freeze_hash": (
-            envelope.software_provenance.pip_freeze_hash
-        ),
+        "software_provenance_pip_freeze_hash": (envelope.software_provenance.pip_freeze_hash),
         "software_provenance_pip_freeze_hash_short": (
             envelope.software_provenance.pip_freeze_hash[:12]
         ),
@@ -277,9 +274,7 @@ def _build_signature_block(envelope: Envelope) -> dict[str, Any]:
         }
 
     cert = sig.certificate or ""
-    key_id = (
-        hashlib.sha256(cert.encode("utf-8")).hexdigest()[:16] if cert else None
-    )
+    key_id = hashlib.sha256(cert.encode("utf-8")).hexdigest()[:16] if cert else None
     block: dict[str, Any] = {
         "method": sig.method,
         "key_id": key_id,
@@ -301,9 +296,7 @@ def _build_verification_block(
     """Build the ``verification`` section: instructions + the verify command."""
     sig = envelope.signature
     if sig is not None and sig.method == "dev-key":
-        command = (
-            f"bench verify {envelope_path.name} --dev-public-key cosign.pub"
-        )
+        command = f"bench verify {envelope_path.name} --dev-public-key cosign.pub"
         notes = (
             "Save this envelope file next to the signer's ``cosign.pub`` public key, "
             "install ``inferencebench``, and run the command above. A zero exit "
@@ -368,14 +361,9 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     # 3. Subject
     lines.append("## Subject")
     lines.append("")
-    lines.append(
-        f"- **Model**: `{subject['model_id']}` "
-        f"(revision `{subject['model_revision']}`)"
-    )
+    lines.append(f"- **Model**: `{subject['model_id']}` (revision `{subject['model_revision']}`)")
     ev = subject["engine_version"]
-    engine_str = (
-        f"{subject['engine']} {ev}" if ev == "unknown" else f"{subject['engine']} v{ev}"
-    )
+    engine_str = f"{subject['engine']} {ev}" if ev == "unknown" else f"{subject['engine']} v{ev}"
     lines.append(f"- **Engine**: `{engine_str}`")
     lines.append(
         "- **Hardware fingerprint (sha256, short)**: "
@@ -396,9 +384,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
     for row in metrics:
         unit = row["unit"] or "-"
         interpretation = _metric_interpretation(row["key"])
-        lines.append(
-            f"| `{row['key']}` | {row['value_str']} | {unit} | {interpretation} |"
-        )
+        lines.append(f"| `{row['key']}` | {row['value_str']} | {unit} | {interpretation} |")
     lines.append("")
 
     # 5. Signature
@@ -414,9 +400,7 @@ def _render_markdown(payload: dict[str, Any]) -> str:
         if signature.get("key_id"):
             lines.append(f"- **Key fingerprint (key_id)**: `{signature['key_id']}`")
         if signature.get("rekor_log_index") is not None:
-            lines.append(
-                f"- **Rekor log index**: `{signature['rekor_log_index']}`"
-            )
+            lines.append(f"- **Rekor log index**: `{signature['rekor_log_index']}`")
     lines.append("")
 
     # 6. Verification

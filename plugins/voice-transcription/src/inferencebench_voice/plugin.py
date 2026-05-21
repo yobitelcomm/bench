@@ -140,8 +140,7 @@ class VoiceTranscriptionPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8000/v1)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8000/v1)"
             )
         if not self._dataset_path(spec).exists():
             warnings.append(f"fixture not found: {spec.dataset.path}")
@@ -154,9 +153,7 @@ class VoiceTranscriptionPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        samples, scores, durations, n_resolved = self._score_items(
-            items, scorer, context
-        )
+        samples, scores, durations, n_resolved = self._score_items(items, scorer, context)
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
@@ -340,12 +337,18 @@ class VoiceTranscriptionPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + score_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + "}\n"
                     )
         except OSError:
@@ -361,7 +364,7 @@ class VoiceTranscriptionPlugin:
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
@@ -373,10 +376,7 @@ class VoiceTranscriptionPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)

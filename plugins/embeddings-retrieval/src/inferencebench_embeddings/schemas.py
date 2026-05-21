@@ -36,18 +36,14 @@ class DatasetConfig(BaseModel):
         str,
         Field(
             min_length=1,
-            description=(
-                "Path to the queries JSONL relative to the plugin's datasets/ directory."
-            ),
+            description=("Path to the queries JSONL relative to the plugin's datasets/ directory."),
         ),
     ]
     corpus_path: Annotated[
         str,
         Field(
             min_length=1,
-            description=(
-                "Path to the corpus JSONL relative to the plugin's datasets/ directory."
-            ),
+            description=("Path to the corpus JSONL relative to the plugin's datasets/ directory."),
         ),
     ]
 

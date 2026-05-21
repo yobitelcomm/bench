@@ -168,9 +168,7 @@ def _publish_to_hf(
     console.print(f"  verified:      {result.verified}")
 
 
-def _publish_to_local(
-    envelope_path: Path, envelope: Envelope, *, workspace: str, tag: str
-) -> None:
+def _publish_to_local(envelope_path: Path, envelope: Envelope, *, workspace: str, tag: str) -> None:
     root = Path(workspace) if workspace else Path.cwd() / "bench-mirror"
     suite_slug = envelope.suite_id.replace(".", "-")
     target_dir = root / suite_slug

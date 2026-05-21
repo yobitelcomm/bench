@@ -338,8 +338,6 @@ def ci_validate(
 
     failures = [label for label, ok, _ in checks if not ok]
     if failures:
-        err_console.print(
-            f"[red]{len(failures)} check(s) failed:[/red] " + ", ".join(failures)
-        )
+        err_console.print(f"[red]{len(failures)} check(s) failed:[/red] " + ", ".join(failures))
         raise typer.Exit(code=1)
     console.print("[green]All checks passed.[/green]")

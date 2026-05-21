@@ -104,9 +104,7 @@ def _select_spec(specs: list[Any], full_id: str | None, plugin_name: str) -> Any
         return specs[0]
     spec = next((s for s in specs if s.benchmark_id == full_id), None)
     if spec is None:
-        err_console.print(
-            f"[red]benchmark_id not found in plugin '{plugin_name}':[/red] {full_id}"
-        )
+        err_console.print(f"[red]benchmark_id not found in plugin '{plugin_name}':[/red] {full_id}")
         err_console.print("Available:")
         for s in specs:
             err_console.print(f"  • [cyan]{s.benchmark_id}[/cyan]")
@@ -154,9 +152,7 @@ def _merge_driver_overrides(
                 )
 
 
-def _apply_prices_file(
-    extra: dict[str, str | int | float | bool], prices_file: str
-) -> None:
+def _apply_prices_file(extra: dict[str, str | int | float | bool], prices_file: str) -> None:
     """Validate ``--prices-file`` and stash the resolved path on ``extra``.
 
     Plugins read ``extra['prices_file']`` to override the bundled pricing
@@ -194,9 +190,7 @@ def _apply_judge_overrides(
         extra["judge_rps"] = float(judge_rps)
 
 
-def _build_signing_extra(
-    signing_mode: str, dev_key: str
-) -> dict[str, str | int | float | bool]:
+def _build_signing_extra(signing_mode: str, dev_key: str) -> dict[str, str | int | float | bool]:
     extra: dict[str, str | int | float | bool] = {"signing_mode": signing_mode}
     if signing_mode == "dev":
         key_path = Path(dev_key) if dev_key else Path("cosign.key")
@@ -215,9 +209,7 @@ def _build_signing_extra(
     return extra
 
 
-def _write_envelope(
-    envelope: Envelope, output_dir: Path, *, prefix: str = ""
-) -> tuple[Path, str]:
+def _write_envelope(envelope: Envelope, output_dir: Path, *, prefix: str = "") -> tuple[Path, str]:
     output_dir.mkdir(parents=True, exist_ok=True)
     content_hash = envelope.content_hash()
     fname = f"{prefix}-{content_hash[:12]}.json" if prefix else f"{content_hash[:12]}.json"
@@ -235,14 +227,10 @@ def _parse_sweep_ints(raw: str, flag: str) -> list[int]:
         try:
             value = int(tok)
         except ValueError as exc:
-            err_console.print(
-                f"[red]Invalid {flag} value:[/red] {tok!r} is not an integer."
-            )
+            err_console.print(f"[red]Invalid {flag} value:[/red] {tok!r} is not an integer.")
             raise typer.Exit(code=1) from exc
         if value <= 0:
-            err_console.print(
-                f"[red]Invalid {flag} value:[/red] {value} must be > 0."
-            )
+            err_console.print(f"[red]Invalid {flag} value:[/red] {value} must be > 0.")
             raise typer.Exit(code=1)
         out.append(value)
     if not out:
@@ -258,14 +246,10 @@ def _parse_sweep_floats(raw: str, flag: str) -> list[float]:
         try:
             value = float(tok)
         except ValueError as exc:
-            err_console.print(
-                f"[red]Invalid {flag} value:[/red] {tok!r} is not a number."
-            )
+            err_console.print(f"[red]Invalid {flag} value:[/red] {tok!r} is not a number.")
             raise typer.Exit(code=1) from exc
         if value <= 0:
-            err_console.print(
-                f"[red]Invalid {flag} value:[/red] {value} must be > 0."
-            )
+            err_console.print(f"[red]Invalid {flag} value:[/red] {value} must be > 0.")
             raise typer.Exit(code=1)
         out.append(value)
     if not out:
@@ -380,17 +364,12 @@ def _run_sweep(
                 raise typer.Exit(code=1)
             validated = True
 
-        status_label = (
-            f"[bold]Sweep {idx + 1}/{len(points)}[/bold] — "
-            f"{sweep_kind}={point_label}"
-        )
+        status_label = f"[bold]Sweep {idx + 1}/{len(points)}[/bold] — {sweep_kind}={point_label}"
         try:
             with Status(status_label, console=err_console):
                 envelope = plugin.run(spec, ctx)
         except Exception as exc:
-            err_console.print(
-                f"[red]Sweep point {point_label} failed:[/red] {exc}"
-            )
+            err_console.print(f"[red]Sweep point {point_label} failed:[/red] {exc}")
             err_console.print("[red]" + traceback.format_exc() + "[/red]")
             any_failure = True
             summary_rows.append(
@@ -408,12 +387,8 @@ def _run_sweep(
         out_path, _content_hash = _write_envelope(envelope, output_dir, prefix=file_prefix)
         ok_rate = envelope.metrics.get("ok_rate")
         throughput = envelope.metrics.get("throughput_tok_per_s")
-        tput_str = (
-            f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
-        )
-        ok_str = (
-            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
-        )
+        tput_str = f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
+        ok_str = f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
         console.print(
             f"[green]ok[/green] {sweep_kind}={point_label}  "
             f"model={envelope.model.id}  "
@@ -478,11 +453,7 @@ def _print_sweep_table(sweep_kind: str, rows: list[dict[str, Any]]) -> None:
             )
             continue
         ok_rate = row["ok_rate"]
-        ok_cell = (
-            f"{ok_rate:.3f}"
-            if isinstance(ok_rate, int | float)
-            else "-"
-        )
+        ok_cell = f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
         if isinstance(ok_rate, int | float) and ok_rate < 0.95:
             ok_cell = f"[red]{ok_cell}[/red]"
         table.add_row(
@@ -572,9 +543,7 @@ def _validate_all_benchmarks_flags(
 ) -> None:
     """Raise typer.Exit if --all-benchmarks is combined with an incompatible flag."""
     if list_:
-        err_console.print(
-            "[red]--all-benchmarks and --list are mutually exclusive.[/red]"
-        )
+        err_console.print("[red]--all-benchmarks and --list are mutually exclusive.[/red]")
         raise typer.Exit(code=1)
     if sweep_points is not None:
         err_console.print(
@@ -616,9 +585,7 @@ def _run_all_benchmarks(
 
     for idx, spec in enumerate(specs):
         extra: dict[str, str | int | float | bool] = dict(signing_extra)
-        _merge_driver_overrides(
-            extra, concurrency=concurrency, duration_s=duration_s, rps=rps
-        )
+        _merge_driver_overrides(extra, concurrency=concurrency, duration_s=duration_s, rps=rps)
 
         try:
             ctx = run_context_cls(
@@ -651,9 +618,7 @@ def _run_all_benchmarks(
         for w in warnings:
             err_console.print(f"[yellow]warning:[/yellow] {w}")
         if warnings and strict:
-            err_console.print(
-                f"[yellow]warning:[/yellow] --strict — skipping {spec.benchmark_id}."
-            )
+            err_console.print(f"[yellow]warning:[/yellow] --strict — skipping {spec.benchmark_id}.")
             summary_rows.append(
                 {
                     "benchmark_id": spec.benchmark_id,
@@ -666,10 +631,7 @@ def _run_all_benchmarks(
             )
             continue
 
-        status_label = (
-            f"[bold]Benchmark {idx + 1}/{len(specs)}[/bold] — "
-            f"{spec.benchmark_id}"
-        )
+        status_label = f"[bold]Benchmark {idx + 1}/{len(specs)}[/bold] — {spec.benchmark_id}"
         try:
             with Status(status_label, console=err_console):
                 envelope = plugin.run(spec, ctx)
@@ -694,12 +656,8 @@ def _run_all_benchmarks(
         out_path, _content_hash = _write_envelope(envelope, output_dir, prefix=bench_slug)
         ok_rate = envelope.metrics.get("ok_rate")
         throughput = envelope.metrics.get("throughput_tok_per_s")
-        tput_str = (
-            f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
-        )
-        ok_str = (
-            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
-        )
+        tput_str = f"{throughput:.4g}" if isinstance(throughput, int | float) else "-"
+        ok_str = f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
         console.print(
             f"[green]ok[/green] {spec.benchmark_id}  "
             f"model={envelope.model.id}  "
@@ -757,9 +715,7 @@ def _print_all_benchmarks_table(rows: list[dict[str, Any]]) -> None:
             continue
         metrics = row["metrics"]
         ok_rate = row["ok_rate"]
-        ok_cell = (
-            f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
-        )
+        ok_cell = f"{ok_rate:.3f}" if isinstance(ok_rate, int | float) else "-"
         if isinstance(ok_rate, int | float) and ok_rate < 0.95:
             ok_cell = f"[red]{ok_cell}[/red]"
         table.add_row(

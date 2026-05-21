@@ -98,10 +98,7 @@ class SGLangEngine(Engine):
             with urllib.request.urlopen(req, timeout=5) as resp:
                 resp.read()
         except urllib.error.URLError as exc:
-            msg = (
-                f"SGLang endpoint not reachable at {models_url}: {exc.reason}. "
-                "Is SGLang running?"
-            )
+            msg = f"SGLang endpoint not reachable at {models_url}: {exc.reason}. Is SGLang running?"
             raise EngineUnavailableError(msg) from exc
         except (TimeoutError, OSError) as exc:
             msg = f"SGLang endpoint timed out at {models_url}: {exc}"

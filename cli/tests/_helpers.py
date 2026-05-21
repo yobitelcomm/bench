@@ -47,9 +47,7 @@ def _hardware_fp() -> HardwareFingerprint:
         "cuda": "12.6",
         "nccl": "2.22.3",
     }
-    placeholder = HardwareFingerprint.model_construct(
-        fingerprint_sha256="0" * 64, numa={}, **body
-    )
+    placeholder = HardwareFingerprint.model_construct(fingerprint_sha256="0" * 64, numa={}, **body)
     real = placeholder.compute_fingerprint_sha256()
     return HardwareFingerprint(fingerprint_sha256=real, numa={}, **body)
 
@@ -97,9 +95,7 @@ def write_envelope_json(path: Path, envelope: Envelope) -> Path:
     return path
 
 
-def write_signed_envelope_json(
-    path: Path, envelope: Envelope, *, dev_key: Path
-) -> Path:
+def write_signed_envelope_json(path: Path, envelope: Envelope, *, dev_key: Path) -> Path:
     """Sign ``envelope`` with a dev key and write the signed JSON to ``path``."""
     signed = sign_envelope(envelope, mode=SigningMode.DEV, dev_key_path=dev_key)
     return write_envelope_json(path, signed)

@@ -170,10 +170,7 @@ def _engine_for(kind: EngineKind) -> Engine:
     cls = _ENGINES.get(kind)
     if cls is None:
         supported = ", ".join(sorted(k.value for k in _ENGINES))
-        msg = (
-            f"Engine '{kind.value}' is not implemented yet. "
-            f"Supported engines: {supported}."
-        )
+        msg = f"Engine '{kind.value}' is not implemented yet. Supported engines: {supported}."
         raise EngineUnavailableError(msg)
     return cls()
 
@@ -351,14 +348,23 @@ class LLMInferencePlugin:
             with path.open("w", encoding="utf-8") as fp:
                 for s in samples:
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"ttft_ms":' + _json_num(s.ttft_ms)
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tpot_ms":' + _json_num(s.tpot_ms)
-                        + ',"tokens_in":' + str(s.tokens_in)
-                        + ',"tokens_out":' + str(s.tokens_out)
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"ttft_ms":'
+                        + _json_num(s.ttft_ms)
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tpot_ms":'
+                        + _json_num(s.tpot_ms)
+                        + ',"tokens_in":'
+                        + str(s.tokens_in)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + (',"error":' + _json_str(s.error) if s.error else "")
                         + "}\n"
                     )
@@ -458,8 +464,10 @@ class LLMInferencePlugin:
         hw_class: HardwareClass | None = None,
         resolved_template: str | None = None,
     ) -> Envelope:
-        hw = hardware_fingerprint if hardware_fingerprint is not None else (
-            collect_hardware_fingerprint()
+        hw = (
+            hardware_fingerprint
+            if hardware_fingerprint is not None
+            else (collect_hardware_fingerprint())
         )
         sw = collect_software_provenance()
 

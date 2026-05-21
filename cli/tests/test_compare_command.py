@@ -88,9 +88,7 @@ def test_compare_with_three_envelopes(tmp_path: Path) -> None:
 
 def test_compare_json_report_is_parseable(tmp_path: Path) -> None:
     a, b, c = _three_envelopes_on_disk(tmp_path)
-    result = runner.invoke(
-        app, ["compare", str(a), str(b), str(c), "--report", "json"]
-    )
+    result = runner.invoke(app, ["compare", str(a), str(b), str(c), "--report", "json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     assert set(payload.keys()) == {"runs", "pareto"}
@@ -126,18 +124,14 @@ def test_compare_zero_args_errors() -> None:
 
 def test_compare_missing_file_errors(tmp_path: Path) -> None:
     a, _, _ = _three_envelopes_on_disk(tmp_path)
-    result = runner.invoke(
-        app, ["compare", str(a), str(tmp_path / "nope.json")]
-    )
+    result = runner.invoke(app, ["compare", str(a), str(tmp_path / "nope.json")])
     assert result.exit_code != 0
 
 
 def test_compare_pareto_only_filters_rows(tmp_path: Path) -> None:
     """The dominated envelope ``c`` must drop out of a Pareto-only report."""
     a, b, c = _three_envelopes_on_disk(tmp_path)
-    result = runner.invoke(
-        app, ["compare", str(a), str(b), str(c), "--report", "pareto"]
-    )
+    result = runner.invoke(app, ["compare", str(a), str(b), str(c), "--report", "pareto"])
     assert result.exit_code == 0, result.output
     # ``c`` (gpt-4o-clone) is dominated on every axis by both ``a`` and ``b``
     # so it must not appear in pareto-only output.

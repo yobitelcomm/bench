@@ -154,9 +154,7 @@ def test_run_persona_mini_persona_kept_for_two_turns_then_drifts(
     assert envelope.metrics["ok_rate"] == 1.0
 
 
-def test_run_persona_mini_full_persona_no_drift(
-    monkeypatch: Any, tmp_path: Path
-) -> None:
+def test_run_persona_mini_full_persona_no_drift(monkeypatch: Any, tmp_path: Path) -> None:
     """Mock keeps persona for ALL turns of every case → score 1.0, no drift."""
     _install_mock_complete(monkeypatch, _persona_consistent_then_breaks(turn_count=10))
 
@@ -182,9 +180,7 @@ def test_run_persona_mini_full_persona_no_drift(
     assert "mean_drift_turn" not in envelope.metrics
 
 
-def test_run_judge_llm_persona_returns_seven_tenths(
-    monkeypatch: Any, tmp_path: Path
-) -> None:
+def test_run_judge_llm_persona_returns_seven_tenths(monkeypatch: Any, tmp_path: Path) -> None:
     """End-to-end judge_llm_persona path: judge always replies '7' → score 0.7."""
     # The benchmark spec we load uses persona_consistency; copy it and flip to
     # the judge variant so we exercise the judge path without adding another
@@ -245,9 +241,7 @@ def test_run_judge_llm_persona_returns_seven_tenths(
     assert envelope.metrics["judge_errors"] == 0.0
 
 
-def test_run_persona_writes_samples_jsonl(
-    monkeypatch: Any, tmp_path: Path
-) -> None:
+def test_run_persona_writes_samples_jsonl(monkeypatch: Any, tmp_path: Path) -> None:
     """Confirms the diagnostic samples-<ts>.jsonl is written for multi-turn runs."""
     _install_mock_complete(monkeypatch, lambda _p: "Arr matey reply on the sea.")
     private_key_path = tmp_path / "cosign.key"

@@ -131,7 +131,11 @@ def test_llamacpp_probe_falls_back_to_v1_models_on_404(
         seen.append(url)
         if url.endswith("/props"):
             raise urllib.error.HTTPError(
-                url=url, code=404, msg="Not Found", hdrs=None, fp=None  # type: ignore[arg-type]
+                url=url,
+                code=404,
+                msg="Not Found",
+                hdrs=None,
+                fp=None,  # type: ignore[arg-type]
             )
         if url.endswith("/v1/models"):
             return _FakeResp(b'{"data": [{"id": "llama-3.1-8b-q4_k_m.gguf"}]}')

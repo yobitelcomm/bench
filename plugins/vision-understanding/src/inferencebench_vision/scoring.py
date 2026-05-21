@@ -19,7 +19,7 @@ if TYPE_CHECKING:
 
 
 JUDGE_PROMPT = (
-    'You are a strict grader for vision-language model answers. Given a question, '
+    "You are a strict grader for vision-language model answers. Given a question, "
     'the model\'s answer, and the ground-truth answer, reply with just "1" if '
     'the model\'s answer is correct, otherwise "0". No explanation.\n'
     "\n"
@@ -53,11 +53,7 @@ class ScoreContext:
 
 def exact_match(ctx: ScoreContext) -> float:
     """Return 1.0 iff ``hypothesis`` equals ``reference`` after strip + lowercase."""
-    return (
-        1.0
-        if ctx.hypothesis.strip().lower() == ctx.reference.strip().lower()
-        else 0.0
-    )
+    return 1.0 if ctx.hypothesis.strip().lower() == ctx.reference.strip().lower() else 0.0
 
 
 def substring_match(ctx: ScoreContext) -> float:
@@ -83,9 +79,7 @@ def judge_llm(ctx: ScoreContext) -> float:
         reference=ctx.reference,
     )
     try:
-        result = ctx.judge_client.complete(
-            prompt, stream=False, max_tokens=4, temperature=0.0
-        )
+        result = ctx.judge_client.complete(prompt, stream=False, max_tokens=4, temperature=0.0)
     except Exception as exc:  # judge failures must not blow up the run
         ctx.judge_errors.append(str(exc))
         return 0.0

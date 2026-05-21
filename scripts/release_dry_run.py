@@ -151,9 +151,7 @@ def _parse_wheel_metadata(wheel: Path) -> tuple[Message | None, list[str]]:
     """Open a wheel and return its METADATA message plus the file list."""
     with zipfile.ZipFile(wheel) as zf:
         names = zf.namelist()
-        metadata_name = next(
-            (n for n in names if n.endswith(".dist-info/METADATA")), None
-        )
+        metadata_name = next((n for n in names if n.endswith(".dist-info/METADATA")), None)
         if metadata_name is None:
             return None, names
         raw = zf.read(metadata_name)
@@ -205,9 +203,7 @@ def validate_wheel(wheel: Path) -> list[str]:
 
     # 4) at least one .py file outside dist-info
     py_files = [
-        n
-        for n in names
-        if n.endswith(".py") and ".dist-info/" not in n and ".data/" not in n
+        n for n in names if n.endswith(".py") and ".dist-info/" not in n and ".data/" not in n
     ]
     if not py_files:
         issues.append("wheel contains no .py files in package directory")
@@ -348,7 +344,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         metavar="VERSION",
         default=None,
         help=(
-            "Rewrite every workspace pyproject's version = \"...\" to VERSION "
+            'Rewrite every workspace pyproject\'s version = "..." to VERSION '
             "before building. Mutually exclusive with --check-only."
         ),
     )
@@ -397,9 +393,7 @@ def main(argv: list[str] | None = None) -> int:
     failures = [r for r in results if r.status != "ok"]
     if failures:
         first = failures[0]
-        console.print(
-            f"\n[red]First failure: {first.path.relative_to(REPO_ROOT)}[/]"
-        )
+        console.print(f"\n[red]First failure: {first.path.relative_to(REPO_ROOT)}[/]")
         console.print(first.error)
         return 1
     return 0

@@ -199,9 +199,7 @@ def render_site(
     base_url = _normalize_base_url(base_url)
 
     # Count attempted files vs. parseable to compute the "skipped" delta.
-    file_count = (
-        sum(1 for _ in envelopes_dir.glob("*.json")) if envelopes_dir.is_dir() else 0
-    )
+    file_count = sum(1 for _ in envelopes_dir.glob("*.json")) if envelopes_dir.is_dir() else 0
     loaded = load_envelopes(envelopes_dir)
     skipped = file_count - len(loaded)
 

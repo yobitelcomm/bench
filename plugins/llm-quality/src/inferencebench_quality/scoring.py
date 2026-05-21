@@ -27,7 +27,7 @@ if TYPE_CHECKING:
 
 
 JUDGE_PROMPT = (
-    'You are a strict grader. Given a question, a model\'s answer, and the ground-truth answer,\n'
+    "You are a strict grader. Given a question, a model's answer, and the ground-truth answer,\n"
     'reply with just "1" if the model\'s answer is correct, otherwise "0". No explanation.\n'
     "\n"
     "Question: {question}\n"
@@ -76,18 +76,12 @@ class ScoreContext:
 
 def exact_match(ctx: ScoreContext) -> float:
     """Return 1.0 iff ``hypothesis`` equals ``reference`` after strip + lowercase."""
-    return (
-        1.0
-        if ctx.hypothesis.strip().lower() == ctx.reference.strip().lower()
-        else 0.0
-    )
+    return 1.0 if ctx.hypothesis.strip().lower() == ctx.reference.strip().lower() else 0.0
 
 
 def substring_match(ctx: ScoreContext) -> float:
     """Return 1.0 iff ``reference`` appears (case-insensitively) in ``hypothesis``."""
-    return (
-        1.0 if ctx.reference.strip().lower() in ctx.hypothesis.lower() else 0.0
-    )
+    return 1.0 if ctx.reference.strip().lower() in ctx.hypothesis.lower() else 0.0
 
 
 def f1_token(ctx: ScoreContext) -> float:
@@ -137,9 +131,7 @@ def judge_llm(ctx: ScoreContext) -> float:
         reference=ctx.reference,
     )
     try:
-        result = ctx.judge_client.complete(
-            prompt, stream=False, max_tokens=4, temperature=0.0
-        )
+        result = ctx.judge_client.complete(prompt, stream=False, max_tokens=4, temperature=0.0)
     except Exception as exc:
         ctx.judge_errors.append(str(exc))
         return 0.0
@@ -288,13 +280,9 @@ def judge_llm_persona(
         transcript_lines.append(f"Turn {idx + 1} user: {q}")
         transcript_lines.append(f"Turn {idx + 1} assistant: {r}")
     transcript = "\n".join(transcript_lines)
-    prompt = JUDGE_PERSONA_PROMPT.format(
-        system_prompt=system_prompt, transcript=transcript
-    )
+    prompt = JUDGE_PERSONA_PROMPT.format(system_prompt=system_prompt, transcript=transcript)
     try:
-        result = judge_client.complete(
-            prompt, stream=False, max_tokens=4, temperature=0.0
-        )
+        result = judge_client.complete(prompt, stream=False, max_tokens=4, temperature=0.0)
     except Exception as exc:
         if judge_errors is not None:
             judge_errors.append(str(exc))

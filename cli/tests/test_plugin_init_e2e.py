@@ -28,9 +28,7 @@ def _scaffold(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, name: str = "demo
     return tmp_path / "plugins" / name
 
 
-def test_scaffolded_plugin_py_parses(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
-) -> None:
+def test_scaffolded_plugin_py_parses(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     """Every generated .py file must be syntactically valid."""
     base = _scaffold(tmp_path, monkeypatch)
     for py in [
@@ -65,9 +63,7 @@ def test_generated_plugin_mentions_contract_methods(
 ) -> None:
     """The plugin class implements the four contract methods."""
     base = _scaffold(tmp_path, monkeypatch)
-    plugin_py = (base / "src" / "inferencebench_demo" / "plugin.py").read_text(
-        encoding="utf-8"
-    )
+    plugin_py = (base / "src" / "inferencebench_demo" / "plugin.py").read_text(encoding="utf-8")
     for symbol in ("suite_id", "list_benchmarks", "get_benchmark", "validate", "run"):
         assert symbol in plugin_py, f"missing {symbol} in scaffolded plugin.py"
 
@@ -89,9 +85,7 @@ def test_scaffolded_plugin_includes_signing_wiring(
 ) -> None:
     """The generated run() signs the envelope — no further wiring required."""
     base = _scaffold(tmp_path, monkeypatch)
-    plugin_py = (base / "src" / "inferencebench_demo" / "plugin.py").read_text(
-        encoding="utf-8"
-    )
+    plugin_py = (base / "src" / "inferencebench_demo" / "plugin.py").read_text(encoding="utf-8")
     assert "sign_envelope" in plugin_py
     assert "SigningMode.DEV" in plugin_py
     assert "dev_key_path" in plugin_py

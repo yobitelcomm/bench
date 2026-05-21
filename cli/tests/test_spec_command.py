@@ -86,9 +86,7 @@ def test_spec_validate_rejects_missing_benchmark_id(tmp_path: Path) -> None:
     bad = tmp_path / "bad.yaml"
     bad.write_text(
         # No benchmark_id field at all — every BenchmarkSpec model requires it.
-        "suite_version: 1.0.0\n"
-        "description: missing-id\n"
-        "modality: llm\n",
+        "suite_version: 1.0.0\ndescription: missing-id\nmodality: llm\n",
         encoding="utf-8",
     )
     result = runner.invoke(app, ["spec", "validate", str(bad)])

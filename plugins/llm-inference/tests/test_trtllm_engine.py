@@ -176,7 +176,11 @@ def test_trtllm_probe_falls_back_to_models_on_404(
         seen.append(url)
         if url.endswith("/health/load"):
             raise urllib.error.HTTPError(
-                url=url, code=404, msg="Not Found", hdrs=None, fp=None  # type: ignore[arg-type]
+                url=url,
+                code=404,
+                msg="Not Found",
+                hdrs=None,
+                fp=None,  # type: ignore[arg-type]
             )
         if url.endswith("/v1/models"):
             return _FakeResp(

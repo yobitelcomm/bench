@@ -135,9 +135,7 @@ def _parse_hf_uri(uri: str) -> tuple[str, str]:
     """
     rest = uri[len("hf://") :]
     if not rest.startswith("datasets/"):
-        msg = (
-            f"only hf://datasets/<owner>/<repo>[/<file>] is supported, got: {uri}"
-        )
+        msg = f"only hf://datasets/<owner>/<repo>[/<file>] is supported, got: {uri}"
         raise FetchError(msg)
     parts = rest[len("datasets/") :].split("/")
     if len(parts) < 2:

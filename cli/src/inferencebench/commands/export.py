@@ -70,8 +70,7 @@ def export(
     """
     if format not in _FORMATS:
         err_console.print(
-            f"[red]Unknown --format value:[/red] {format} "
-            f"(expected one of: markdown, csv, slack)"
+            f"[red]Unknown --format value:[/red] {format} (expected one of: markdown, csv, slack)"
         )
         raise typer.Exit(code=2)
 
@@ -101,8 +100,7 @@ def _load_envelope(uri: str) -> Envelope:
     """Load an envelope from a local file path."""
     if uri.startswith(("hf://", "https://", "s3://")):
         err_console.print(
-            f"[red]URI scheme not yet supported in v0.0.0:[/red] "
-            f"{uri.split('://')[0]}://"
+            f"[red]URI scheme not yet supported in v0.0.0:[/red] {uri.split('://')[0]}://"
         )
         err_console.print(
             "Use `bench fetch` to download the envelope first, then export the local file."
@@ -191,16 +189,10 @@ def _render_markdown(
     lines: list[str] = []
     lines.append(f"## InferenceBench result — `{envelope.suite_id}`")
     lines.append("")
-    lines.append(
-        f"- **Model**: `{envelope.model.id}` (revision `{envelope.model.revision}`)"
-    )
-    lines.append(
-        f"- **Engine**: `{envelope.engine.name} v{envelope.engine.version}`"
-    )
+    lines.append(f"- **Model**: `{envelope.model.id}` (revision `{envelope.model.revision}`)")
+    lines.append(f"- **Engine**: `{envelope.engine.name} v{envelope.engine.version}`")
     lines.append(f"- **Hardware**: `{gpu_model}` x `{num_gpus}`")
-    lines.append(
-        f"- **Dataset**: `{envelope.dataset.id}` (sha256 `{dataset_hash_short}`)"
-    )
+    lines.append(f"- **Dataset**: `{envelope.dataset.id}` (sha256 `{dataset_hash_short}`)")
     lines.append(f"- **Run ID**: `{envelope.run_id}`")
     lines.append(f"- **Signed**: `{signing}` — verify with `{verify_hint}`")
     lines.append("")
@@ -243,8 +235,8 @@ def _csv_escape(value: float | int | str | None) -> str:
     if value is None:
         return ""
     if isinstance(value, str):
-        if any(c in value for c in (",", "\"", "\n", "\r")):
-            escaped = value.replace("\"", "\"\"")
+        if any(c in value for c in (",", '"', "\n", "\r")):
+            escaped = value.replace('"', '""')
             return f'"{escaped}"'
         return value
     return f"{float(value):.4g}"
@@ -311,9 +303,7 @@ class _MetricTake:
         return None
 
 
-def _latency_pair_line(
-    take: _MetricTake, base: str
-) -> str | None:
+def _latency_pair_line(take: _MetricTake, base: str) -> str | None:
     """Render ``ttft`` / ``tpot`` / ``total`` as a p50 (p99 …) pair if available."""
     p50 = take.take(f"{base}_p50_ms")
     p99 = take.take(f"{base}_p99_ms")
@@ -331,10 +321,7 @@ def _power_line(take: _MetricTake) -> str | None:
     p_avg = take.take("power_avg_w")
     p_peak = take.take("power_peak_w")
     if p_avg is not None and p_peak is not None:
-        return (
-            f"  power: {_fmt_metric(p_avg)} W avg, "
-            f"{_fmt_metric(p_peak)} W peak"
-        )
+        return f"  power: {_fmt_metric(p_avg)} W avg, {_fmt_metric(p_peak)} W peak"
     if p_avg is not None:
         return f"  power_avg_w: {_fmt_metric(p_avg)}"
     if p_peak is not None:

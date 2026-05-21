@@ -100,12 +100,8 @@ def bleu_token(reference: str, hypothesis: str, max_n: int = 4) -> float:
     for n in range(1, max_n + 1):
         if len(hyp_tokens) < n or len(ref_tokens) < n:
             return 0.0
-        hyp_ngrams = Counter(
-            tuple(hyp_tokens[i : i + n]) for i in range(len(hyp_tokens) - n + 1)
-        )
-        ref_ngrams = Counter(
-            tuple(ref_tokens[i : i + n]) for i in range(len(ref_tokens) - n + 1)
-        )
+        hyp_ngrams = Counter(tuple(hyp_tokens[i : i + n]) for i in range(len(hyp_tokens) - n + 1))
+        ref_ngrams = Counter(tuple(ref_tokens[i : i + n]) for i in range(len(ref_tokens) - n + 1))
         # Modified count: cap each n-gram by its reference count.
         clipped = sum(min(c, ref_ngrams[g]) for g, c in hyp_ngrams.items())
         total = sum(hyp_ngrams.values())

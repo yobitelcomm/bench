@@ -47,9 +47,7 @@ def _patch_engine(monkeypatch: pytest.MonkeyPatch) -> None:
     from inferencebench_llm.engines import VLLMEngine
 
     class _FakeClient:
-        def complete(
-            self, prompt: str, *, max_tokens: int = 128, stream: bool = True
-        ) -> Any:
+        def complete(self, prompt: str, *, max_tokens: int = 128, stream: bool = True) -> Any:
             raise RuntimeError("client never invoked: driver short-circuited in test")
 
     monkeypatch.setattr(VLLMEngine, "probe", lambda self, ctx: "fake-0.0.0")

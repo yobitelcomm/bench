@@ -63,8 +63,6 @@ def make_mock_modelclient(monkeypatch: pytest.MonkeyPatch) -> Callable[..., None
                 token_source="mock",
             )
 
-        monkeypatch.setattr(
-            MultimodalClient, "complete_multimodal", _fake_complete
-        )
+        monkeypatch.setattr(MultimodalClient, "complete_multimodal", _fake_complete)
 
     return _factory

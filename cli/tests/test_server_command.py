@@ -78,9 +78,7 @@ def _http_get(url: str) -> tuple[int, dict[str, object] | bytes]:
         return status, body
 
 
-def _http_post(
-    url: str, payload: bytes
-) -> tuple[int, dict[str, object] | bytes]:
+def _http_post(url: str, payload: bytes) -> tuple[int, dict[str, object] | bytes]:
     req = urllib.request.Request(
         url,
         data=payload,
@@ -147,9 +145,7 @@ def test_server_post_signed_envelope_lands_on_disk(
 
 def test_server_post_unsigned_envelope_rejected(tmp_path: Path) -> None:
     store = tmp_path / "store"
-    envelope = make_envelope(
-        model_id="m", metrics={"throughput_tok_per_s": 1.0}
-    )
+    envelope = make_envelope(model_id="m", metrics={"throughput_tok_per_s": 1.0})
     unsigned_path = write_envelope_json(tmp_path / "u.json", envelope)
     body = unsigned_path.read_bytes()
     with _running_server(store, None) as (_, base_url):
@@ -162,9 +158,7 @@ def test_server_post_tampered_envelope_rejected(
 ) -> None:
     priv, pub = dev_keypair
     store = tmp_path / "store"
-    envelope = make_envelope(
-        model_id="m", metrics={"throughput_tok_per_s": 1.0}
-    )
+    envelope = make_envelope(model_id="m", metrics={"throughput_tok_per_s": 1.0})
     signed_path = write_signed_envelope_json(tmp_path / "s.json", envelope, dev_key=priv)
     raw = json.loads(signed_path.read_text(encoding="utf-8"))
     raw["metrics"]["throughput_tok_per_s"] = 9999.0
@@ -194,9 +188,7 @@ def test_server_list_envelopes_returns_entries(
     assert model_ids == {"alpha", "beta"}
 
 
-def test_server_get_envelope_by_hash(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> None:
+def test_server_get_envelope_by_hash(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> None:
     priv, pub = dev_keypair
     store = tmp_path / "store"
     with _running_server(store, pub) as (_, base_url):
@@ -230,9 +222,7 @@ def test_server_invalid_json_body_returns_400(
         ("/unknown", 404),
     ],
 )
-def test_server_unexpected_paths(
-    tmp_path: Path, method_path: str, expected: int
-) -> None:
+def test_server_unexpected_paths(tmp_path: Path, method_path: str, expected: int) -> None:
     with _running_server(tmp_path / "store", None) as (_, base_url):
         status, _ = _http_get(f"{base_url}{method_path}")
     assert status == expected

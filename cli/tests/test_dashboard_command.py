@@ -79,9 +79,7 @@ def _http_get_json(url: str) -> tuple[int, dict[str, Any]]:
     return status, json.loads(body.decode("utf-8"))
 
 
-def _write_envelope(
-    envelopes_dir: Path, *, model_id: str, run_suffix: str
-) -> Path:
+def _write_envelope(envelopes_dir: Path, *, model_id: str, run_suffix: str) -> Path:
     return write_envelope_json(
         envelopes_dir / f"{run_suffix}.json",
         make_envelope(

@@ -198,16 +198,13 @@ def fixtures_fetch(
 
     entry = FIXTURES[key]
     if entry.adapter not in ADAPTERS:  # pragma: no cover - defensive
-        err_console.print(
-            f"[red]Internal error:[/red] adapter '{entry.adapter}' not registered."
-        )
+        err_console.print(f"[red]Internal error:[/red] adapter '{entry.adapter}' not registered.")
         raise typer.Exit(code=2)
 
     out_path = _cache_path(key)
     if out_path.exists() and not force:
         console.print(
-            f"[yellow]already cached[/yellow] at {out_path} "
-            "(pass --force to re-download)"
+            f"[yellow]already cached[/yellow] at {out_path} (pass --force to re-download)"
         )
         return
 
@@ -302,9 +299,7 @@ def fixtures_clear(
     if not files:
         console.print(f"[yellow]no entries to clear[/yellow] (cache root: {root})")
         return
-    if not yes and not typer.confirm(
-        f"Delete {len(files)} cached fixture(s) from {root}?"
-    ):
+    if not yes and not typer.confirm(f"Delete {len(files)} cached fixture(s) from {root}?"):
         console.print("[yellow]cancelled[/yellow]")
         raise typer.Exit(code=1)
 

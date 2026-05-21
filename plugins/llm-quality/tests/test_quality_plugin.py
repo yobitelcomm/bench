@@ -173,9 +173,7 @@ def test_run_produces_signed_envelope_with_high_accuracy(
     assert envelope.metrics.get("n_samples") == 10.0
 
 
-def test_run_with_wrong_answers_yields_zero_accuracy(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_with_wrong_answers_yields_zero_accuracy(make_mock_modelclient, tmp_path: Path) -> None:
     """Mock always returns nonsense → accuracy = 0.0 but envelope still valid."""
     make_mock_modelclient(lambda _prompt: "definitely not a real answer xyz")
 
@@ -203,9 +201,7 @@ def test_run_with_wrong_answers_yields_zero_accuracy(
     assert envelope.metrics.get("ok_rate") == 1.0  # all calls succeeded, just wrong
 
 
-def test_run_writes_samples_jsonl_alongside_envelope(
-    make_mock_modelclient, tmp_path: Path
-) -> None:
+def test_run_writes_samples_jsonl_alongside_envelope(make_mock_modelclient, tmp_path: Path) -> None:
     """The diagnostic samples-<ts>.jsonl is written to output_dir."""
     make_mock_modelclient(lambda _prompt: "Paris")
 

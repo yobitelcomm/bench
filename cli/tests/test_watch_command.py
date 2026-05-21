@@ -67,9 +67,7 @@ def test_watch_picks_up_new_envelope_between_polls(tmp_path: Path) -> None:
     second_path = envelopes_dir / "b.json"
     second_envelope = _envelope("mistralai/Mistral-Large", "2")
 
-    timer = threading.Timer(
-        0.05, lambda: write_envelope_json(second_path, second_envelope)
-    )
+    timer = threading.Timer(0.05, lambda: write_envelope_json(second_path, second_envelope))
     timer.start()
 
     try:

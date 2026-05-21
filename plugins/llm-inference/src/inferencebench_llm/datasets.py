@@ -135,10 +135,7 @@ def _load_fixture_prompts(key: str) -> list[str]:
     """
     cache_path = _fixtures_cache_root() / f"{key}.jsonl"
     if not cache_path.exists():
-        msg = (
-            f"fixture not cached: {cache_path}. "
-            f"Run `bench fixtures fetch {key}` first."
-        )
+        msg = f"fixture not cached: {cache_path}. Run `bench fixtures fetch {key}` first."
         raise FileNotFoundError(msg)
 
     prompts: list[str] = []

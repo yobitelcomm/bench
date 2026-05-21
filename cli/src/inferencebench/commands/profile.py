@@ -46,12 +46,9 @@ def _load_envelope(uri: str) -> Envelope:
     """Load an envelope from a local path. Phase 1: local paths only."""
     if uri.startswith(("hf://", "https://", "s3://")):
         err_console.print(
-            f"[red]URI scheme not yet supported in v0.0.0:[/red] "
-            f"{uri.split('://')[0]}://"
+            f"[red]URI scheme not yet supported in v0.0.0:[/red] {uri.split('://')[0]}://"
         )
-        err_console.print(
-            "Phase 1 supports local file paths only. Download the envelope first."
-        )
+        err_console.print("Phase 1 supports local file paths only. Download the envelope first.")
         raise typer.Exit(code=2)
 
     path = Path(uri)
@@ -356,8 +353,7 @@ def profile(
         result = verify_envelope(source)
         if not result.ok:
             err_console.print(
-                f"[bold red]FAIL[/bold red] source envelope failed verification: "
-                f"{result.reason}"
+                f"[bold red]FAIL[/bold red] source envelope failed verification: {result.reason}"
             )
             err_console.print(
                 "[red]Refusing to profile an unverified envelope.[/red] "
@@ -409,9 +405,7 @@ def profile(
     try:
         engine_kind = engine_kind_cls(source.engine.name)
     except ValueError as exc:
-        err_console.print(
-            f"[red]Unknown engine in source envelope:[/red] {source.engine.name}"
-        )
+        err_console.print(f"[red]Unknown engine in source envelope:[/red] {source.engine.name}")
         raise typer.Exit(code=1) from exc
 
     output_dir = Path(output) if output else Path.cwd() / "profile-results"

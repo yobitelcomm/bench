@@ -130,9 +130,7 @@ def test_diff_wide_tolerance_swallows_five_percent(tmp_path: Path) -> None:
         {"ttft_p99_ms": 200.0},
         {"ttft_p99_ms": 210.0},  # +5%
     )
-    result = runner.invoke(
-        app, ["diff", str(a), str(b), "--tolerance", "0.10", "--report", "json"]
-    )
+    result = runner.invoke(app, ["diff", str(a), str(b), "--tolerance", "0.10", "--report", "json"])
     assert result.exit_code == 0, result.output
     payload = json.loads(result.output)
     [row] = [m for m in payload["metrics"] if m["name"] == "ttft_p99_ms"]
@@ -306,9 +304,7 @@ def test_diff_missing_file_errors(tmp_path: Path) -> None:
     assert result.exit_code != 0
 
 
-def test_diff_verify_passes_on_dev_signed(
-    tmp_path: Path, dev_keypair: tuple[Path, Path]
-) -> None:
+def test_diff_verify_passes_on_dev_signed(tmp_path: Path, dev_keypair: tuple[Path, Path]) -> None:
     """--verify succeeds when both envelopes are dev-signed and intact."""
     priv, _ = dev_keypair
     baseline = make_envelope(

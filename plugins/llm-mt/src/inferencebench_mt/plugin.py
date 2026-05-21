@@ -112,11 +112,7 @@ def _build_client(context: RunContext, *, timeout_s: float = 60.0) -> ModelClien
 
 def _build_prompt(source: str, source_lang: str, target_lang: str) -> str:
     """Construct the translation prompt for one fixture row."""
-    return (
-        f"Translate from {source_lang} to {target_lang}:\n\n"
-        f"{source}\n\n"
-        "Translation:"
-    )
+    return f"Translate from {source_lang} to {target_lang}:\n\n{source}\n\nTranslation:"
 
 
 # Metrics this plugin is expected to emit. Consumed by ``bench coverage``.
@@ -137,8 +133,7 @@ class LLMMTPlugin:
     suite_id = "llm.mt"
     version = "0.0.2"
     description = (
-        "LLM machine-translation benchmarks (chrF / token-BLEU / exact-match "
-        "on bundled fixtures)."
+        "LLM machine-translation benchmarks (chrF / token-BLEU / exact-match on bundled fixtures)."
     )
 
     # ----------------------------------------------------------- benchmarks #
@@ -165,8 +160,7 @@ class LLMMTPlugin:
             warnings.append("model_id is empty")
         if context.engine_kind in _SELF_HOSTED_ENGINES and not context.base_url:
             warnings.append(
-                f"{context.engine_kind.value} needs base_url "
-                "(e.g. http://localhost:8000/v1)"
+                f"{context.engine_kind.value} needs base_url (e.g. http://localhost:8000/v1)"
             )
         if not self._dataset_path(spec).exists():
             warnings.append(f"fixture not found: {spec.dataset.path}")
@@ -227,9 +221,7 @@ class LLMMTPlugin:
             prompt = _build_prompt(source, spec.source_lang, spec.target_lang)
             t_arrival = time.perf_counter() * 1000.0
             try:
-                result: CompletionResult = client.complete(
-                    prompt, stream=True, max_tokens=256
-                )
+                result: CompletionResult = client.complete(prompt, stream=True, max_tokens=256)
             except Exception as exc:
                 samples.append(
                     Sample(
@@ -295,14 +287,22 @@ class LLMMTPlugin:
                         else ""
                     )
                     fp.write(
-                        '{"request_idx":' + str(s.request_idx)
-                        + ',"ok":' + ("true" if s.ok else "false")
-                        + ',"ttft_ms":' + _json_num(s.ttft_ms)
-                        + ',"total_ms":' + _json_num(s.total_ms)
-                        + ',"tokens_in":' + str(s.tokens_in)
-                        + ',"tokens_out":' + str(s.tokens_out)
+                        '{"request_idx":'
+                        + str(s.request_idx)
+                        + ',"ok":'
+                        + ("true" if s.ok else "false")
+                        + ',"ttft_ms":'
+                        + _json_num(s.ttft_ms)
+                        + ',"total_ms":'
+                        + _json_num(s.total_ms)
+                        + ',"tokens_in":'
+                        + str(s.tokens_in)
+                        + ',"tokens_out":'
+                        + str(s.tokens_out)
                         + score_part
-                        + ',"finish_reason":"' + (s.finish_reason or "") + '"'
+                        + ',"finish_reason":"'
+                        + (s.finish_reason or "")
+                        + '"'
                         + (',"error":' + _json_str(s.error) if s.error else "")
                         + "}\n"
                     )
@@ -319,7 +319,7 @@ class LLMMTPlugin:
     def _dataset_path(self, spec: BenchmarkSpec) -> Path:
         raw = spec.dataset.path
         if raw.startswith("fixtures://"):
-            return _fixtures_cache_root() / f"{raw[len('fixtures://'):]}.jsonl"
+            return _fixtures_cache_root() / f"{raw[len('fixtures://') :]}.jsonl"
         return self._datasets_dir() / raw
 
     def _load_yaml(self, path: Path) -> BenchmarkSpec:
@@ -331,10 +331,7 @@ class LLMMTPlugin:
         if not path.exists():
             if spec.dataset.path.startswith("fixtures://"):
                 key = spec.dataset.path[len("fixtures://") :]
-                msg = (
-                    f"fixture not cached: {path}. "
-                    f"Run `bench fixtures fetch {key}` first."
-                )
+                msg = f"fixture not cached: {path}. Run `bench fixtures fetch {key}` first."
                 raise FileNotFoundError(msg)
             msg = f"fixture not found: {path}"
             raise FileNotFoundError(msg)
@@ -422,9 +419,7 @@ class LLMMTPlugin:
         # that a missing-cost row is more honest than an estimated one.
         cost_total = sum(s.cost_usd for s in ok_samples)
         if tokens_out_total and cost_total > 0:
-            metrics["cost_usd_per_million_tokens"] = (
-                cost_total / tokens_out_total
-            ) * 1e6
+            metrics["cost_usd_per_million_tokens"] = (cost_total / tokens_out_total) * 1e6
             metrics["cost_source"] = "provider"
 
         builder = EnvelopeBuilder(

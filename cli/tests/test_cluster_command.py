@@ -236,9 +236,7 @@ def test_cluster_run_posts_all_envelopes_to_server(
     assert "4 succeeded" in combined
 
 
-def test_cluster_status_lists_envelopes(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_cluster_status_lists_envelopes(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     priv, pub = _dev_keypair(tmp_path)
     _install_fake_run(monkeypatch)
     cfg = _two_by_two_config(tmp_path)
@@ -263,9 +261,7 @@ def test_cluster_status_lists_envelopes(
             ],
         )
         assert run_result.exit_code == 0, run_result.stdout + (run_result.stderr or "")
-        status_result = runner.invoke(
-            app, ["cluster", "status", "--server-url", base_url]
-        )
+        status_result = runner.invoke(app, ["cluster", "status", "--server-url", base_url])
 
     combined = status_result.stdout + (status_result.stderr or "")
     assert status_result.exit_code == 0, combined

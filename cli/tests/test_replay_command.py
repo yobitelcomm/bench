@@ -61,9 +61,7 @@ def test_replay_missing_envelope_path() -> None:
 
 def test_replay_nonexistent_envelope_path(tmp_path: Path) -> None:
     """An envelope path that doesn't exist exits 2 with a clear error."""
-    result = runner.invoke(
-        app, ["replay", str(tmp_path / "does-not-exist.json"), "--no-verify"]
-    )
+    result = runner.invoke(app, ["replay", str(tmp_path / "does-not-exist.json"), "--no-verify"])
     assert result.exit_code == 2
     combined = result.stdout + (result.stderr or "")
     assert "not found" in combined.lower()
@@ -120,9 +118,7 @@ def test_replay_happy_path_propagates_source_fields(
     """
     priv, _ = dev_keypair
     source_env = _sharegpt_envelope()
-    source_path = write_signed_envelope_json(
-        tmp_path / "src.json", source_env, dev_key=priv
-    )
+    source_path = write_signed_envelope_json(tmp_path / "src.json", source_env, dev_key=priv)
 
     captured: dict[str, Any] = {}
 
@@ -149,9 +145,7 @@ def test_replay_happy_path_propagates_source_fields(
                 "ok_rate": 0.998,
             },
         )
-        return sign_envelope(
-            replay_env, mode=SigningMode.DEV, dev_key_path=priv
-        )
+        return sign_envelope(replay_env, mode=SigningMode.DEV, dev_key_path=priv)
 
     from inferencebench_llm.plugin import LLMInferencePlugin
 
@@ -193,9 +187,7 @@ def test_replay_happy_path_propagates_source_fields(
     assert new_env["model"]["id"] == "meta-llama/Llama-3.1-8B-Instruct"
 
     # The summary table must show both envelope paths.
-    assert str(source_path) in result.stdout or str(source_path) in (
-        result.stderr or ""
-    )
+    assert str(source_path) in result.stdout or str(source_path) in (result.stderr or "")
 
 
 def test_replay_no_verify_bypasses_signature_checks(
@@ -221,9 +213,7 @@ def test_replay_no_verify_bypasses_signature_checks(
             suite_id="llm.inference.sharegpt-v3",
             metrics={"throughput_tok_per_s": 1700.0, "ok_rate": 0.99},
         )
-        return sign_envelope(
-            replay_env, mode=SigningMode.DEV, dev_key_path=priv
-        )
+        return sign_envelope(replay_env, mode=SigningMode.DEV, dev_key_path=priv)
 
     from inferencebench_llm.plugin import LLMInferencePlugin
 

@@ -144,9 +144,9 @@ def test_plugin_run_end_to_end_with_mocked_engine(
     # 7. At least one metric is populated and non-zero. The mocked client returns
     #    10 tokens_out per sample, so ``n_samples`` (or another metric) is > 0.
     assert envelope.metrics, "expected at least one metric in the envelope"
-    assert any(
-        (v is not None and float(v) > 0) for v in envelope.metrics.values()
-    ), f"expected at least one positive metric; got {envelope.metrics}"
+    assert any((v is not None and float(v) > 0) for v in envelope.metrics.values()), (
+        f"expected at least one positive metric; got {envelope.metrics}"
+    )
 
     # 8. Verification against the freshly-generated public key succeeds.
     result = verify_envelope(envelope, dev_public_key_path=public_key_path)

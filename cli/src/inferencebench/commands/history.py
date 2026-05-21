@@ -309,9 +309,7 @@ def _emit_sparkline(series: list[dict[str, Any]]) -> None:
     mn = min(values)
     mx = max(values)
     med = statistics.median(values)
-    console.print(
-        f"{bar}  min={_fmt(mn)}  median={_fmt(med)}  max={_fmt(mx)}"
-    )
+    console.print(f"{bar}  min={_fmt(mn)}  median={_fmt(med)}  max={_fmt(mx)}")
 
 
 # --------------------------------------------------------------------------- #

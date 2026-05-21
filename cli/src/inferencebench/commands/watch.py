@@ -137,9 +137,7 @@ def watch(
                     )
                 previous = current
             elif not quiet:
-                console.print(
-                    f"[dim]no changes at {datetime.now().strftime('%H:%M:%S')}[/dim]"
-                )
+                console.print(f"[dim]no changes at {datetime.now().strftime('%H:%M:%S')}[/dim]")
 
             if max_iterations and iteration >= max_iterations:
                 break

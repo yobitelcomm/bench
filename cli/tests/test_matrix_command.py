@@ -56,7 +56,7 @@ def _install_fake_run(
             raise RuntimeError(msg)
 
         # Distinct run_id per (target, point) so content_hashes differ.
-        salt = (abs(hash((target_name, point))) % 10**10)
+        salt = abs(hash((target_name, point))) % 10**10
         env = make_envelope(
             model_id=f"fake-{target_name}",
             run_id=f"01934567-89ab-7000-8000-0{salt:011d}"[:36],
@@ -91,9 +91,7 @@ def _write_config(path: Path, body: dict[str, Any]) -> Path:
 # --------------------------------------------------------------------------- #
 # Tests                                                                       #
 # --------------------------------------------------------------------------- #
-def test_minimal_yaml_one_target_one_point(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_minimal_yaml_one_target_one_point(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """1 target x 1 sweep point -> 1 envelope written."""
     dev_key = _dev_key(tmp_path)
     calls = _install_fake_run(monkeypatch)
@@ -238,9 +236,7 @@ def test_missing_required_field_suite_id(tmp_path: Path) -> None:
     assert "invalid" in combined.lower()
 
 
-def test_missing_api_key_env_skips_target(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_missing_api_key_env_skips_target(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """An openai-like target with missing api_key_env is skipped; others run."""
     monkeypatch.delenv("NONEXISTENT_VAR_FOR_MATRIX_TEST", raising=False)
     dev_key = _dev_key(tmp_path)
@@ -360,9 +356,7 @@ def test_no_continue_on_error_stops_on_first_failure(
     assert not any(f.startswith("vllm-b-c1-") for f in files), files
 
 
-def test_continue_on_error_keeps_going(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_continue_on_error_keeps_going(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """`--continue-on-error` (default): summary shows ✗ for the failed target, exit 0."""
     dev_key = _dev_key(tmp_path)
     calls = _install_fake_run(monkeypatch, fail_targets=("vllm-b",))
@@ -424,9 +418,7 @@ def test_continue_on_error_keeps_going(
     assert "✗" in combined or "x" in combined.lower()
 
 
-def test_schema_key_loaded_from_yaml(
-    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
-) -> None:
+def test_schema_key_loaded_from_yaml(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     """Schema string `inferencebench.matrix.v1` is read from YAML and accepted."""
     dev_key = _dev_key(tmp_path)
     _install_fake_run(monkeypatch)
