@@ -23,6 +23,19 @@ bench verify ~/.cache/inferencebench/fetched/*.json \
 
 The public key is committed at [trust/cosign-2026-05-18-marathon.pub](https://github.com/yobitelcomm/bench/blob/main/trust/cosign-2026-05-18-marathon.pub) and mirrored at [huggingface.co/datasets/Yobitel/bench-trust-anchors](https://huggingface.co/datasets/Yobitel/bench-trust-anchors). All 50 envelopes pass audit against this key.
 
+### Keyless-signed mirror
+
+The same 50 envelopes are also published with **Sigstore keyless signatures** (no key file needed) at [huggingface.co/datasets/Yobitel/marathon-keyless-v0.0.2](https://huggingface.co/datasets/Yobitel/marathon-keyless-v0.0.2). They were re-signed end-to-end through GitHub Actions' OIDC token — see [`.github/workflows/keyless-sign-marathon.yml`](https://github.com/yobitelcomm/bench/blob/main/.github/workflows/keyless-sign-marathon.yml) — so each signature ties back to a specific workflow run that anyone can audit on the Rekor transparency log:
+
+```bash
+bench fetch hf://datasets/Yobitel/marathon-keyless-v0.0.2/<one-of-the-files>
+bench verify ~/.cache/inferencebench/fetched/*.json \
+  --require-issuer https://token.actions.githubusercontent.com \
+  --require-identity-pattern 'github\.com/yobitelcomm/bench/'
+```
+
+See the [Sigstore keyless verify recipe](sigstore-verification.md) for the full story on what the policy flags do and why this is stronger than dev-key trust.
+
 | Model | Vendor | tok/s | factual% | arith% | persona | chrF en→fr | HumanEval | MBPP | OCR | chartQA | reason% |
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Llama-3.1-8B-Instruct | Meta | 228 | 100% | 75% | 0.96 | 0.77 | 100% | — | — | — | — |
