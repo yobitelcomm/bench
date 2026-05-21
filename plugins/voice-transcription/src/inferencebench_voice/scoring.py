@@ -11,6 +11,28 @@ already-decoded text.
 
 from __future__ import annotations
 
+import re
+
+# Standard ASCII punctuation Whisper, OpenAI audio, and Cohere transcribe all
+# emit in their outputs. Stripped before tokenizing so "doesn't." in the hyp
+# doesn't substitute against "doesn't" in the ref. Apostrophes are stripped too
+# because LibriSpeech / FLEURS references encode "doesn't" with a real
+# apostrophe but Whisper occasionally returns a Unicode curly one (U+2019).
+_PUNCT_RE = re.compile(r"[.,!?;:\"'`‘’“”()\[\]\-]+")
+
+
+def _normalize_text(s: str) -> str:
+    """Casefold + strip ASR-irrelevant punctuation + collapse whitespace.
+
+    The same normalizer must run on both reference and hypothesis for WER/CER
+    to be meaningful. This is the minimal viable normalization — for
+    Whisper-canonical strict scoring use the openai-whisper EnglishTextNormalizer
+    (which also expands contractions, normalizes numerals, etc.); we deliberately
+    keep this small to avoid the optional dep.
+    """
+    s = _PUNCT_RE.sub(" ", s.lower())
+    return " ".join(s.split())
+
 
 def _levenshtein(a: list[str], b: list[str]) -> int:
     """Classic O(len(a) * len(b)) edit distance over token sequences.
@@ -48,8 +70,8 @@ def wer(reference: str, hypothesis: str) -> float:
     reference is a degenerate input: returns 0.0 when hypothesis is also
     empty, 1.0 otherwise (everything is an insertion).
     """
-    ref_tokens = reference.lower().split()
-    hyp_tokens = hypothesis.lower().split()
+    ref_tokens = _normalize_text(reference).split()
+    hyp_tokens = _normalize_text(hypothesis).split()
     if not ref_tokens:
         return 0.0 if not hyp_tokens else 1.0
     distance = _levenshtein(ref_tokens, hyp_tokens)
@@ -64,8 +86,8 @@ def cer(reference: str, hypothesis: str) -> float:
     is collapsed before character-level diffing so trailing newlines don't
     inflate the score. Capped at 1.0 for the same reason as WER.
     """
-    ref_chars = list(" ".join(reference.lower().split()))
-    hyp_chars = list(" ".join(hypothesis.lower().split()))
+    ref_chars = list(_normalize_text(reference))
+    hyp_chars = list(_normalize_text(hypothesis))
     if not ref_chars:
         return 0.0 if not hyp_chars else 1.0
     distance = _levenshtein(ref_chars, hyp_chars)

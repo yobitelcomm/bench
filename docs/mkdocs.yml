@@ -78,6 +78,7 @@ nav:
       - Multi-vendor matrix: recipes/multi-vendor-matrix.md
       - Multi-vendor marathon (9 models): recipes/multi-vendor-marathon.md
       - Sigstore keyless verify: recipes/sigstore-verification.md
+      - Benchmark a Whisper ASR server: recipes/voice-asr.md
       - Run in a container: recipes/docker.md
   - Concepts:
       - Signed envelope: concepts/envelope.md
