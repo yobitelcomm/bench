@@ -93,6 +93,28 @@ def test_exact_match_one_when_different() -> None:
 
 
 # --------------------------------------------------------------------------- #
+# Normalization — references vs Whisper-style outputs                         #
+# --------------------------------------------------------------------------- #
+def test_wer_ignores_punctuation_between_ref_and_hyp() -> None:
+    # LibriSpeech-style upper-case ref vs Whisper-style cased + punctuated hyp
+    ref = "HE EATS AND SLEEPS VERY STEADILY REPLIED THE NEW KING"
+    hyp = "He eats and sleeps, very steadily, replied the new king."
+    assert wer(ref, hyp) == 0.0
+
+
+def test_wer_handles_apostrophes_across_normalization() -> None:
+    # Whisper occasionally emits Unicode right-single-quote (U+2019)
+    # where the LibriSpeech reference uses ASCII apostrophe.
+    ref = "I HOPE HE DOESN'T WORK TOO HARD SAID SHAGGY"
+    hyp = "I hope he doesn’t work too hard, said Shaggy."
+    assert wer(ref, hyp) == 0.0
+
+
+def test_cer_ignores_punctuation_between_ref_and_hyp() -> None:
+    assert cer("hello world", "Hello, world!") == 0.0
+
+
+# --------------------------------------------------------------------------- #
 # Registry                                                                    #
 # --------------------------------------------------------------------------- #
 def test_scorers_registry_has_all_three() -> None:

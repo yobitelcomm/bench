@@ -34,13 +34,14 @@ def test_plugin_metadata() -> None:
 def test_plugin_lists_bundled_benchmarks() -> None:
     plugin = VoiceTranscriptionPlugin()
     specs = plugin.list_benchmarks()
-    assert len(specs) >= 4
+    assert len(specs) >= 5
     ids = {s.benchmark_id for s in specs}
     assert {
         "voice.transcription.fleurs-mini",
         "voice.transcription.long-form",
         "voice.transcription.code-switched-mini",
         "voice.transcription.accented-mini",
+        "voice.transcription.librispeech-clean-mini",
     }.issubset(ids)
 
 
@@ -58,6 +59,14 @@ def test_get_benchmark_accented_mini_resolves() -> None:
     assert isinstance(spec, BenchmarkSpec)
     assert spec.scoring == "wer"
     assert spec.dataset.path == "accented-mini.jsonl"
+
+
+def test_get_benchmark_librispeech_clean_mini_resolves() -> None:
+    plugin = VoiceTranscriptionPlugin()
+    spec = plugin.get_benchmark("voice.transcription.librispeech-clean-mini")
+    assert isinstance(spec, BenchmarkSpec)
+    assert spec.scoring == "wer"
+    assert spec.dataset.path == "librispeech-clean-mini.jsonl"
 
 
 def test_plugin_get_benchmark_fleurs_mini() -> None:
@@ -205,6 +214,36 @@ def test_run_with_corrupted_hypothesis_matches_handcomputed_wer(
     envelope = plugin.run(spec, make_run_context())
     expected = sum(1 / 9 + 1 / 6 + 1 / 7 + 1 / 8 + 1 / 9 for _ in [0]) / 5
     assert envelope.metrics["wer_mean"] == pytest.approx(expected, rel=1e-9)
+
+
+def test_run_librispeech_mini_with_whisper_style_hypothesis_yields_zero_wer(
+    make_run_context: Any,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Mock returns lowercase, punctuated, Whisper-flavoured hypotheses against
+    the all-caps LibriSpeech references — the normalizer in the WER scorer
+    must absorb the difference and report 0% WER."""
+    plugin = VoiceTranscriptionPlugin()
+    spec = plugin.get_benchmark("voice.transcription.librispeech-clean-mini")
+
+    # Hypotheses styled exactly the way Whisper / OpenAI audio renders them:
+    # sentence-case, trailing period, Unicode right-single-quote for "doesn't".
+    whisper_style = {
+        "ls-001.wav": "Inquired Shaggy, in the metal forest.",
+        "ls-002.wav": "As for etchings, they are of two kinds, British and foreign.",
+        "ls-003.wav": "He eats and sleeps very steadily, replied the new king.",
+        "ls-004.wav": "I hope he doesn’t work too hard, said Shaggy.",
+        "ls-005.wav": "Not exactly, returned Kaliko.",
+    }
+    seen = _patch_transcribe_returning(monkeypatch, whisper_style, total_ms=120.0)
+
+    envelope = plugin.run(spec, make_run_context())
+
+    assert len(seen) == 5
+    assert envelope.signature is not None
+    assert envelope.metrics["n_samples"] == 5.0
+    assert envelope.metrics["ok_rate"] == 1.0
+    assert envelope.metrics["wer_mean"] == pytest.approx(0.0, abs=1e-12)
 
 
 def test_run_writes_samples_jsonl_alongside_envelope(

@@ -1,0 +1,17 @@
+benchmark_id: voice.transcription.librispeech-clean-mini
+suite_version: 1.0.0
+description: |
+  Five real LibriSpeech test-clean utterances (16 kHz mono, 2-6s each).
+  Sourced from hf-internal-testing/librispeech_asr_dummy under LibriSpeech's
+  CC BY 4.0. Reference transcriptions are the canonical LibriSpeech ones in
+  upper-case ASCII — the WER scorer lowercases + strips punctuation so engine
+  outputs in any casing/punctuation will compare correctly.
+modality: voice
+kind: transcription
+dataset:
+  id: librispeech-clean-mini
+  path: librispeech-clean-mini.jsonl
+slo_template: voice.transcription.standard
+warmup:
+  discard_runs: 0
+scoring: wer
