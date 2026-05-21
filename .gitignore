@@ -85,7 +85,15 @@ cosign.key
 !tests/fixtures/**/*.pem
 
 # Real-GPU validation artifacts (kept locally, never pushed)
-validation-runs/
+# Use slash-star (not trailing slash) so individual subpaths can be re-included below.
+validation-runs/*
+# ...except the canonical published marathon corpus — small, public, used by docs + CI
+!validation-runs/2026-05-18-multi-vendor-marathon
+validation-runs/2026-05-18-multi-vendor-marathon/*
+!validation-runs/2026-05-18-multi-vendor-marathon/marathon
+validation-runs/2026-05-18-multi-vendor-marathon/marathon/*
+!validation-runs/2026-05-18-multi-vendor-marathon/marathon/all
+!validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/*.json
 
 # Model weights / datasets (use Git LFS or S3)
 *.bin
