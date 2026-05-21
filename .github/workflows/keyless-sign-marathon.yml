@@ -1,0 +1,71 @@
+name: keyless-sign-marathon
+
+# Manually-dispatched workflow that re-signs the entire 50-envelope marathon
+# corpus via Sigstore keyless OIDC and uploads them to one HF dataset repo.
+#
+# This is the scaled-up sibling of `keyless-sign-demo.yml` (which signs ONE
+# envelope as a proof point). Here we sign all 50 so the marathon recipe can
+# point at a keyless-verified mirror, not just the dev-key originals.
+#
+# Run it from the Actions tab -> Run workflow.
+
+on:
+  workflow_dispatch:
+    inputs:
+      source_dir:
+        description: "Path inside the repo containing the envelopes to sign"
+        required: true
+        type: string
+        default: "validation-runs/2026-05-18-multi-vendor-marathon/marathon/all"
+      target_repo:
+        description: "HF dataset repo to upload the keyless-signed envelopes to"
+        required: true
+        type: string
+        default: "Yobitel/marathon-keyless-v0.0.2"
+
+permissions:
+  contents: read
+  id-token: write  # required for the Sigstore OIDC exchange
+
+jobs:
+  sign:
+    name: re-sign marathon corpus keyless
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      COLUMNS: "240"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Sync workspace
+        run: uv sync --all-packages --dev --prerelease=allow
+
+      - name: Sign + upload corpus
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          uv run python scripts/keyless_sign_corpus.py \
+            --source-dir "${{ inputs.source_dir }}" \
+            --target-repo "${{ inputs.target_repo }}"
+
+      - name: Spot-verify one signed envelope
+        run: |
+          # Pick one keyless-signed envelope at random and verify it with the
+          # strict policy any third party would use. The signer identity is
+          # the GH workflow URI; anchor trust to this specific workflow file.
+          NEW=$(ls ~/.cache/inferencebench/keyless-corpus/keyless-*.json | shuf -n 1)
+          echo "spot-verifying: $NEW"
+          uv run bench verify "$NEW" \
+            --require-issuer https://token.actions.githubusercontent.com \
+            --require-identity-pattern 'github\.com/yobitelcomm/bench/'
+
+      - name: Upload artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: keyless-marathon-corpus
+          path: ~/.cache/inferencebench/keyless-corpus/keyless-*.json
