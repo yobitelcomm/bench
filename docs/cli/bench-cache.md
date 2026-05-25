@@ -19,7 +19,7 @@ bench cache list
 Expected output:
 
 ```
-                                Cached envelopes (/home/abishek/.cache/inferencebench/fetched)
+                                Cached envelopes (/home/bench/.cache/inferencebench/fetched)
  file                              size       age   content_hash  suite                         model
  60be8efd6d21.json                 18.0 KB    2h    60be8efd6d21  llm.inference.chatbot-short   meta-llama/Llama-3.1-8B-Instruct
  8d7ef1b17fb7.json                 17.8 KB    1d    8d7ef1b17fb7  llm.inference.chatbot-short   Qwen/Qwen2.5-7B-Instruct
@@ -43,7 +43,7 @@ ls -lh "$(bench cache path)"
 ```
 
 ```
-/home/abishek/.cache/inferencebench/fetched
+/home/bench/.cache/inferencebench/fetched
 ```
 
 ## Subcommands

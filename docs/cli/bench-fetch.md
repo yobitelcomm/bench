@@ -18,7 +18,7 @@ Expected output:
 
 ```
 OK  fetched hf://datasets/Yobitel/llama-3.1-8b__chatbot-short__abcdef123456
-  local_path:       /home/abishek/.cache/inferencebench/fetched/3f9c1a2b8e7d.json
+  local_path:       /home/bench/.cache/inferencebench/fetched/3f9c1a2b8e7d.json
   content_hash:     60be8efd6d21...
   suite_id:         llm.inference.chatbot-short
   model_id:         meta-llama/Llama-3.1-8B-Instruct

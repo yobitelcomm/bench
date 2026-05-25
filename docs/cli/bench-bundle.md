@@ -22,7 +22,7 @@ Expected output:
 ```
                 Bundle created: 60be8efd6d21.bundle.zip
  field        value
- path         /home/abishek/work/60be8efd6d21.bundle.zip
+ path         /home/bench/work/60be8efd6d21.bundle.zip
  size         18.4 KB
  files        envelope.json, signature_info.json, verify.py, README.txt, samples.jsonl, cosign.pub
  content_hash 60be8efd6d2178b40c5e...
@@ -50,7 +50,7 @@ Re-validates the inner envelope against the `Envelope` schema before printing:
 ```
               Bundle extracted: ./60be8efd6d21
  field        value
- out_dir      /home/abishek/work/60be8efd6d21
+ out_dir      /home/bench/work/60be8efd6d21
  content_hash 60be8efd6d2178b40c5e...
  suite        llm.inference.chatbot-short v1.0.0
  model        meta-llama/Llama-3.1-8B-Instruct
