@@ -1,13 +1,15 @@
 name: deploy-pages
 
-# Render the static leaderboard from the committed marathon corpus and deploy
-# it to https://yobitelcomm.github.io/bench/. The mkdocs documentation site
-# is intentionally NOT included yet — that's a separate ticket (mkdocs-material
-# needs to be added to the dev deps and `docs_dir: .` needs to be fixed before
-# `mkdocs build` works).
+# Render the mkdocs documentation site + the static leaderboard and deploy
+# both to https://yobitelcomm.github.io/bench/.
+#
+# Layout on the deployed site:
+#   /bench/             -> mkdocs-material documentation (built from docs/)
+#   /bench/leaderboard/ -> static leaderboard (built from the marathon corpus)
 #
 # Triggers:
-#   * push to main when the leaderboard tool or the published corpus changes
+#   * push to main when leaderboard tool, the docs, mkdocs config, or the
+#     published corpus change
 #   * workflow_dispatch for manual re-deploys
 #   * weekly schedule so the site rebuilds in case the corpus is grown by an
 #     out-of-band publisher (e.g. the keyless-sign-marathon workflow uploading
@@ -17,6 +19,8 @@ on:
   push:
     branches: [main]
     paths:
+      - "docs/**"
+      - "mkdocs.yml"
       - "tools/leaderboard/**"
       - "validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/**"
       - ".github/workflows/deploy-pages.yml"
@@ -35,7 +39,7 @@ concurrency:
 
 jobs:
   build:
-    name: render leaderboard
+    name: render docs + leaderboard
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -45,26 +49,29 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Sync workspace
-        run: uv sync --all-packages --dev --prerelease=allow
+      - name: Sync workspace + docs deps
+        run: uv sync --all-packages --dev --group docs --prerelease=allow
 
-      - name: Build leaderboard
+      - name: Build mkdocs documentation site
+        run: uv run mkdocs build --clean --site-dir _site
+
+      - name: Build leaderboard into _site/leaderboard/
         run: |
-          mkdir -p _site
           uv run bench leaderboard --build \
             --envelopes validation-runs/2026-05-18-multi-vendor-marathon/marathon/all \
-            --out _site \
-            --base-url /bench/
+            --out _site/leaderboard \
+            --base-url /bench/leaderboard/
 
       - name: Smoke-check the rendered site
         run: |
-          # Fail fast if the renderer produced an empty site (would deploy a blank page otherwise).
-          test -f _site/index.html
-          test -f _site/static/site.css
-          test -f _site/data/leaderboard.json
+          # Fail fast if either renderer produced an empty site.
+          test -f _site/index.html                     # mkdocs index
+          test -f _site/leaderboard/index.html         # leaderboard index
+          test -f _site/leaderboard/static/site.css    # leaderboard CSS
+          test -f _site/leaderboard/data/leaderboard.json
           n_html=$(find _site -name '*.html' | wc -l)
           echo "rendered HTML files: $n_html"
-          test "$n_html" -ge 10
+          test "$n_html" -ge 50
 
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
