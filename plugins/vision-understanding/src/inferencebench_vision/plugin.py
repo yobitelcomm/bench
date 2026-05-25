@@ -37,7 +37,7 @@ from inferencebench.harness import (
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics import EnergyReport, Percentiles, TelemetryWindow
 from inferencebench_vision.multimodal_client import MultimodalClient
 from inferencebench_vision.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_vision.scoring import SCORERS, ScoreContext
@@ -171,7 +171,7 @@ class VisionUnderstandingPlugin:
 
         judge_errors: list[str] = []
         judge_cost_usd: list[float] = []
-        samples, scores = self._score_items(
+        samples, scores, telemetry = self._score_items(
             client,
             items,
             scorer,
@@ -192,6 +192,7 @@ class VisionUnderstandingPlugin:
             dataset_hash=fixture_hash,
             judge_errors=judge_errors if spec.scoring == "judge_llm" else None,
             judge_cost_usd=judge_cost_usd if spec.scoring == "judge_llm" else None,
+            energy=telemetry.summarise(samples),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -217,7 +218,7 @@ class VisionUnderstandingPlugin:
         judge_errors: list[str] | None = None,
         judge_cost_usd: list[float] | None = None,
         is_judge: bool = False,
-    ) -> tuple[list[Sample], list[float]]:
+    ) -> tuple[list[Sample], list[float], TelemetryWindow]:
         """Iterate fixture items sequentially, scoring each multimodal response.
 
         Rows whose ``image_path`` doesn't resolve on disk are skipped with a
@@ -230,94 +231,96 @@ class VisionUnderstandingPlugin:
         _judge_cost = judge_cost_usd if judge_cost_usd is not None else []
         datasets_dir = self._datasets_dir()
 
-        for idx, item in enumerate(items):
-            question = item["question"]
-            reference = item["answer"]
-            image_rel = item["image_path"]
-            image_path = (datasets_dir / image_rel).resolve()
-            t_arrival = time.perf_counter() * 1000.0
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, item in enumerate(items):
+                question = item["question"]
+                reference = item["answer"]
+                image_rel = item["image_path"]
+                image_path = (datasets_dir / image_rel).resolve()
+                t_arrival = time.perf_counter() * 1000.0
 
-            if not image_path.exists():
+                if not image_path.exists():
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="missing_image",
+                            ok=False,
+                            error=f"image not found: {image_rel}",
+                        )
+                    )
+                    continue
+
+                try:
+                    result: CompletionResult = client.complete_multimodal(
+                        image_path, question, max_tokens=128
+                    )
+                except Exception as exc:  # network errors are per-request
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=str(exc),
+                        )
+                    )
+                    continue
+
+                if is_judge:
+                    score_ctx = ScoreContext(
+                        reference=reference,
+                        hypothesis=result.text,
+                        question=question,
+                        judge_client=judge_client,
+                        judge_errors=_judge_errors,
+                        judge_cost_usd=_judge_cost,
+                    )
+                else:
+                    score_ctx = ScoreContext(
+                        reference=reference,
+                        hypothesis=result.text,
+                        question=question,
+                    )
+                score = float(scorer(score_ctx))
+                scores.append(score)
+
+                sample_extra: dict[str, str | int | float | bool] = {
+                    "task": item.get("task", ""),
+                    "score": score,
+                }
                 samples.append(
                     Sample(
                         request_idx=idx,
                         arrival_ms=t_arrival,
                         start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="missing_image",
-                        ok=False,
-                        error=f"image not found: {image_rel}",
+                        ttft_ms=result.ttft_ms,
+                        total_ms=result.total_ms,
+                        tpot_ms=result.tpot_ms,
+                        tokens_in=result.tokens_in,
+                        tokens_out=result.tokens_out,
+                        cost_usd=result.cost_usd,
+                        finish_reason=result.finish_reason,
+                        ok=True,
+                        extra=sample_extra,
                     )
                 )
-                continue
-
-            try:
-                result: CompletionResult = client.complete_multimodal(
-                    image_path, question, max_tokens=128
-                )
-            except Exception as exc:  # network errors are per-request
-                samples.append(
-                    Sample(
-                        request_idx=idx,
-                        arrival_ms=t_arrival,
-                        start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=str(exc),
-                    )
-                )
-                continue
-
-            if is_judge:
-                score_ctx = ScoreContext(
-                    reference=reference,
-                    hypothesis=result.text,
-                    question=question,
-                    judge_client=judge_client,
-                    judge_errors=_judge_errors,
-                    judge_cost_usd=_judge_cost,
-                )
-            else:
-                score_ctx = ScoreContext(
-                    reference=reference,
-                    hypothesis=result.text,
-                    question=question,
-                )
-            score = float(scorer(score_ctx))
-            scores.append(score)
-
-            sample_extra: dict[str, str | int | float | bool] = {
-                "task": item.get("task", ""),
-                "score": score,
-            }
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=result.ttft_ms,
-                    total_ms=result.total_ms,
-                    tpot_ms=result.tpot_ms,
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=result.cost_usd,
-                    finish_reason=result.finish_reason,
-                    ok=True,
-                    extra=sample_extra,
-                )
-            )
-        return samples, scores
+        return samples, scores, telemetry
 
     # ------------------------------------------------------------ samples #
     def _dump_samples(self, context: RunContext, samples: list[Sample]) -> None:
@@ -441,6 +444,7 @@ class VisionUnderstandingPlugin:
         dataset_hash: str,
         judge_errors: list[str] | None = None,
         judge_cost_usd: list[float] | None = None,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -476,6 +480,17 @@ class VisionUnderstandingPlugin:
         tokens_out_total = sum(s.tokens_out for s in ok_samples)
         if tokens_out_total:
             metrics["tokens_out_total"] = float(tokens_out_total)
+
+        # Energy / power summary from telemetry (None on plugins that haven't
+        # threaded a TelemetryWindow through yet). Mirrors llm-inference.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         cost_total = sum(s.cost_usd for s in ok_samples)
         judge_cost_total = sum(judge_cost_usd) if judge_cost_usd else 0.0

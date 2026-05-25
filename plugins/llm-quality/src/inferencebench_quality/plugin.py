@@ -41,7 +41,7 @@ from inferencebench.harness import (
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics import EnergyReport, Percentiles, TelemetryWindow
 from inferencebench_quality.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_quality.scoring import (
     SCORERS,
@@ -299,7 +299,7 @@ class LLMQualityPlugin:
 
         judge_errors: list[str] = []
         judge_cost_usd: list[float] = []
-        samples, scores, n_judged = self._score_items(
+        samples, scores, n_judged, telemetry = self._score_items(
             client,
             items,
             scorer,
@@ -323,6 +323,7 @@ class LLMQualityPlugin:
             n_judged=n_judged if spec.scoring == "judge_llm" else None,
             judge_errors=judge_errors if spec.scoring == "judge_llm" else None,
             judge_cost_usd=judge_cost_usd if spec.scoring == "judge_llm" else None,
+            energy=telemetry.summarise(samples),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -350,7 +351,7 @@ class LLMQualityPlugin:
         judge_cost_usd: list[float] | None = None,
         is_judge: bool = False,
         judge_throttle: JudgeThrottle | None = None,
-    ) -> tuple[list[Sample], list[float], int]:
+    ) -> tuple[list[Sample], list[float], int, TelemetryWindow]:
         """Iterate fixture items sequentially, scoring each model response.
 
         Quality runs are per-question and order-independent — no driver
@@ -370,81 +371,85 @@ class LLMQualityPlugin:
         # they survive across this call boundary.
         _judge_errors = judge_errors if judge_errors is not None else []
         _judge_cost = judge_cost_usd if judge_cost_usd is not None else []
-        for idx, item in enumerate(items):
-            question = item["question"]
-            reference = item["answer"]
-            t_arrival = time.perf_counter() * 1000.0
-            try:
-                result: CompletionResult = client.complete(question, stream=True, max_tokens=128)
-            except Exception as exc:
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, item in enumerate(items):
+                question = item["question"]
+                reference = item["answer"]
+                t_arrival = time.perf_counter() * 1000.0
+                try:
+                    result: CompletionResult = client.complete(
+                        question, stream=True, max_tokens=128
+                    )
+                except Exception as exc:
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=str(exc),
+                        )
+                    )
+                    continue
+
+                score: float | None
+                if is_judge:
+                    if judge_max_questions is not None and n_judged >= judge_max_questions:
+                        score = None  # over the cap — skip the judge entirely
+                    else:
+                        if judge_throttle is not None:
+                            judge_throttle.acquire()
+                        score_ctx = ScoreContext(
+                            reference=reference,
+                            hypothesis=result.text,
+                            question=question,
+                            judge_client=judge_client,
+                            judge_errors=_judge_errors,
+                            judge_cost_usd=_judge_cost,
+                        )
+                        score = float(scorer(score_ctx))
+                        n_judged += 1
+                else:
+                    score_ctx = ScoreContext(
+                        reference=reference,
+                        hypothesis=result.text,
+                        question=question,
+                    )
+                    score = float(scorer(score_ctx))
+
+                if score is not None:
+                    scores.append(score)
+
+                sample_extra: dict[str, str | int | float | bool] = {
+                    "category": item.get("category", ""),
+                }
+                if score is not None:
+                    sample_extra["score"] = score
                 samples.append(
                     Sample(
                         request_idx=idx,
                         arrival_ms=t_arrival,
                         start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=str(exc),
+                        ttft_ms=result.ttft_ms,
+                        total_ms=result.total_ms,
+                        tpot_ms=result.tpot_ms,
+                        tokens_in=result.tokens_in,
+                        tokens_out=result.tokens_out,
+                        cost_usd=result.cost_usd,
+                        finish_reason=result.finish_reason,
+                        ok=True,
+                        extra=sample_extra,
                     )
                 )
-                continue
-
-            score: float | None
-            if is_judge:
-                if judge_max_questions is not None and n_judged >= judge_max_questions:
-                    score = None  # over the cap — skip the judge entirely
-                else:
-                    if judge_throttle is not None:
-                        judge_throttle.acquire()
-                    score_ctx = ScoreContext(
-                        reference=reference,
-                        hypothesis=result.text,
-                        question=question,
-                        judge_client=judge_client,
-                        judge_errors=_judge_errors,
-                        judge_cost_usd=_judge_cost,
-                    )
-                    score = float(scorer(score_ctx))
-                    n_judged += 1
-            else:
-                score_ctx = ScoreContext(
-                    reference=reference,
-                    hypothesis=result.text,
-                    question=question,
-                )
-                score = float(scorer(score_ctx))
-
-            if score is not None:
-                scores.append(score)
-
-            sample_extra: dict[str, str | int | float | bool] = {
-                "category": item.get("category", ""),
-            }
-            if score is not None:
-                sample_extra["score"] = score
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=result.ttft_ms,
-                    total_ms=result.total_ms,
-                    tpot_ms=result.tpot_ms,
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=result.cost_usd,
-                    finish_reason=result.finish_reason,
-                    ok=True,
-                    extra=sample_extra,
-                )
-            )
-        return samples, scores, n_judged
+        return samples, scores, n_judged, telemetry
 
     # ------------------------------------------------------- multi-turn #
     def _run_multi_turn(self, spec: BenchmarkSpec, context: RunContext) -> Envelope:
@@ -810,6 +815,7 @@ class LLMQualityPlugin:
         n_judged: int | None = None,
         judge_errors: list[str] | None = None,
         judge_cost_usd: list[float] | None = None,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -849,6 +855,17 @@ class LLMQualityPlugin:
         tokens_out_total = sum(s.tokens_out for s in ok_samples)
         if tokens_out_total:
             metrics["tokens_out_total"] = float(tokens_out_total)
+
+        # Energy / power summary from telemetry (None on plugins that haven't
+        # threaded a TelemetryWindow through yet). Mirrors llm-inference.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         # Cost: only emit when the provider actually reported it. Self-hosted
         # vLLM / SGLang never do; the perf plugin's pricing-registry fallback
