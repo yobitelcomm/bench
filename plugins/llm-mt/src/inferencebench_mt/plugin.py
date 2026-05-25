@@ -45,7 +45,7 @@ from inferencebench.harness import (
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics import EnergyReport, Percentiles, TelemetryWindow
 from inferencebench_mt.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_mt.scoring import SCORERS
 
@@ -174,7 +174,7 @@ class LLMMTPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        samples, scores = self._score_items(client, items, spec, scorer)
+        samples, scores, telemetry = self._score_items(client, items, spec, scorer)
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
@@ -185,6 +185,7 @@ class LLMMTPlugin:
             samples=samples,
             scores=scores,
             dataset_hash=fixture_hash,
+            energy=telemetry.summarise(samples),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -206,7 +207,7 @@ class LLMMTPlugin:
         items: list[dict[str, str]],
         spec: BenchmarkSpec,
         scorer: Callable[[str, str], float],
-    ) -> tuple[list[Sample], list[float]]:
+    ) -> tuple[list[Sample], list[float], TelemetryWindow]:
         """Iterate fixture items, call the model, score each hypothesis.
 
         MT runs are per-sentence and order-independent — no driver machinery
@@ -215,56 +216,60 @@ class LLMMTPlugin:
         """
         samples: list[Sample] = []
         scores: list[float] = []
-        for idx, item in enumerate(items):
-            source = item["source"]
-            reference = item["reference"]
-            prompt = _build_prompt(source, spec.source_lang, spec.target_lang)
-            t_arrival = time.perf_counter() * 1000.0
-            try:
-                result: CompletionResult = client.complete(prompt, stream=True, max_tokens=256)
-            except Exception as exc:
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, item in enumerate(items):
+                source = item["source"]
+                reference = item["reference"]
+                prompt = _build_prompt(source, spec.source_lang, spec.target_lang)
+                t_arrival = time.perf_counter() * 1000.0
+                try:
+                    result: CompletionResult = client.complete(
+                        prompt, stream=True, max_tokens=256
+                    )
+                except Exception as exc:
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=str(exc),
+                        )
+                    )
+                    continue
+
+                score = float(scorer(reference, result.text))
+                scores.append(score)
+
+                sample_extra: dict[str, str | int | float | bool] = {
+                    "domain": item.get("domain", ""),
+                    "score": score,
+                }
                 samples.append(
                     Sample(
                         request_idx=idx,
                         arrival_ms=t_arrival,
                         start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=str(exc),
+                        ttft_ms=result.ttft_ms,
+                        total_ms=result.total_ms,
+                        tpot_ms=result.tpot_ms,
+                        tokens_in=result.tokens_in,
+                        tokens_out=result.tokens_out,
+                        cost_usd=result.cost_usd,
+                        finish_reason=result.finish_reason,
+                        ok=True,
+                        extra=sample_extra,
                     )
                 )
-                continue
-
-            score = float(scorer(reference, result.text))
-            scores.append(score)
-
-            sample_extra: dict[str, str | int | float | bool] = {
-                "domain": item.get("domain", ""),
-                "score": score,
-            }
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=result.ttft_ms,
-                    total_ms=result.total_ms,
-                    tpot_ms=result.tpot_ms,
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=result.cost_usd,
-                    finish_reason=result.finish_reason,
-                    ok=True,
-                    extra=sample_extra,
-                )
-            )
-        return samples, scores
+        return samples, scores, telemetry
 
     # ------------------------------------------------------------ samples #
     def _dump_samples(self, context: RunContext, samples: list[Sample]) -> None:
@@ -367,6 +372,7 @@ class LLMMTPlugin:
         samples: list[Sample],
         scores: list[float],
         dataset_hash: str,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -412,6 +418,17 @@ class LLMMTPlugin:
         tokens_out_total = sum(s.tokens_out for s in ok_samples)
         if tokens_out_total:
             metrics["tokens_out_total"] = float(tokens_out_total)
+
+        # Energy / power summary from telemetry (None on plugins that haven't
+        # threaded a TelemetryWindow through yet). Mirrors llm-inference.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         # Cost: only emit when the provider actually reported it. Self-hosted
         # vLLM / SGLang never do; the perf plugin's pricing-registry fallback

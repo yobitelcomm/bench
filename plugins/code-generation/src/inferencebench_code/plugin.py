@@ -47,7 +47,7 @@ from inferencebench.harness import (
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics import EnergyReport, Percentiles, TelemetryWindow
 from inferencebench_code.runner import RunResult, run_unit_tests
 from inferencebench_code.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_code.scoring import extract_python_code
@@ -195,7 +195,7 @@ class CodeGenerationPlugin:
         items = self._load_fixture(spec)
         fixture_hash = _compute_fixture_hash(items)
 
-        samples, passed_flags, timeout_flags = self._score_items(
+        samples, passed_flags, timeout_flags, telemetry = self._score_items(
             client, items, timeout_s=spec.timeout_s
         )
 
@@ -209,6 +209,7 @@ class CodeGenerationPlugin:
             passed_flags=passed_flags,
             timeout_flags=timeout_flags,
             dataset_hash=fixture_hash,
+            energy=telemetry.summarise(samples),
         )
 
         signing_mode = context.extra.get("signing_mode", "dev")
@@ -231,7 +232,7 @@ class CodeGenerationPlugin:
         items: list[dict[str, str]],
         *,
         timeout_s: float,
-    ) -> tuple[list[Sample], list[bool], list[bool]]:
+    ) -> tuple[list[Sample], list[bool], list[bool], TelemetryWindow]:
         """Iterate fixture items sequentially, scoring each model response.
 
         For each fixture row:
@@ -245,72 +246,77 @@ class CodeGenerationPlugin:
         Records a :class:`Sample` per row (including ``passed``,
         ``duration_s``, ``timeout``, and an ``error_summary`` string) and
         returns parallel lists of per-row ``passed`` and ``timeout`` flags
-        for the aggregator.
+        for the aggregator, plus the :class:`TelemetryWindow` for energy
+        accounting.
         """
         samples: list[Sample] = []
         passed_flags: list[bool] = []
         timeout_flags: list[bool] = []
 
-        for idx, item in enumerate(items):
-            prompt = item["prompt"]
-            tests = item["tests"]
-            t_arrival = time.perf_counter() * 1000.0
-            try:
-                result: CompletionResult = client.complete(prompt, stream=True, max_tokens=512)
-            except Exception as exc:
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, item in enumerate(items):
+                prompt = item["prompt"]
+                tests = item["tests"]
+                t_arrival = time.perf_counter() * 1000.0
+                try:
+                    result: CompletionResult = client.complete(
+                        prompt, stream=True, max_tokens=512
+                    )
+                except Exception as exc:
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=str(exc),
+                        )
+                    )
+                    passed_flags.append(False)
+                    timeout_flags.append(False)
+                    continue
+
+                extracted = extract_python_code(result.text)
+                solution = _ensure_signature_present(prompt, extracted)
+                run_result: RunResult = run_unit_tests(solution, tests, timeout_s=timeout_s)
+                passed_flags.append(run_result.passed)
+                timeout_flags.append(run_result.timeout)
+
+                error_summary = self._summarize_error(run_result)
+                sample_extra: dict[str, str | int | float | bool] = {
+                    "task_id": item.get("task_id", ""),
+                    "passed": run_result.passed,
+                    "duration_s": run_result.duration_s,
+                    "timeout_flag": run_result.timeout,
+                }
+                if error_summary:
+                    sample_extra["error_summary"] = error_summary
+
                 samples.append(
                     Sample(
                         request_idx=idx,
                         arrival_ms=t_arrival,
                         start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=str(exc),
+                        ttft_ms=result.ttft_ms,
+                        total_ms=result.total_ms,
+                        tpot_ms=result.tpot_ms,
+                        tokens_in=result.tokens_in,
+                        tokens_out=result.tokens_out,
+                        cost_usd=result.cost_usd,
+                        finish_reason=result.finish_reason,
+                        ok=True,
+                        extra=sample_extra,
                     )
                 )
-                passed_flags.append(False)
-                timeout_flags.append(False)
-                continue
-
-            extracted = extract_python_code(result.text)
-            solution = _ensure_signature_present(prompt, extracted)
-            run_result: RunResult = run_unit_tests(solution, tests, timeout_s=timeout_s)
-            passed_flags.append(run_result.passed)
-            timeout_flags.append(run_result.timeout)
-
-            error_summary = self._summarize_error(run_result)
-            sample_extra: dict[str, str | int | float | bool] = {
-                "task_id": item.get("task_id", ""),
-                "passed": run_result.passed,
-                "duration_s": run_result.duration_s,
-                "timeout_flag": run_result.timeout,
-            }
-            if error_summary:
-                sample_extra["error_summary"] = error_summary
-
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=result.ttft_ms,
-                    total_ms=result.total_ms,
-                    tpot_ms=result.tpot_ms,
-                    tokens_in=result.tokens_in,
-                    tokens_out=result.tokens_out,
-                    cost_usd=result.cost_usd,
-                    finish_reason=result.finish_reason,
-                    ok=True,
-                    extra=sample_extra,
-                )
-            )
-        return samples, passed_flags, timeout_flags
+        return samples, passed_flags, timeout_flags, telemetry
 
     @staticmethod
     def _summarize_error(result: RunResult) -> str:
@@ -439,6 +445,7 @@ class CodeGenerationPlugin:
         passed_flags: list[bool],
         timeout_flags: list[bool],
         dataset_hash: str,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -475,6 +482,17 @@ class CodeGenerationPlugin:
             metrics["ttft_p50_ms"] = Percentiles(ttft_vals).p50
         if total_vals:
             metrics["total_p50_ms"] = Percentiles(total_vals).p50
+
+        # Energy / power summary from telemetry (None on plugins that haven't
+        # threaded a TelemetryWindow through yet). Mirrors llm-inference.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         tokens_out_total = sum(s.tokens_out for s in ok_samples)
         if tokens_out_total:

@@ -36,7 +36,7 @@ from inferencebench.harness import (
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics import EnergyReport, Percentiles, TelemetryWindow
 from inferencebench_embeddings.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_embeddings.scoring import METRICS
 
@@ -157,40 +157,42 @@ class EmbeddingsRetrievalPlugin:
 
         samples: list[Sample] = []
         scores: list[float] = []
-        for idx, q in enumerate(queries):
-            query_text = str(q["query"])
-            raw_relevant = q.get("relevant_doc_ids") or []
-            # ``_load_queries`` guarantees this is a list[str], but mypy sees
-            # the dict as ``dict[str, object]`` — narrow explicitly.
-            assert isinstance(raw_relevant, list)
-            relevant = [str(x) for x in raw_relevant]
-            t_arrival = time.perf_counter() * 1000.0
-            t_start = time.perf_counter()
-            ranking = _rank_corpus(query_text, corpus_ids)
-            score = float(scorer(ranking, relevant, k))
-            total_ms = (time.perf_counter() - t_start) * 1000.0
-            scores.append(score)
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=float("nan"),
-                    total_ms=total_ms,
-                    tpot_ms=float("nan"),
-                    tokens_in=len(query_text.split()),
-                    tokens_out=k,
-                    cost_usd=0.0,
-                    finish_reason="stop",
-                    ok=True,
-                    extra={
-                        "score": score,
-                        "k": k,
-                        "n_relevant": len(relevant),
-                        "topk": ranking[:k],
-                    },
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, q in enumerate(queries):
+                query_text = str(q["query"])
+                raw_relevant = q.get("relevant_doc_ids") or []
+                # ``_load_queries`` guarantees this is a list[str], but mypy sees
+                # the dict as ``dict[str, object]`` — narrow explicitly.
+                assert isinstance(raw_relevant, list)
+                relevant = [str(x) for x in raw_relevant]
+                t_arrival = time.perf_counter() * 1000.0
+                t_start = time.perf_counter()
+                ranking = _rank_corpus(query_text, corpus_ids)
+                score = float(scorer(ranking, relevant, k))
+                total_ms = (time.perf_counter() - t_start) * 1000.0
+                scores.append(score)
+                samples.append(
+                    Sample(
+                        request_idx=idx,
+                        arrival_ms=t_arrival,
+                        start_ms=t_arrival,
+                        ttft_ms=float("nan"),
+                        total_ms=total_ms,
+                        tpot_ms=float("nan"),
+                        tokens_in=len(query_text.split()),
+                        tokens_out=k,
+                        cost_usd=0.0,
+                        finish_reason="stop",
+                        ok=True,
+                        extra={
+                            "score": score,
+                            "k": k,
+                            "n_relevant": len(relevant),
+                            "topk": ranking[:k],
+                        },
+                    )
                 )
-            )
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
@@ -202,6 +204,7 @@ class EmbeddingsRetrievalPlugin:
             scores=scores,
             corpus_size=len(corpus),
             dataset_hash=fixture_hash,
+            energy=telemetry.summarise(samples),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -338,6 +341,7 @@ class EmbeddingsRetrievalPlugin:
         scores: list[float],
         corpus_size: int,
         dataset_hash: str,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -369,6 +373,17 @@ class EmbeddingsRetrievalPlugin:
         total_vals = [s.total_ms for s in ok_samples if math.isfinite(s.total_ms)]
         if total_vals:
             metrics["total_p50_ms"] = Percentiles(total_vals).p50
+
+        # Energy / power summary from telemetry (None on plugins that haven't
+        # threaded a TelemetryWindow through yet). Mirrors llm-inference.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         builder = EnvelopeBuilder(
             suite_id=spec.benchmark_id,
