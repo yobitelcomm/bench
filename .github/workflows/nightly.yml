@@ -35,4 +35,6 @@ jobs:
     if: false
     steps:
       - uses: actions/checkout@v4
-      - run: echo "TODO ticket 0024: wire self-hosted runner to TestBM and enable this job"
+      - name: Placeholder
+        run: |
+          echo "TODO ticket 0024 — wire self-hosted runner to TestBM and enable this job"
