@@ -12,6 +12,9 @@ bench run llm.inference.chatbot-short \
 
 InferenceBench is a CLI plus a reproducibility envelope. Every result captures the exact hardware, software stack, dataset, and seed, then signs the bundle so anyone can verify it independently.
 
+!!! tip "Live leaderboard"
+    The 50-envelope cross-vendor marathon (9 LLMs × 5 vendors on 8× H100) is rendered at **[/leaderboard/](leaderboard/)** — sortable tables, Pareto frontiers, per-envelope verify snippets.
+
 ## What you get
 
 - **A `bench` CLI.** 22 commands grouped around three things: running benchmarks (`run`, `replay`, `doctor`, `list`, `history`, `profile`, `matrix`), reasoning about results (`compare`, `diff`, `summary`, `cost`, `schema`, `audit`), and moving envelopes around (`fetch`, `cache`, `publish`, `verify`, `bundle`, `export`, `leaderboard`, `watch`, `ci`, `plugin`, `plugins`). See the [CLI overview](cli/overview.md). Highlights since the last refresh: `bench audit` for trust-but-verify on third-party corpora, `bench ci init` for one-shot GitHub Actions regression gates, and `bench matrix` for multi-endpoint comparisons.
