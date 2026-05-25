@@ -80,7 +80,12 @@ desktop.ini
 
 # Sigstore dev keys (never commit private keys)
 cosign.key
+cosign-*.key
+cosign-*.pub
 .bench/*.key
+# Local benchmark working dirs (kept local; published outputs land under validation-runs/)
+envelopes-voice/
+envelopes-*/
 *.pem
 !tests/fixtures/**/*.pem
 
@@ -94,6 +99,9 @@ validation-runs/2026-05-18-multi-vendor-marathon/*
 validation-runs/2026-05-18-multi-vendor-marathon/marathon/*
 !validation-runs/2026-05-18-multi-vendor-marathon/marathon/all
 !validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/*.json
+# Voice ASR validation envelopes (small, public, used by leaderboard build)
+!validation-runs/2026-05-25-voice-rtx4000ada
+!validation-runs/2026-05-25-voice-rtx4000ada/*.json
 
 # Model weights / datasets (use Git LFS or S3)
 *.bin

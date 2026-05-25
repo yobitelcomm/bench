@@ -1,0 +1,126 @@
+{
+  "envelope_version": "v1",
+  "suite_id": "voice.transcription.librispeech-clean-mini",
+  "suite_version": "1.0.0",
+  "run_id": "019e5fb7-df25-72e4-a154-e5b564d57f4e",
+  "timestamp": "2026-05-25T15:19:06.277405Z",
+  "model": {
+    "id": "Systran/faster-whisper-large-v3",
+    "revision": "unknown00",
+    "provider": "whisper-http",
+    "endpoint_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "engine": {
+    "name": "whisper-http",
+    "version": "unknown",
+    "config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "image_digest": ""
+  },
+  "quantization": {
+    "format": "fp16",
+    "method": ""
+  },
+  "hardware_fingerprint": {
+    "fingerprint_sha256": "7e8631bf6bd81c9152b8f2ddd589eb310f09c65f8fc19e6730aa84fa6ae94d33",
+    "dmi_uuid": "unknown",
+    "gpus": [
+      {
+        "model": "NVIDIA RTX 4000 Ada Generation Laptop GPU",
+        "pci_id": "00000000:01:00.0",
+        "serial": "unknown",
+        "vbios": "95.04.49.00.0D"
+      }
+    ],
+    "cpu": {
+      "model": "13th Gen Intel(R) Core(TM) i9-13950HX",
+      "microcode": "0x133"
+    },
+    "memory": {
+      "channels": 1,
+      "speed_mts": 1,
+      "ecc": false
+    },
+    "bios": {
+      "version": "V96 Ver. 01.11.01",
+      "resizable_bar": false,
+      "above_4g": false
+    },
+    "numa": {
+      "nodes": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15,
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31
+          ],
+          "memory_mb": 63894
+        }
+      ]
+    },
+    "driver": "595.71.05",
+    "cuda": "13.2",
+    "nccl": ""
+  },
+  "software_provenance": {
+    "image_digest": "",
+    "pip_freeze_hash": "9b75fb922e86234de5e49b99c53902c969741526c30ef13e93268f8cf6b442b6",
+    "git_commit": "bb77a9e6c0b2af5c378752580ff13aab928d854c",
+    "nvidia_smi_q_hash": "72f2bc2d87129ba6e3f5067edefd57d3695f419c3dfbf82018d0c41f01d9da89"
+  },
+  "dataset": {
+    "id": "librispeech-clean-mini",
+    "hash": "cff1fdb61fe89ecdd453b7bbcc7850160645af4bc819dde51cd8dfcdf9c4eb33"
+  },
+  "seed": 0,
+  "driver_options": {},
+  "metrics": {
+    "n_samples": 5.0,
+    "n_ok": 5.0,
+    "ok_rate": 1.0,
+    "audio_path_resolved_count": 5.0,
+    "wer_mean": 0.06999999999999999,
+    "wer_p50": 0.0,
+    "wer_p95": 0.21999999999999997,
+    "total_audio_duration_s": 19.725,
+    "total_p50_ms": 685.6918499979656
+  },
+  "distributions": {},
+  "slo_template": "voice.transcription.standard",
+  "warnings": [],
+  "signature": {
+    "method": "dev-key",
+    "certificate": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfUYEjuQacuVlcXoLNvFGvbC5nVq/HIYcawsMEPnWwbM=\n-----END PUBLIC KEY-----",
+    "rekor_log_index": -1,
+    "bundle": "9JHbQ6tq2x2exp9ABAyHIOSQmTGwhq5i2P7FN8+xIobSgbNA3Tnhq99J+7TRtR9SKjWYTuu7cmcvX+ql1WsCAQ=="
+  }
+}
