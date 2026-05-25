@@ -67,3 +67,22 @@ pytest tools/leaderboard/tests/
 
 Covers: smoke render, Pareto math on synthetic data, schema-validation
 skipping.
+
+## Hosted at GitHub Pages
+
+The marathon corpus committed at
+`validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/` is rendered
+and deployed to **<https://yobitelcomm.github.io/bench/>** by
+`.github/workflows/deploy-pages.yml`. The workflow re-runs on push to main
+(when leaderboard code or corpus envelopes change), weekly on schedule, and on
+manual dispatch from the Actions tab.
+
+To preview locally before pushing:
+
+```
+uv run bench leaderboard --build \
+  --envelopes validation-runs/2026-05-18-multi-vendor-marathon/marathon/all \
+  --out _site --base-url /bench/
+python3 -m http.server --directory _site 8080
+# open http://localhost:8080/bench/  (note the /bench/ prefix matches --base-url)
+```
