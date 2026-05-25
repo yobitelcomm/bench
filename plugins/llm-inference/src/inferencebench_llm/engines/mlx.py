@@ -58,6 +58,7 @@ class MLXEngine(Engine):
         models_url = f"{base}/v1/models"
         try:
             req = urllib.request.Request(models_url)
+            req.add_header("User-Agent", "inferencebench-mlx")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:

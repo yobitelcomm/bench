@@ -75,6 +75,7 @@ class TRTLLMEngine(Engine):
         load_url = f"{base}/health/load"
         try:
             req = urllib.request.Request(load_url)
+            req.add_header("User-Agent", "inferencebench-trtllm")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -118,6 +119,7 @@ class TRTLLMEngine(Engine):
         models_url = f"{base}/v1/models"
         try:
             req = urllib.request.Request(models_url)
+            req.add_header("User-Agent", "inferencebench-trtllm")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:

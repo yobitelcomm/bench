@@ -66,7 +66,12 @@ def _post_envelope(server_url: str, envelope: Envelope) -> tuple[int, str]:
     req = urllib.request.Request(  # noqa: S310 — bench-server HTTP base URL is operator-supplied
         url,
         data=payload,
-        headers={"Content-Type": "application/json"},
+        headers={
+            "Content-Type": "application/json",
+            # Stable UA so Cloudflare-fronted bench-servers don't 403 us
+            # (see audio_client.py + scripts/runpod_voice_validation.py).
+            "User-Agent": "inferencebench-cluster",
+        },
         method="POST",
     )
     try:
