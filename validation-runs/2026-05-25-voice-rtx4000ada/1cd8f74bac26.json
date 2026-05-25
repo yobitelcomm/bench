@@ -2,8 +2,8 @@
   "envelope_version": "v1",
   "suite_id": "voice.transcription.librispeech-clean-mini",
   "suite_version": "1.0.0",
-  "run_id": "019e5fb7-df25-72e4-a154-e5b564d57f4e",
-  "timestamp": "2026-05-25T15:19:06.277405Z",
+  "run_id": "019e5ff4-79e4-7403-aa27-603a8fd37d02",
+  "timestamp": "2026-05-25T16:25:18.052774Z",
   "model": {
     "id": "Systran/faster-whisper-large-v3",
     "revision": "unknown00",
@@ -94,8 +94,8 @@
   "software_provenance": {
     "image_digest": "",
     "pip_freeze_hash": "9b75fb922e86234de5e49b99c53902c969741526c30ef13e93268f8cf6b442b6",
-    "git_commit": "bb77a9e6c0b2af5c378752580ff13aab928d854c",
-    "nvidia_smi_q_hash": "72f2bc2d87129ba6e3f5067edefd57d3695f419c3dfbf82018d0c41f01d9da89"
+    "git_commit": "48e6d28c1f37caf5f749543794631cebbc8f7100",
+    "nvidia_smi_q_hash": "ee8479eed0d6e763a323dc2703a067dbdfbe3d7ba3964a67ff4f355668951d50"
   },
   "dataset": {
     "id": "librispeech-clean-mini",
@@ -112,7 +112,11 @@
     "wer_p50": 0.0,
     "wer_p95": 0.21999999999999997,
     "total_audio_duration_s": 19.725,
-    "total_p50_ms": 685.6918499979656
+    "total_p50_ms": 652.7784169884399,
+    "power_avg_w": 11.512225364963504,
+    "power_peak_w": 40.499,
+    "energy_joules_total": 637.6923091058983,
+    "joules_per_audio_second": 32.329141146053146
   },
   "distributions": {},
   "slo_template": "voice.transcription.standard",
@@ -121,6 +125,6 @@
     "method": "dev-key",
     "certificate": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAfUYEjuQacuVlcXoLNvFGvbC5nVq/HIYcawsMEPnWwbM=\n-----END PUBLIC KEY-----",
     "rekor_log_index": -1,
-    "bundle": "9JHbQ6tq2x2exp9ABAyHIOSQmTGwhq5i2P7FN8+xIobSgbNA3Tnhq99J+7TRtR9SKjWYTuu7cmcvX+ql1WsCAQ=="
+    "bundle": "BRRyTOvcTYhzHs4RjL04byQz9HlIN9PPnzxuyHE1EsYl4RsNLX1bKiRwCM6JSgUy1U5rL5TWUtEnI/Gofq1xDw=="
   }
 }
