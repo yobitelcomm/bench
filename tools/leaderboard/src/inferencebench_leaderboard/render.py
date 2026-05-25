@@ -39,13 +39,22 @@ logger = logging.getLogger(__name__)
 
 
 # Metric keys we show in the per-category table.  Order is the column order.
-# direction is used only for Pareto math (lower-is-better vs. higher-is-better).
+# Cells are omitted (rendered as "—") for any metric the envelope didn't set,
+# so adding rows here is safe even if older envelopes pre-date the metric.
 HEADLINE_METRICS: list[tuple[str, str]] = [
     ("ttft_p50_ms", "TTFT P50 (ms)"),
     ("ttft_p99_ms", "TTFT P99 (ms)"),
     ("throughput_tok_per_s", "Throughput (tok/s)"),
     ("cost_per_m_tokens_usd", "$/M tokens"),
     ("joules_per_token", "J/token"),
+    # NVML telemetry (added 2026-05-25). Present on any plugin that wraps
+    # its run loop with NVMLSampler+RAPLSampler — currently llm-inference
+    # and voice-transcription.
+    ("power_avg_w", "Power avg (W)"),
+    ("power_peak_w", "Power peak (W)"),
+    # ASR-specific (voice-transcription only).
+    ("wer_mean", "WER mean"),
+    ("joules_per_audio_second", "J / audio s"),
 ]
 
 # Pareto axes used to flag frontier entries in the per-category table.
