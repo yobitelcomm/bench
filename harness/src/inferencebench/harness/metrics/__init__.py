@@ -10,7 +10,11 @@ from inferencebench.harness.metrics.percentiles import (
     Percentiles,
     bootstrap_percentile_ci,
 )
-from inferencebench.harness.metrics.power import EnergyReport, summarise_energy
+from inferencebench.harness.metrics.power import (
+    EnergyReport,
+    TelemetryWindow,
+    summarise_energy,
+)
 
 __all__ = [
     "BootstrapCI",
@@ -18,6 +22,7 @@ __all__ = [
     "GoodputAtSLO",
     "Percentiles",
     "SLOPredicate",
+    "TelemetryWindow",
     "bootstrap_percentile_ci",
     "summarise_energy",
 ]

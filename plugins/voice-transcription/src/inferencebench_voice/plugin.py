@@ -40,15 +40,11 @@ from inferencebench.envelope import (
     sign_envelope,
 )
 from inferencebench.harness import (
-    NVMLSampler,
-    RAPLSampler,
     Sample,
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
-from inferencebench.harness.metrics import Percentiles
-from inferencebench.harness.metrics.power import summarise_energy
-from inferencebench.harness.telemetry import GPUSample, RAPLSample
+from inferencebench.harness.metrics import Percentiles, TelemetryWindow
 from inferencebench_voice.audio_client import TranscriptionResult, transcribe
 from inferencebench_voice.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_voice.scoring import SCORERS
@@ -157,20 +153,14 @@ class VoiceTranscriptionPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        (
-            samples,
-            scores,
-            durations,
-            n_resolved,
-            gpu_telemetry,
-            rapl_telemetry,
-            duration_s,
-        ) = self._score_items(items, scorer, context)
+        samples, scores, durations, n_resolved, telemetry = self._score_items(
+            items, scorer, context
+        )
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
 
-        energy = summarise_energy(gpu_telemetry, rapl_telemetry, samples, duration_s=duration_s)
+        energy = telemetry.summarise(samples)
 
         envelope = self._build_envelope(
             spec,
@@ -201,27 +191,12 @@ class VoiceTranscriptionPlugin:
         items: list[dict[str, str | float]],
         scorer: Callable[[str, str], float],
         context: RunContext,
-    ) -> tuple[
-        list[Sample],
-        list[float],
-        list[float],
-        int,
-        list[GPUSample],
-        list[RAPLSample],
-        float,
-    ]:
+    ) -> tuple[list[Sample], list[float], list[float], int, TelemetryWindow]:
         """Iterate fixture items, call the audio transcription endpoint, score each.
 
         Returns ``(samples, scores, durations, audio_path_resolved_count,
-        gpu_telemetry, rapl_telemetry, duration_s)``. ``samples`` is the
-        harness-compatible per-utterance list, ``scores`` is the raw scoring
-        output (WER/CER/EM error rates), ``durations`` is the per-row audio
-        seconds, ``audio_path_resolved_count`` is the number of fixture rows
-        whose ``audio_path`` resolved to a file on disk (rows with a missing
-        WAV are recorded as failed samples but excluded from the resolved
-        count + from the scoring set), ``gpu_telemetry`` / ``rapl_telemetry``
-        are the raw NVML / RAPL samples taken during the run window, and
-        ``duration_s`` is the wall-clock measurement window.
+        telemetry_window)``. The TelemetryWindow has already exited; call
+        ``.summarise(samples)`` on it to get the EnergyReport.
         """
         base_url = _resolve_base_url(context)
         api_key = context.api_key or "EMPTY"
@@ -232,78 +207,67 @@ class VoiceTranscriptionPlugin:
         durations: list[float] = []
         n_resolved = 0
 
-        # Telemetry samplers: defaults are the same the llm-inference plugin
-        # uses (NVML 50 ms, RAPL 100 ms). Both no-op silently when the host
-        # lacks pynvml or /sys/class/powercap so this is safe in CI.
-        nvml = NVMLSampler(interval_ms=50)
-        rapl = RAPLSampler(interval_ms=100)
-        t_run_start = time.perf_counter()
-        nvml.start()
-        rapl.start()
+        # Telemetry samplers no-op silently on CPU-only hosts (no pynvml,
+        # no /sys/class/powercap) so this is safe in CI.
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, item in enumerate(items):
+                reference = str(item["reference"])
+                duration_s = float(item.get("duration_s") or 0.0)
+                rel_audio = str(item["audio_path"])
+                audio_path = (datasets_root / rel_audio).resolve()
+                t_arrival = time.perf_counter() * 1000.0
 
-        for idx, item in enumerate(items):
-            reference = str(item["reference"])
-            duration_s = float(item.get("duration_s") or 0.0)
-            rel_audio = str(item["audio_path"])
-            audio_path = (datasets_root / rel_audio).resolve()
-            t_arrival = time.perf_counter() * 1000.0
+                if not audio_path.exists():
+                    # Record as a failed sample; do not count toward scoring or
+                    # toward audio_path_resolved_count.
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=f"audio file not found: {rel_audio}",
+                            extra={
+                                "reference": reference,
+                                "hypothesis": "",
+                                "duration_s": duration_s,
+                                "audio_path": rel_audio,
+                            },
+                        )
+                    )
+                    continue
 
-            if not audio_path.exists():
-                # Record as a failed sample; do not count toward scoring or
-                # toward audio_path_resolved_count.
+                n_resolved += 1
+                result = self._invoke_transcribe(
+                    audio_path,
+                    base_url=base_url,
+                    model=context.model_id,
+                    api_key=api_key,
+                )
                 samples.append(
-                    Sample(
-                        request_idx=idx,
+                    self._to_sample(
+                        idx=idx,
                         arrival_ms=t_arrival,
-                        start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=f"audio file not found: {rel_audio}",
-                        extra={
-                            "reference": reference,
-                            "hypothesis": "",
-                            "duration_s": duration_s,
-                            "audio_path": rel_audio,
-                        },
+                        result=result,
+                        reference=reference,
+                        duration_s=duration_s,
+                        rel_audio=rel_audio,
+                        scorer=scorer,
                     )
                 )
-                continue
+                if result.ok:
+                    scores.append(float(scorer(reference, result.text)))
+                    durations.append(duration_s)
 
-            n_resolved += 1
-            result = self._invoke_transcribe(
-                audio_path,
-                base_url=base_url,
-                model=context.model_id,
-                api_key=api_key,
-            )
-            samples.append(
-                self._to_sample(
-                    idx=idx,
-                    arrival_ms=t_arrival,
-                    result=result,
-                    reference=reference,
-                    duration_s=duration_s,
-                    rel_audio=rel_audio,
-                    scorer=scorer,
-                )
-            )
-            if result.ok:
-                scores.append(float(scorer(reference, result.text)))
-                durations.append(duration_s)
-
-        nvml.stop()
-        rapl.stop()
-        gpu_telemetry = [s for s in nvml.snapshot() if isinstance(s, GPUSample)]
-        rapl_telemetry = [s for s in rapl.snapshot() if isinstance(s, RAPLSample)]
-        duration_s = time.perf_counter() - t_run_start
-
-        return samples, scores, durations, n_resolved, gpu_telemetry, rapl_telemetry, duration_s
+        return samples, scores, durations, n_resolved, telemetry
 
     # Injection seam — tests patch ``_invoke_transcribe`` to avoid real HTTP.
     def _invoke_transcribe(

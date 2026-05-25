@@ -148,3 +148,52 @@ def test_zero_tokens_yields_nan_jpt() -> None:
     report = summarise_energy(gpu_series, [], [], duration_s=1.0)
     assert math.isnan(report.joules_per_token)
     assert math.isnan(report.joules_per_request)
+
+
+# --------------------------------------------------------------------------- #
+# TelemetryWindow                                                             #
+# --------------------------------------------------------------------------- #
+def test_telemetry_window_noops_on_cpu_only_hosts() -> None:
+    """No NVML, no /sys/class/powercap → window still works, returns empty report."""
+    import time as _time
+
+    from inferencebench.harness.metrics import TelemetryWindow
+
+    tw = TelemetryWindow(nvml_interval_ms=10, rapl_interval_ms=10)
+    with tw:
+        _time.sleep(0.05)
+    # duration_s populated even when samplers are no-ops
+    assert tw.duration_s >= 0.05
+    # summarise returns a valid (possibly empty) report
+    report = tw.summarise([])
+    assert isinstance(report, EnergyReport)
+    # On CI with no GPU + no RAPL, energy will be 0 — that's fine.
+    assert report.gpu_energy_joules >= 0.0
+    assert report.rapl_energy_joules >= 0.0
+
+
+def test_telemetry_window_zero_intervals_disable_samplers() -> None:
+    """Passing 0 for both intervals disables both samplers (used in tests)."""
+    from inferencebench.harness.metrics import TelemetryWindow
+
+    tw = TelemetryWindow(nvml_interval_ms=0, rapl_interval_ms=0)
+    with tw:
+        pass
+    assert tw.gpu_telemetry == []
+    assert tw.rapl_telemetry == []
+    report = tw.summarise([])
+    assert report.gpu_energy_joules == 0.0
+    assert report.rapl_energy_joules == 0.0
+
+
+def test_telemetry_window_carries_duration_to_summary() -> None:
+    """The duration captured in __exit__ flows into summarise_energy."""
+    import time as _time
+
+    from inferencebench.harness.metrics import TelemetryWindow
+
+    tw = TelemetryWindow(nvml_interval_ms=0, rapl_interval_ms=0)
+    with tw:
+        _time.sleep(0.02)
+    report = tw.summarise([])
+    assert report.duration_s == tw.duration_s

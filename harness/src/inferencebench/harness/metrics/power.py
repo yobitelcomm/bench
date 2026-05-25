@@ -14,11 +14,13 @@ first and last sample). Phase 2 adds wall-plug via IPMI/Redfish.
 
 from __future__ import annotations
 
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
+from types import TracebackType
 
 from inferencebench.harness.drivers import Sample
-from inferencebench.harness.telemetry import GPUSample, RAPLSample
+from inferencebench.harness.telemetry import GPUSample, NVMLSampler, RAPLSample, RAPLSampler
 
 
 @dataclass(frozen=True, slots=True)
@@ -149,3 +151,82 @@ def _trapz(xs: list[float], ys: list[float]) -> float:
             continue
         total += dx * (ys[i] + ys[i - 1]) / 2.0
     return total
+
+
+# --------------------------------------------------------------------------- #
+# TelemetryWindow — context manager wrapping a benchmark loop with samplers   #
+# --------------------------------------------------------------------------- #
+class TelemetryWindow:
+    """Wrap a benchmark loop with NVML + RAPL samplers + duration tracking.
+
+    Plugins that don't use :class:`BenchmarkRun` (e.g. voice-transcription,
+    llm-quality, llm-mt, code-generation, vision-understanding) use this
+    helper to avoid hand-rolling the start/stop/snapshot/summarise dance.
+
+    Usage::
+
+        with TelemetryWindow() as tw:
+            for item in items:
+                samples.append(transcribe(item))
+        report = tw.summarise(samples)
+        # report.gpu_power_avg_w, report.total_energy_joules, ...
+
+    Samplers no-op silently when pynvml or /sys/class/powercap is absent —
+    safe in CI and on CPU-only hosts.
+    """
+
+    def __init__(self, *, nvml_interval_ms: int = 50, rapl_interval_ms: int = 100) -> None:
+        self._nvml: NVMLSampler | None = (
+            NVMLSampler(interval_ms=nvml_interval_ms) if nvml_interval_ms > 0 else None
+        )
+        self._rapl: RAPLSampler | None = (
+            RAPLSampler(interval_ms=rapl_interval_ms) if rapl_interval_ms > 0 else None
+        )
+        self._t_start: float = 0.0
+        self._duration_s: float = 0.0
+        self._gpu_snapshot: list[GPUSample] = []
+        self._rapl_snapshot: list[RAPLSample] = []
+
+    def __enter__(self) -> TelemetryWindow:
+        self._t_start = time.perf_counter()
+        if self._nvml is not None:
+            self._nvml.start()
+        if self._rapl is not None:
+            self._rapl.start()
+        return self
+
+    def __exit__(
+        self,
+        exc_type: type[BaseException] | None,
+        exc: BaseException | None,
+        tb: TracebackType | None,
+    ) -> None:
+        if self._nvml is not None:
+            self._nvml.stop()
+            self._gpu_snapshot = [s for s in self._nvml.snapshot() if isinstance(s, GPUSample)]
+        if self._rapl is not None:
+            self._rapl.stop()
+            self._rapl_snapshot = [s for s in self._rapl.snapshot() if isinstance(s, RAPLSample)]
+        self._duration_s = time.perf_counter() - self._t_start
+
+    @property
+    def duration_s(self) -> float:
+        """Wall-clock seconds the with-block was open. 0 until __exit__."""
+        return self._duration_s
+
+    @property
+    def gpu_telemetry(self) -> list[GPUSample]:
+        return list(self._gpu_snapshot)
+
+    @property
+    def rapl_telemetry(self) -> list[RAPLSample]:
+        return list(self._rapl_snapshot)
+
+    def summarise(self, samples: Iterable[Sample]) -> EnergyReport:
+        """Build an :class:`EnergyReport` from the captured telemetry + caller's samples."""
+        return summarise_energy(
+            self._gpu_snapshot,
+            self._rapl_snapshot,
+            samples,
+            duration_s=self._duration_s,
+        )
