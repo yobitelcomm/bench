@@ -46,6 +46,7 @@ class _StubState:
         self.last_path: str | None = None
         self.last_method: str | None = None
         self.last_content_type: str | None = None
+        self.last_user_agent: str | None = None
         self.last_body: bytes = b""
 
 
@@ -61,6 +62,7 @@ def _make_handler(state: _StubState) -> type[BaseHTTPRequestHandler]:
             state.last_path = self.path
             state.last_method = "POST"
             state.last_content_type = self.headers.get("Content-Type")
+            state.last_user_agent = self.headers.get("User-Agent")
             state.last_body = body
 
             if state.mode == "500":
@@ -145,6 +147,17 @@ def test_transcribe_posts_to_audio_transcriptions(wav_path: Path) -> None:
     assert state.last_method == "POST"
     assert state.last_content_type is not None
     assert state.last_content_type.startswith("multipart/form-data; boundary=")
+
+
+def test_transcribe_sends_explicit_user_agent_not_python_urllib(wav_path: Path) -> None:
+    # Some Cloudflare-fronted endpoints (RunPod proxies etc.) 403 the default
+    # `Python-urllib/X.Y` UA. The client identifies itself instead.
+    state = _StubState()
+    with _stub_server(state) as base_url:
+        transcribe(wav_path, base_url=base_url, model="whisper-1", timeout_s=5.0)
+    assert state.last_user_agent is not None
+    assert "Python-urllib" not in state.last_user_agent
+    assert "inferencebench" in state.last_user_agent.lower()
 
 
 def test_multipart_body_carries_file_and_model_parts(wav_path: Path) -> None:

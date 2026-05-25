@@ -193,6 +193,9 @@ def transcribe(
     req = urllib.request.Request(url, data=body, method="POST")
     req.add_header("Content-Type", content_type)
     req.add_header("Content-Length", str(len(body)))
+    # Some Cloudflare-fronted endpoints (RunPod proxies, etc.) 403 the default
+    # `Python-urllib/X.Y` UA. Identify ourselves explicitly.
+    req.add_header("User-Agent", "inferencebench-voice (https://github.com/yobitelcomm/bench)")
     if api_key:
         req.add_header("Authorization", f"Bearer {api_key}")
 
