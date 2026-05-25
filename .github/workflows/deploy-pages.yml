@@ -23,6 +23,7 @@ on:
       - "mkdocs.yml"
       - "tools/leaderboard/**"
       - "validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/**"
+      - "validation-runs/2026-05-25-voice-rtx4000ada/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
   schedule:
@@ -55,10 +56,19 @@ jobs:
       - name: Build mkdocs documentation site
         run: uv run mkdocs build --clean --site-dir _site
 
+      - name: Aggregate published corpus into a single dir
+        run: |
+          # bench leaderboard --build takes one --envelopes dir; combine all
+          # published corpora into a tmp dir first.
+          mkdir -p _corpus_combined
+          cp validation-runs/2026-05-18-multi-vendor-marathon/marathon/all/*.json _corpus_combined/
+          cp validation-runs/2026-05-25-voice-rtx4000ada/*.json _corpus_combined/
+          echo "envelopes in combined corpus: $(ls _corpus_combined/ | wc -l)"
+
       - name: Build leaderboard into _site/leaderboard/
         run: |
           uv run bench leaderboard --build \
-            --envelopes validation-runs/2026-05-18-multi-vendor-marathon/marathon/all \
+            --envelopes _corpus_combined \
             --out _site/leaderboard \
             --base-url /bench/leaderboard/
 
