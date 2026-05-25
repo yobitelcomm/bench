@@ -46,6 +46,7 @@ class VLLMEngine(Engine):
         version = "unknown"
         try:
             req = urllib.request.Request(models_url)
+            req.add_header("User-Agent", "inferencebench-vllm")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -79,6 +80,7 @@ class VLLMEngine(Engine):
         # Fall back to /version which vLLM ships with a JSON {"version": "x.y.z"}.
         try:
             req = urllib.request.Request(f"{base}/version")
+            req.add_header("User-Agent", "inferencebench-vllm")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=3) as resp:

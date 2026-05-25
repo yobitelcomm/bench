@@ -50,6 +50,7 @@ class LlamaCppEngine(Engine):
         props_url = f"{base}/props"
         try:
             req = urllib.request.Request(props_url)
+            req.add_header("User-Agent", "inferencebench-llamacpp")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -103,6 +104,7 @@ class LlamaCppEngine(Engine):
         models_url = f"{base}/v1/models"
         try:
             req = urllib.request.Request(models_url)
+            req.add_header("User-Agent", "inferencebench-llamacpp")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:

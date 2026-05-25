@@ -48,6 +48,7 @@ class SGLangEngine(Engine):
         info_url = f"{base}/get_server_info"
         try:
             req = urllib.request.Request(info_url)
+            req.add_header("User-Agent", "inferencebench-sglang")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:
@@ -93,6 +94,7 @@ class SGLangEngine(Engine):
         models_url = f"{base}/v1/models"
         try:
             req = urllib.request.Request(models_url)
+            req.add_header("User-Agent", "inferencebench-sglang")
             if context.api_key:
                 req.add_header("Authorization", f"Bearer {context.api_key}")
             with urllib.request.urlopen(req, timeout=5) as resp:

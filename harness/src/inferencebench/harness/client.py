@@ -280,6 +280,7 @@ def detect_endpoint_health(base_url: str, *, timeout_s: float = 5.0) -> bool:
 
         for path in ("/health", "/"):
             req = urllib.request.Request(base_url.rstrip("/") + path)
+            req.add_header("User-Agent", "inferencebench-harness/health-check")
             try:
                 with urllib.request.urlopen(req, timeout=timeout_s) as resp:
                     if 200 <= resp.status < 300:
