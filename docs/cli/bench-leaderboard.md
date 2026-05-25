@@ -26,7 +26,7 @@ Expected output:
  envelopes loaded    8
  envelopes skipped   0
  categories          llm.inference.chatbot-short
- output              /home/abishek/.../site
+ output              /home/bench/.../site
 ```
 
 Open `./site/index.html` in a browser. The renderer emits a per-category page plus a top-level index.

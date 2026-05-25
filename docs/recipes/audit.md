@@ -20,7 +20,7 @@ bench audit "$(bench cache path)"
 Expected output on a clean corpus:
 
 ```
-                                    Audit of /home/abishek/.cache/inferencebench/fetched
+                                    Audit of /home/bench/.cache/inferencebench/fetched
  status  envelope                       model                              method     content_hash  reason
    ✓     8d7ef1b17fb7.json              Qwen/Qwen2.5-7B-Instruct           dev-key    8d7ef1b17fb7
    ✓     60be8efd6d21.json              meta-llama/Llama-3.1-8B-Instruct   dev-key    60be8efd6d21
@@ -34,7 +34,7 @@ Exit code is `0` — every envelope's content hash matches, every signature veri
 If the publisher slipped — wrong key, tampered payload, or a test fixture posing as a real run — `bench audit` flags it:
 
 ```
-                                    Audit of /home/abishek/.cache/inferencebench/fetched
+                                    Audit of /home/bench/.cache/inferencebench/fetched
  status  envelope                       model                              method     content_hash  reason
    ✗     8d7ef1b17fb7.json              Qwen/Qwen2.5-7B-Instruct           dev-key    8d7ef1b17fb7  signature does not match content_hash (tampered or wrong key)
    ✗     60be8efd6d21.json              meta-llama/Llama-3.1-8B-Instruct   dev-key    60be8efd6d21  placeholder hardware_fingerprint
