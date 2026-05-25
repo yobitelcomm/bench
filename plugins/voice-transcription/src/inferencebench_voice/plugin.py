@@ -40,11 +40,15 @@ from inferencebench.envelope import (
     sign_envelope,
 )
 from inferencebench.harness import (
+    NVMLSampler,
+    RAPLSampler,
     Sample,
     collect_hardware_fingerprint,
     collect_software_provenance,
 )
 from inferencebench.harness.metrics import Percentiles
+from inferencebench.harness.metrics.power import summarise_energy
+from inferencebench.harness.telemetry import GPUSample, RAPLSample
 from inferencebench_voice.audio_client import TranscriptionResult, transcribe
 from inferencebench_voice.schemas import BenchmarkSpec, EngineKind, RunContext
 from inferencebench_voice.scoring import SCORERS
@@ -153,10 +157,20 @@ class VoiceTranscriptionPlugin:
         fixture_hash = _compute_fixture_hash(items)
         scorer = SCORERS[spec.scoring]
 
-        samples, scores, durations, n_resolved = self._score_items(items, scorer, context)
+        (
+            samples,
+            scores,
+            durations,
+            n_resolved,
+            gpu_telemetry,
+            rapl_telemetry,
+            duration_s,
+        ) = self._score_items(items, scorer, context)
 
         # Best-effort diagnostic dump — never blocks the run on I/O errors.
         self._dump_samples(context, samples)
+
+        energy = summarise_energy(gpu_telemetry, rapl_telemetry, samples, duration_s=duration_s)
 
         envelope = self._build_envelope(
             spec,
@@ -166,6 +180,7 @@ class VoiceTranscriptionPlugin:
             durations=durations,
             dataset_hash=fixture_hash,
             audio_path_resolved_count=n_resolved,
+            energy=energy,
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -186,16 +201,27 @@ class VoiceTranscriptionPlugin:
         items: list[dict[str, str | float]],
         scorer: Callable[[str, str], float],
         context: RunContext,
-    ) -> tuple[list[Sample], list[float], list[float], int]:
+    ) -> tuple[
+        list[Sample],
+        list[float],
+        list[float],
+        int,
+        list[GPUSample],
+        list[RAPLSample],
+        float,
+    ]:
         """Iterate fixture items, call the audio transcription endpoint, score each.
 
-        Returns ``(samples, scores, durations, audio_path_resolved_count)``.
-        ``samples`` is the harness-compatible per-utterance list, ``scores``
-        is the raw scoring output (WER/CER/EM error rates), ``durations`` is
-        the per-row audio seconds, ``audio_path_resolved_count`` is the
-        number of fixture rows whose ``audio_path`` resolved to a file on
-        disk (rows with a missing WAV are recorded as failed samples but
-        excluded from the resolved count + from the scoring set).
+        Returns ``(samples, scores, durations, audio_path_resolved_count,
+        gpu_telemetry, rapl_telemetry, duration_s)``. ``samples`` is the
+        harness-compatible per-utterance list, ``scores`` is the raw scoring
+        output (WER/CER/EM error rates), ``durations`` is the per-row audio
+        seconds, ``audio_path_resolved_count`` is the number of fixture rows
+        whose ``audio_path`` resolved to a file on disk (rows with a missing
+        WAV are recorded as failed samples but excluded from the resolved
+        count + from the scoring set), ``gpu_telemetry`` / ``rapl_telemetry``
+        are the raw NVML / RAPL samples taken during the run window, and
+        ``duration_s`` is the wall-clock measurement window.
         """
         base_url = _resolve_base_url(context)
         api_key = context.api_key or "EMPTY"
@@ -205,6 +231,15 @@ class VoiceTranscriptionPlugin:
         scores: list[float] = []
         durations: list[float] = []
         n_resolved = 0
+
+        # Telemetry samplers: defaults are the same the llm-inference plugin
+        # uses (NVML 50 ms, RAPL 100 ms). Both no-op silently when the host
+        # lacks pynvml or /sys/class/powercap so this is safe in CI.
+        nvml = NVMLSampler(interval_ms=50)
+        rapl = RAPLSampler(interval_ms=100)
+        t_run_start = time.perf_counter()
+        nvml.start()
+        rapl.start()
 
         for idx, item in enumerate(items):
             reference = str(item["reference"])
@@ -262,7 +297,13 @@ class VoiceTranscriptionPlugin:
                 scores.append(float(scorer(reference, result.text)))
                 durations.append(duration_s)
 
-        return samples, scores, durations, n_resolved
+        nvml.stop()
+        rapl.stop()
+        gpu_telemetry = [s for s in nvml.snapshot() if isinstance(s, GPUSample)]
+        rapl_telemetry = [s for s in rapl.snapshot() if isinstance(s, RAPLSample)]
+        duration_s = time.perf_counter() - t_run_start
+
+        return samples, scores, durations, n_resolved, gpu_telemetry, rapl_telemetry, duration_s
 
     # Injection seam — tests patch ``_invoke_transcribe`` to avoid real HTTP.
     def _invoke_transcribe(
@@ -414,6 +455,7 @@ class VoiceTranscriptionPlugin:
         durations: list[float],
         dataset_hash: str,
         audio_path_resolved_count: int,
+        energy: object,
     ) -> Envelope:
         hw = collect_hardware_fingerprint()
         sw = collect_software_provenance()
@@ -450,6 +492,22 @@ class VoiceTranscriptionPlugin:
         total_vals = [s.total_ms for s in ok_samples if math.isfinite(s.total_ms)]
         if total_vals:
             metrics["total_p50_ms"] = Percentiles(total_vals).p50
+
+        # Energy / power summary from telemetry — mirrors llm-inference.
+        # Surfaces only when the samplers actually collected data (CPU-only
+        # CI hosts have no GPU samples, so power_avg_w stays 0 and we skip).
+        if getattr(energy, "gpu_power_avg_w", 0.0) > 0:
+            metrics["power_avg_w"] = energy.gpu_power_avg_w  # type: ignore[attr-defined]
+            metrics["power_peak_w"] = energy.gpu_power_peak_w  # type: ignore[attr-defined]
+        if getattr(energy, "total_energy_joules", 0.0) > 0:
+            metrics["energy_joules_total"] = energy.total_energy_joules  # type: ignore[attr-defined]
+            # Voice-specific normalization: joules per second of audio decoded.
+            # More meaningful than joules_per_token for ASR (Whisper "tokens" are
+            # words, which is a quirky unit).
+            if total_audio_s > 0:
+                metrics["joules_per_audio_second"] = (
+                    energy.total_energy_joules / total_audio_s  # type: ignore[attr-defined]
+                )
 
         builder = EnvelopeBuilder(
             suite_id=spec.benchmark_id,
