@@ -100,3 +100,27 @@ jobs:
     steps:
       - id: deployment
         uses: actions/deploy-pages@v4
+
+  # Tell the inferencebench.io site (gpu-inference-calculator) to re-sync the
+  # leaderboard data it mirrors from our GitHub Pages. No-ops unless the
+  # CALC_DISPATCH_TOKEN secret (a PAT with `repo` scope on the calculator
+  # repo) is configured. The site also picks changes up on its 6-hourly cron.
+  notify-site:
+    name: notify inferencebench.io to refresh
+    needs: deploy
+    runs-on: ubuntu-latest
+    steps:
+      - name: repository_dispatch -> calculator repo
+        env:
+          CALC_DISPATCH_TOKEN: ${{ secrets.CALC_DISPATCH_TOKEN }}
+        run: |
+          if [ -z "$CALC_DISPATCH_TOKEN" ]; then
+            echo "CALC_DISPATCH_TOKEN unset — skipping (site refreshes on its cron)."
+            exit 0
+          fi
+          curl -sS -X POST \
+            -H "Authorization: Bearer $CALC_DISPATCH_TOKEN" \
+            -H "Accept: application/vnd.github+json" \
+            https://api.github.com/repos/yobitelcomm/gpu-inference-calculator/dispatches \
+            -d '{"event_type":"bench-corpus-updated"}' \
+            -w "dispatch HTTP %{http_code}\n"
