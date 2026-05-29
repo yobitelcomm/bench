@@ -85,6 +85,26 @@ jobs:
           echo "rendered HTML files: $n_html"
           test "$n_html" -ge 50
 
+      - name: Publish leaderboard.json to HF (decoupled data source)
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # The inferencebench.io site reads this committed-data-derived JSON
+          # from HF (not GitHub Pages), so Pages can be a pure redirect host.
+          if [ -z "$HF_TOKEN" ]; then echo "HF_TOKEN unset — skipping"; exit 0; fi
+          uv run python - <<'PY'
+          import os
+          from huggingface_hub import HfApi
+          HfApi(token=os.environ["HF_TOKEN"]).upload_file(
+              path_or_fileobj="_site/leaderboard/data/leaderboard.json",
+              path_in_repo="leaderboard.json",
+              repo_id="Yobitel/marathon-keyless-v0.0.2",
+              repo_type="dataset",
+              commit_message="refresh built leaderboard.json for inferencebench.io/bench",
+          )
+          print("published leaderboard.json to HF")
+          PY
+
       - name: Upload pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
