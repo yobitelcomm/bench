@@ -102,6 +102,8 @@ validation-runs/2026-05-18-multi-vendor-marathon/marathon/*
 # Voice ASR validation envelopes (small, public, used by leaderboard build)
 !validation-runs/2026-05-25-voice-rtx4000ada
 !validation-runs/2026-05-25-voice-rtx4000ada/*.json
+!validation-runs/2026-05-29-voice-testbm-h100
+!validation-runs/2026-05-29-voice-testbm-h100/*.json
 
 # Model weights / datasets (use Git LFS or S3)
 *.bin
