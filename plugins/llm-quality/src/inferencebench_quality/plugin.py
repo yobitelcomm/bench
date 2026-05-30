@@ -479,126 +479,131 @@ class LLMQualityPlugin:
         n_drifted = 0
         n_judged = 0
 
-        for idx, case in enumerate(cases):
-            # _load_multi_turn_fixture validates these types; the dict value
-            # type is ``object`` to avoid a TypedDict declaration just for
-            # this helper. Cast locally so the rest of the loop is typed.
-            system_prompt = str(case["system_prompt"])
-            raw_markers = case["markers"]
-            markers: list[str] = (
-                [str(m) for m in raw_markers] if isinstance(raw_markers, list) else []
-            )
-            case_id = str(case.get("case_id") or f"case-{idx}")
-            raw_turns = case["turns"]
-            turn_questions: list[str] = (
-                [str(t) for t in raw_turns] if isinstance(raw_turns, list) else []
-            )
+        # Wrap the multi-turn case loop with NVML+RAPL samplers (mirrors the
+        # single-turn _score_items in this file). Samplers no-op silently on
+        # CPU-only CI hosts.
+        telemetry = TelemetryWindow()
+        with telemetry:
+            for idx, case in enumerate(cases):
+                # _load_multi_turn_fixture validates these types; the dict value
+                # type is ``object`` to avoid a TypedDict declaration just for
+                # this helper. Cast locally so the rest of the loop is typed.
+                system_prompt = str(case["system_prompt"])
+                raw_markers = case["markers"]
+                markers: list[str] = (
+                    [str(m) for m in raw_markers] if isinstance(raw_markers, list) else []
+                )
+                case_id = str(case.get("case_id") or f"case-{idx}")
+                raw_turns = case["turns"]
+                turn_questions: list[str] = (
+                    [str(t) for t in raw_turns] if isinstance(raw_turns, list) else []
+                )
 
-            t_arrival = time.perf_counter() * 1000.0
-            collected_turns: list[tuple[str, str]] = []
-            ttft_first: float = float("nan")
-            total_sum: float = 0.0
-            tokens_in_sum = 0
-            tokens_out_sum = 0
-            cost_sum = 0.0
-            ok = True
-            error_msg: str | None = None
-            for t_idx, question in enumerate(turn_questions):
-                prompt_text = _render_multi_turn_prompt(collected_turns, question)
-                try:
-                    result: CompletionResult = client.complete(
-                        prompt_text,
-                        stream=True,
-                        max_tokens=128,
-                        system=system_prompt,
+                t_arrival = time.perf_counter() * 1000.0
+                collected_turns: list[tuple[str, str]] = []
+                ttft_first: float = float("nan")
+                total_sum: float = 0.0
+                tokens_in_sum = 0
+                tokens_out_sum = 0
+                cost_sum = 0.0
+                ok = True
+                error_msg: str | None = None
+                for t_idx, question in enumerate(turn_questions):
+                    prompt_text = _render_multi_turn_prompt(collected_turns, question)
+                    try:
+                        result: CompletionResult = client.complete(
+                            prompt_text,
+                            stream=True,
+                            max_tokens=128,
+                            system=system_prompt,
+                        )
+                    except Exception as exc:  # pragma: no cover - mocked tests
+                        ok = False
+                        error_msg = str(exc)
+                        break
+                    collected_turns.append((question, result.text))
+                    if t_idx == 0 and math.isfinite(result.ttft_ms):
+                        ttft_first = result.ttft_ms
+                    if math.isfinite(result.total_ms):
+                        total_sum += result.total_ms
+                    tokens_in_sum += result.tokens_in
+                    tokens_out_sum += result.tokens_out
+                    cost_sum += result.cost_usd
+
+                sample_extra: dict[str, str | int | float | bool] = {
+                    "case_id": case_id,
+                    "n_turns": float(len(collected_turns)),
+                }
+
+                score: float
+                persona_result: PersonaConsistencyResult | None = None
+                if not ok or not collected_turns:
+                    samples.append(
+                        Sample(
+                            request_idx=idx,
+                            arrival_ms=t_arrival,
+                            start_ms=t_arrival,
+                            ttft_ms=float("nan"),
+                            total_ms=float("nan"),
+                            tpot_ms=float("nan"),
+                            tokens_in=0,
+                            tokens_out=0,
+                            cost_usd=0.0,
+                            finish_reason="error",
+                            ok=False,
+                            error=error_msg or "no turns collected",
+                            extra=sample_extra,
+                        )
                     )
-                except Exception as exc:  # pragma: no cover - mocked tests
-                    ok = False
-                    error_msg = str(exc)
-                    break
-                collected_turns.append((question, result.text))
-                if t_idx == 0 and math.isfinite(result.ttft_ms):
-                    ttft_first = result.ttft_ms
-                if math.isfinite(result.total_ms):
-                    total_sum += result.total_ms
-                tokens_in_sum += result.tokens_in
-                tokens_out_sum += result.tokens_out
-                cost_sum += result.cost_usd
+                    continue
 
-            sample_extra: dict[str, str | int | float | bool] = {
-                "case_id": case_id,
-                "n_turns": float(len(collected_turns)),
-            }
+                if spec.scoring == "judge_llm_persona":
+                    if judge_throttle is not None:
+                        judge_throttle.acquire()
+                    score = float(
+                        judge_llm_persona(
+                            collected_turns,
+                            system_prompt=system_prompt,
+                            judge_client=judge_client,
+                            judge_errors=judge_errors,
+                            judge_cost_usd=judge_cost_usd,
+                        )
+                    )
+                    n_judged += 1
+                else:
+                    persona_result = persona_consistency(collected_turns, markers=markers)
+                    score = float(persona_result.score)
+                    if persona_result.drift_first_miss_turn is not None:
+                        n_drifted += 1
+                        drift_misses.append(persona_result.drift_first_miss_turn)
+                        sample_extra["drift_first_miss_turn"] = float(
+                            persona_result.drift_first_miss_turn
+                        )
 
-            score: float
-            persona_result: PersonaConsistencyResult | None = None
-            if not ok or not collected_turns:
+                scores.append(score)
+                sample_extra["score"] = score
+
+                tpot = (
+                    (total_sum - ttft_first) / max(tokens_out_sum - 1, 1)
+                    if math.isfinite(ttft_first) and tokens_out_sum > 1
+                    else float("nan")
+                )
                 samples.append(
                     Sample(
                         request_idx=idx,
                         arrival_ms=t_arrival,
                         start_ms=t_arrival,
-                        ttft_ms=float("nan"),
-                        total_ms=float("nan"),
-                        tpot_ms=float("nan"),
-                        tokens_in=0,
-                        tokens_out=0,
-                        cost_usd=0.0,
-                        finish_reason="error",
-                        ok=False,
-                        error=error_msg or "no turns collected",
+                        ttft_ms=ttft_first,
+                        total_ms=total_sum if total_sum > 0 else float("nan"),
+                        tpot_ms=tpot,
+                        tokens_in=tokens_in_sum,
+                        tokens_out=tokens_out_sum,
+                        cost_usd=cost_sum,
+                        finish_reason="stop",
+                        ok=True,
                         extra=sample_extra,
                     )
                 )
-                continue
-
-            if spec.scoring == "judge_llm_persona":
-                if judge_throttle is not None:
-                    judge_throttle.acquire()
-                score = float(
-                    judge_llm_persona(
-                        collected_turns,
-                        system_prompt=system_prompt,
-                        judge_client=judge_client,
-                        judge_errors=judge_errors,
-                        judge_cost_usd=judge_cost_usd,
-                    )
-                )
-                n_judged += 1
-            else:
-                persona_result = persona_consistency(collected_turns, markers=markers)
-                score = float(persona_result.score)
-                if persona_result.drift_first_miss_turn is not None:
-                    n_drifted += 1
-                    drift_misses.append(persona_result.drift_first_miss_turn)
-                    sample_extra["drift_first_miss_turn"] = float(
-                        persona_result.drift_first_miss_turn
-                    )
-
-            scores.append(score)
-            sample_extra["score"] = score
-
-            tpot = (
-                (total_sum - ttft_first) / max(tokens_out_sum - 1, 1)
-                if math.isfinite(ttft_first) and tokens_out_sum > 1
-                else float("nan")
-            )
-            samples.append(
-                Sample(
-                    request_idx=idx,
-                    arrival_ms=t_arrival,
-                    start_ms=t_arrival,
-                    ttft_ms=ttft_first,
-                    total_ms=total_sum if total_sum > 0 else float("nan"),
-                    tpot_ms=tpot,
-                    tokens_in=tokens_in_sum,
-                    tokens_out=tokens_out_sum,
-                    cost_usd=cost_sum,
-                    finish_reason="stop",
-                    ok=True,
-                    extra=sample_extra,
-                )
-            )
 
         self._dump_samples(context, samples)
 
@@ -613,6 +618,7 @@ class LLMQualityPlugin:
             n_judged=n_judged if spec.scoring == "judge_llm_persona" else None,
             judge_errors=(judge_errors if spec.scoring == "judge_llm_persona" else None),
             judge_cost_usd=(judge_cost_usd if spec.scoring == "judge_llm_persona" else None),
+            energy=telemetry.summarise(samples),
         )
         signing_mode = context.extra.get("signing_mode", "dev")
         dev_key_path = context.extra.get("dev_key_path")
@@ -929,6 +935,7 @@ class LLMQualityPlugin:
         n_judged: int | None = None,
         judge_errors: list[str] | None = None,
         judge_cost_usd: list[float] | None = None,
+        energy: EnergyReport | None = None,
     ) -> Envelope:
         """Build a signed envelope for a multi-turn persona-consistency run.
 
@@ -1001,6 +1008,17 @@ class LLMQualityPlugin:
             metrics["n_judged"] = float(n_judged)
         if judge_errors is not None:
             metrics["judge_errors"] = float(len(judge_errors))
+
+        # Energy / power summary from telemetry. Mirrors the single-turn path
+        # in _build_envelope; only surfaced when the samplers actually saw a GPU.
+        if energy is not None:
+            if energy.gpu_power_avg_w > 0:
+                metrics["power_avg_w"] = energy.gpu_power_avg_w
+                metrics["power_peak_w"] = energy.gpu_power_peak_w
+            if energy.total_energy_joules > 0:
+                metrics["energy_joules_total"] = energy.total_energy_joules
+                if energy.joules_per_token == energy.joules_per_token:  # not NaN
+                    metrics["joules_per_token"] = energy.joules_per_token
 
         builder = EnvelopeBuilder(
             suite_id=spec.benchmark_id,
