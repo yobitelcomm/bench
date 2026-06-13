@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-voice"
-version = "0.0.2"
+version = "0.1.0"
 description = "Voice transcription plugin for InferenceBench Suite (deterministic fixture-driven WER/CER skeleton)"
 readme = "README.md"
 requires-python = ">=3.12"

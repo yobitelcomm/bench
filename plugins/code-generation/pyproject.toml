@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-code"
-version = "0.0.2"
+version = "0.1.0"
 description = "Code-generation plugin for InferenceBench Suite (HumanEval-style execution-based scoring)."
 readme = "README.md"
 requires-python = ">=3.12"
