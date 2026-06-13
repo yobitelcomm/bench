@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-hf-publisher"
-version = "0.0.2"
+version = "0.1.0"
 description = "Publish signed InferenceBench envelopes to the Hugging Face Hub as datasets"
 readme = "README.md"
 requires-python = ">=3.12"

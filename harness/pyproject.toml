@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-harness"
-version = "0.0.2"
+version = "0.1.0"
 description = "Core measurement engine for InferenceBench — drivers, telemetry, percentiles, fingerprinting"
 readme = "README.md"
 requires-python = ">=3.12"

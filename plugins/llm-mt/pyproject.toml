@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "inferencebench-mt"
-version = "0.0.2"
+version = "0.1.0"
 description = "Machine-translation plugin for InferenceBench Suite (chrF/BLEU/exact-match on bundled fixtures)"
 readme = "README.md"
 requires-python = ">=3.12"
