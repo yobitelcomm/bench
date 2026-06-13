@@ -260,9 +260,7 @@ class CodeGenerationPlugin:
                 tests = item["tests"]
                 t_arrival = time.perf_counter() * 1000.0
                 try:
-                    result: CompletionResult = client.complete(
-                        prompt, stream=True, max_tokens=512
-                    )
+                    result: CompletionResult = client.complete(prompt, stream=True, max_tokens=512)
                 except Exception as exc:
                     samples.append(
                         Sample(

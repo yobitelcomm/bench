@@ -224,9 +224,7 @@ class LLMMTPlugin:
                 prompt = _build_prompt(source, spec.source_lang, spec.target_lang)
                 t_arrival = time.perf_counter() * 1000.0
                 try:
-                    result: CompletionResult = client.complete(
-                        prompt, stream=True, max_tokens=256
-                    )
+                    result: CompletionResult = client.complete(prompt, stream=True, max_tokens=256)
                 except Exception as exc:
                     samples.append(
                         Sample(
