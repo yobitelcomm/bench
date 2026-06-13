@@ -107,6 +107,9 @@ validation-runs/2026-05-18-multi-vendor-marathon/marathon/*
 # LLM inference validation envelopes (Qwen2.5-72B-Instruct on 4xH100, TP=4, BF16)
 !validation-runs/2026-06-13-llm-h100
 !validation-runs/2026-06-13-llm-h100/*.json
+# Multi-modality validation envelopes (mt + code + vision + embeddings on H100)
+!validation-runs/2026-06-13-multi-modality-h100
+!validation-runs/2026-06-13-multi-modality-h100/*.json
 
 # Model weights / datasets (use Git LFS or S3)
 *.bin
