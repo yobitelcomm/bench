@@ -10,8 +10,9 @@ help: ## Show this help.
 install: ## uv sync the whole workspace.
 	uv sync --all-extras --dev
 
-lint: ## ruff check (no auto-fix).
+lint: ## ruff check + ruff format --check (no auto-fix; matches CI).
 	uv run ruff check .
+	uv run ruff format --check .
 
 format: ## ruff format + ruff check --fix.
 	uv run ruff format .
