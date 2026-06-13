@@ -26,6 +26,7 @@ on:
       - "validation-runs/2026-05-25-voice-rtx4000ada/**"
       - "validation-runs/2026-05-29-voice-testbm-h100/**"
       - "validation-runs/2026-06-13-llm-h100/**"
+      - "validation-runs/2026-06-13-multi-modality-h100/**"
       - ".github/workflows/deploy-pages.yml"
   workflow_dispatch:
   schedule:
@@ -67,6 +68,7 @@ jobs:
           cp validation-runs/2026-05-25-voice-rtx4000ada/*.json _corpus_combined/
           cp validation-runs/2026-05-29-voice-testbm-h100/*.json _corpus_combined/
           cp validation-runs/2026-06-13-llm-h100/*.json _corpus_combined/
+          cp validation-runs/2026-06-13-multi-modality-h100/*.json _corpus_combined/
           echo "envelopes in combined corpus: $(ls _corpus_combined/ | wc -l)"
 
       - name: Build leaderboard into _site/leaderboard/
