@@ -23,11 +23,11 @@ bench doctor
 #  current temp, ECC state, driver/CUDA/NCCL versions, and a
 #  red "REFUSED: GPU clock throttling detected" if applicable]
 
-bench run llm.inference \
-  --model Qwen/Qwen3-32B \
-  --engine vllm --quant awq \
+bench run llm.inference.chatbot-short \
+  --model Qwen/Qwen2.5-7B-Instruct \
+  --engine vllm --quant bf16 \
   --hardware rtx-4090 \
-  --driver open-loop --rps 4 --duration 180
+  --sweep 1,4,16 --duration 90
 
 bench verify ~/.cache/inferencebench/runs/latest/envelope.json
 # Verified: signature OK, Rekor log index 12345, fingerprint matches.
@@ -35,9 +35,19 @@ bench verify ~/.cache/inferencebench/runs/latest/envelope.json
 
 `bench doctor` refuses to start a measurement if the GPU is thermal-throttling or showing ECC errors.
 
+For scale reference, here's the same `chatbot-short` benchmark on the v0.1.0 reference H100 corpus (Qwen2.5-72B, TP=4, BF16):
+
+| concurrency | throughput | TTFT p50 | joules/token |
+|---:|---:|---:|---:|
+| 1 | 56 tok/s | 24 ms | 37 |
+| 4 | 234 tok/s | 46 ms | 9.0 |
+| 16 | **891 tok/s** | 47 ms | **2.5** |
+
+That's the same envelope schema your 4090 run will produce. The Pareto frontier (throughput vs joules) is what the leaderboard renders; vendor-neutral by construction.
+
 ## Phase 2 is where r/LocalLLaMA gets the rest
 
-Today `bench` ships one engine (vLLM) and one modality (LLM inference). Phase 2 plan, in order: **llama.cpp** (GGUF, Metal, ROCm, Vulkan), **MLX** for Apple silicon, **AMD** (MI300X and consumer ROCm), then voice and multimodal plugins.
+Today `bench` ships one engine (vLLM) and six modality plugins with reference envelopes (LLM inference, LLM quality, MT, code, vision, embeddings, voice). Phase 2 plan, in order: **llama.cpp** (GGUF, Metal, ROCm, Vulkan), **MLX** for Apple silicon, **AMD** (MI300X and consumer ROCm), then 3D / world-models / agents / robotics / chip kernels.
 
 If you live mostly on llama.cpp or MLX, the right time to engage is now — the engine driver interface is small and getting locked down before v0.1.
 

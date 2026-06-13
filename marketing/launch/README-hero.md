@@ -27,9 +27,19 @@
 
 ```bash
 pip install inferencebench
-bench run llm.inference --model meta-llama/Llama-4-Maverick --engine vllm --hardware h100
+bench run llm.inference.chatbot-short --model Qwen/Qwen2.5-72B-Instruct --engine vllm --hardware h100
 bench verify ~/.cache/inferencebench/runs/latest/envelope.json
 ```
+
+**Reference run shipped with v0.1.0** — Qwen2.5-72B-Instruct on 4×H100 (TP=4, BF16, 8K ctx, vLLM 0.22):
+
+| concurrency | throughput | TTFT p50 | joules/token |
+|---:|---:|---:|---:|
+| 1 | 56 tok/s | 24 ms | 37 |
+| 4 | 234 tok/s | 46 ms | 9.0 |
+| 16 | **891 tok/s** | 47 ms | **2.5** |
+
+Full Pareto frontier, hardware fingerprint, and signed envelope in [`validation-runs/2026-06-13-llm-h100/`](validation-runs/2026-06-13-llm-h100/). Verify yourself with `bench audit validation-runs/2026-06-13-llm-h100/`.
 
 ![demo](docs/demo.gif)
 
@@ -65,11 +75,11 @@ pip install inferencebench
 bench doctor
 
 # run an LLM inference benchmark
-bench run llm.inference \
-  --model meta-llama/Llama-4-Maverick \
-  --engine vllm --quant fp8 \
+bench run llm.inference.sharegpt-v3 \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --engine vllm --quant bf16 \
   --hardware h100 \
-  --driver open-loop --rps 10 --duration 300 \
+  --duration 300 \
   --slo-template llm.standard
 
 # verify the signed envelope locally
@@ -100,7 +110,7 @@ This is v0.1. Known limits:
 
 - **One engine shipped end-to-end:** vLLM. SGLang, TensorRT-LLM, llama.cpp and MLX are Phase 2.
 - **One hardware tier shipped end-to-end:** NVIDIA H100. AMD MI300X, RTX 5090 and Apple silicon are Phase 2, gated on partnerships and hardware access.
-- **One modality:** `llm.inference`. Voice, vision, 3D, world-models, agents, robotics and chip kernels are sketched in [`ARCHITECTURE.md`](ARCHITECTURE.md) but not in v0.1.
+- **Six modality plugins, reference envelopes for each:** `llm.inference`, `llm.quality`, `llm.mt`, `code.generation`, `vision.understanding`, `embeddings.retrieval`, `voice.transcription`. 3D, world-models, agents, robotics and chip kernels are sketched in [`ARCHITECTURE.md`](ARCHITECTURE.md) but not in v0.1.
 - **No SaaS, no cloud orchestration.** The CLI runs locally; results go to disk or to Hugging Face Hub. Studio and Enterprise tiers are explicitly deferred.
 
 See [`PROJECT_PLAN.md`](PROJECT_PLAN.md) for the phased roadmap.
