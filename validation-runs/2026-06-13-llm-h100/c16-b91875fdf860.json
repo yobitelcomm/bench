@@ -1,0 +1,226 @@
+{
+  "envelope_version": "v1",
+  "suite_id": "llm.inference.chatbot-short",
+  "suite_version": "1.0.0",
+  "run_id": "019ebf77-7597-7671-a417-726e28e10417",
+  "timestamp": "2026-06-13T05:32:17.687700Z",
+  "model": {
+    "id": "Qwen/Qwen2.5-72B-Instruct",
+    "revision": "unknown00",
+    "provider": "vllm",
+    "endpoint_hash": "0000000000000000000000000000000000000000000000000000000000000000"
+  },
+  "engine": {
+    "name": "vllm",
+    "version": "0.22.1",
+    "config_hash": "0000000000000000000000000000000000000000000000000000000000000000",
+    "image_digest": ""
+  },
+  "quantization": {
+    "format": "bf16",
+    "method": ""
+  },
+  "hardware_fingerprint": {
+    "fingerprint_sha256": "c353425077b20b36c71d9c32d9e5d49096478f4a0f7d6078c1dfc83c408ccf50",
+    "dmi_uuid": "unknown",
+    "gpus": [
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:0A:00.0",
+        "serial": "1655223057573",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:18:00.0",
+        "serial": "1655123013588",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:2F:00.0",
+        "serial": "1655223057489",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:38:00.0",
+        "serial": "1655123031223",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:87:00.0",
+        "serial": "1650124037016",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:90:00.0",
+        "serial": "1650124024911",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:BE:00.0",
+        "serial": "1655123007630",
+        "vbios": "96.00.D0.00.02"
+      },
+      {
+        "model": "NVIDIA H100 80GB HBM3",
+        "pci_id": "00000000:C7:00.0",
+        "serial": "1655123012945",
+        "vbios": "96.00.D0.00.02"
+      }
+    ],
+    "cpu": {
+      "model": "Intel(R) Xeon(R) Platinum 8462Y+",
+      "microcode": "0x2b000643"
+    },
+    "memory": {
+      "channels": 1,
+      "speed_mts": 1,
+      "ecc": false
+    },
+    "bios": {
+      "version": "CUXD670_5.32_v2.05",
+      "resizable_bar": false,
+      "above_4g": false
+    },
+    "numa": {
+      "nodes": [
+        {
+          "id": 0,
+          "cpus": [
+            0,
+            1,
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12,
+            13,
+            14,
+            15
+          ],
+          "memory_mb": 515670
+        },
+        {
+          "id": 1,
+          "cpus": [
+            16,
+            17,
+            18,
+            19,
+            20,
+            21,
+            22,
+            23,
+            24,
+            25,
+            26,
+            27,
+            28,
+            29,
+            30,
+            31
+          ],
+          "memory_mb": 516044
+        },
+        {
+          "id": 2,
+          "cpus": [
+            32,
+            33,
+            34,
+            35,
+            36,
+            37,
+            38,
+            39,
+            40,
+            41,
+            42,
+            43,
+            44,
+            45,
+            46,
+            47
+          ],
+          "memory_mb": 516091
+        },
+        {
+          "id": 3,
+          "cpus": [
+            48,
+            49,
+            50,
+            51,
+            52,
+            53,
+            54,
+            55,
+            56,
+            57,
+            58,
+            59,
+            60,
+            61,
+            62,
+            63
+          ],
+          "memory_mb": 516087
+        }
+      ]
+    },
+    "driver": "580.126.09",
+    "cuda": "13.0",
+    "nccl": ""
+  },
+  "software_provenance": {
+    "image_digest": "",
+    "pip_freeze_hash": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "git_commit": "0000000000000000000000000000000000000000",
+    "nvidia_smi_q_hash": "38f6f2abfb5eff5cc74f29c536d808b4712442450a76938029a283720e8a9cb0"
+  },
+  "dataset": {
+    "id": "builtin-chatbot-short",
+    "hash": "6f4b1f68fc3a813baa983cbe70cd9ef57f8c86e6b2e6ccc9aaa2a498e588d510"
+  },
+  "seed": 42,
+  "driver_options": {},
+  "metrics": {
+    "ttft_p50_ms": 47.83403594046831,
+    "ttft_p99_ms": 85.23758193478018,
+    "tpot_p50_ms": 17.299635779464573,
+    "tpot_p99_ms": 18.755404481033647,
+    "total_p50_ms": 2239.5039470866323,
+    "total_p99_ms": 2352.732985140756,
+    "req_per_s_passing": 7.494939823477021,
+    "req_per_s_all": 7.494939823477021,
+    "compliance_rate": 1.0,
+    "ok_rate": 1.0,
+    "throughput_tok_per_s": 890.5637180121626,
+    "power_avg_w": 2286.5649742237842,
+    "power_peak_w": 2311.803,
+    "energy_joules_total": 210357.47273909012,
+    "joules_per_token": 2.562023149819625,
+    "slo_hardware_class": "h100",
+    "slo_template_resolved": "ttft<200ms, tpot<50ms, total<3000ms"
+  },
+  "distributions": {},
+  "slo_template": "llm.standard",
+  "warnings": [],
+  "signature": {
+    "method": "dev-key",
+    "certificate": "-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAmocadmsr43FNMgAzMz6SRAWE6+4xVwYSwZDFvmTI47I=\n-----END PUBLIC KEY-----",
+    "rekor_log_index": -1,
+    "bundle": "eQvhFQaK0d3JOxVDgKub/GF5hB4sOxiVf2EWqkiJ69eJrrpYoifvZxSFsgcpLhPW7HJgRlvJsBIlZX7TvYLTBw=="
+  }
+}
