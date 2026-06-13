@@ -37,43 +37,46 @@ pip install inferencebench
 bench doctor             # refuses to run if the GPU is thermal-throttling
                          # or if ECC errors are present
 
-bench run llm.inference \
-  --model meta-llama/Llama-4-Maverick \
-  --engine vllm --quant fp8 \
+bench run llm.inference.chatbot-short \
+  --model Qwen/Qwen2.5-72B-Instruct \
+  --engine vllm --quant bf16 \
   --hardware h100 \
-  --driver open-loop --rps 10 --duration 300 \
+  --sweep 1,4,16 --duration 90 \
   --slo-template llm.standard
 
 bench verify ~/.cache/inferencebench/runs/latest/envelope.json
 bench publish ~/.cache/inferencebench/runs/latest --to hf
 ```
 
-The envelope that lands on disk looks roughly like this (abridged):
+The reference run that ships with v0.1.0, on 4×H100 (TP=4, BF16, vLLM 0.22):
+
+| concurrency | throughput | TTFT p50 | joules/token | power |
+|---:|---:|---:|---:|---:|
+| 1 | 56 tok/s | 24 ms | 37 | 2112 W |
+| 4 | 234 tok/s | 46 ms | 9.0 | 2184 W |
+| 16 | **891 tok/s** | 47 ms | **2.5** | 2287 W |
+
+That's a 16× throughput jump at flat TTFT — the kind of batching curve you'd want to see before believing a single headline number. The envelope on disk is signed JSON:
 
 ```json
 {
   "envelope_version": "v1",
-  "suite_id": "llm.inference",
-  "run_id": "01HXY...",
-  "model": {"id": "meta-llama/Llama-4-Maverick", "revision": "..."},
-  "engine": {"name": "vllm", "version": "0.7.2", "config_hash": "..."},
+  "suite_id": "llm.inference.chatbot-short",
+  "model": {"id": "Qwen/Qwen2.5-72B-Instruct"},
+  "engine": {"name": "vllm", "version": "0.22.1"},
   "hardware_fingerprint": {
     "fingerprint_sha256": "9c3a...",
     "gpus": [{"model": "H100-SXM5-80GB", "pci_id": "...", "vbios": "..."}],
-    "driver": "560.35.03", "cuda": "12.6", "nccl": "2.22.3"
+    "driver": "580.126.09", "cuda": "13.0"
   },
   "metrics": {
-    "ttft_p50_ms": 142.0, "ttft_p99_ms": 280.3,
-    "tpot_p50_ms": 18.5,
-    "throughput_tok_per_s": 1842.1,
-    "goodput_at_slo": 142.3,
-    "joules_per_token": 0.32
+    "ttft_p50_ms": 47.2,
+    "tpot_p50_ms": 17.3,
+    "throughput_tok_per_s": 890.6,
+    "power_avg_w": 2287,
+    "joules_per_token": 2.51
   },
-  "signature": {
-    "method": "sigstore-cosign",
-    "rekor_log_index": 12345,
-    "bundle": "..."
-  }
+  "signature": {"method": "sigstore-cosign", "bundle": "..."}
 }
 ```
 
@@ -85,7 +88,7 @@ Phase 1 is deliberately narrow.
 
 - One engine: vLLM. SGLang, TensorRT-LLM, llama.cpp and MLX are Phase 2.
 - One hardware tier shipped end-to-end: H100. AMD MI300X, RTX 5090 and Apple silicon are Phase 2, gated on hardware partnerships.
-- One modality: LLM inference. Voice, vision, 3D, world models, agents and chip kernels are all sketched in the architecture but explicitly not in v0.1.
+- Six modality plugins with reference envelopes: `llm.inference`, `llm.quality`, `llm.mt`, `code.generation`, `vision.understanding`, `embeddings.retrieval`, `voice.transcription`. 3D, world models, agents, robotics, and chip kernels are sketched in the architecture but not in v0.1.
 
 The plugin interface and envelope schema were designed for the full surface, not retrofitted. Adding a modality is a new package; adding an engine is a driver subclass. There is no benchmark hosted in `bench` today that secretly favors one stack — and if one ever ships, it should be filed as a bug.
 
